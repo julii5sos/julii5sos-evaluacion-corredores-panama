@@ -1,0 +1,28 @@
+{
+  "fuente": "Fundacion Almanaque Azul",
+  "proyecto": "Mapa de conectividad ecologica de Panama",
+  "version_publicada": "2024.05",
+  "modelo": "Omniscape; ventana de conectividad de 6 km",
+  "url_mapa": "https://www.almanaqueazul.org/conectividad/mapa/",
+  "url_proyecto": "https://www.almanaqueazul.org/proyectos/",
+  "fecha_consulta": "2026-09-01",
+  "crs_salida": "EPSG:4326",
+  "corredores_poligonos": 22,
+  "puntos_criticos": 14,
+  "categorias_originales": {
+    "alta": 2,
+    "mediabaja": 13,
+    "mediana": 7
+  },
+  "etiquetas": {
+    "alta": "Alta",
+    "mediana": "Mediana",
+    "mediabaja": "Media-baja"
+  },
+  "tramos_mesoamericanos": [
+    "Corredor biológico mesoamericano San Lorenzo",
+    "Corredor biológico mesoamericano este",
+    "Corredor biológico mesoamericano oeste"
+  ],
+  "nota": "Las categorias originales son alta, mediana y media-baja. La aplicacion no las sustituye por cuantiles propios."
+}
