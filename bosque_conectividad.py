@@ -24,7 +24,14 @@ def _dependencias():
         import networkx as nx
         import shapefile
         from pyproj import CRS, Transformer
-        from shapely.geometry import GeometryCollection, MultiPolygon, Polygon, mapping, shape
+        from shapely.geometry import (
+            GeometryCollection,
+            LineString,
+            MultiPolygon,
+            Polygon,
+            mapping,
+            shape,
+        )
         from shapely.ops import transform, unary_union
         from shapely.strtree import STRtree
         from shapely.validation import make_valid
@@ -38,6 +45,7 @@ def _dependencias():
         "CRS": CRS,
         "Transformer": Transformer,
         "GeometryCollection": GeometryCollection,
+        "LineString": LineString,
         "MultiPolygon": MultiPolygon,
         "Polygon": Polygon,
         "mapping": mapping,
@@ -154,6 +162,35 @@ def _escala01(valores: dict[int, float]) -> dict[int, float]:
     }
 
 
+def _vecinos_mas_cercanos(parches: list[Any], arbol) -> dict[int, tuple[int | None, float | None]]:
+    """Localiza el parche vecino más cercano sin construir una matriz O(n²)."""
+
+    vecinos: dict[int, tuple[int | None, float | None]] = {}
+    if len(parches) < 2:
+        return {indice: (None, None) for indice in range(len(parches))}
+
+    for indice, parche in enumerate(parches):
+        indices, distancias = arbol.query_nearest(
+            parche,
+            exclusive=True,
+            all_matches=False,
+            return_distance=True,
+        )
+        if len(indices) == 0:
+            vecinos[indice] = (None, None)
+            continue
+        vecinos[indice] = (int(indices[0]), float(distancias[0]))
+    return vecinos
+
+
+def _linea_entre_parches(parche_origen, parche_destino, deps):
+    """Crea una línea esquemática entre puntos interiores de dos parches."""
+
+    origen = parche_origen.representative_point()
+    destino = parche_destino.representative_point()
+    return deps["LineString"]([(origen.x, origen.y), (destino.x, destino.y)])
+
+
 def _resultado_sin_parches(
     *,
     area_paisaje_ha: float,
@@ -182,15 +219,28 @@ def _resultado_sin_parches(
             "umbral_m": float(umbral_m),
             "numero_nodos": 0,
             "numero_aristas": 0,
+            "numero_parches_conectados": 0,
+            "numero_parches_aislados": 0,
+            "porcentaje_parches_aislados": 0.0,
             "numero_componentes": 0,
             "tamano_componente_mayor": 0,
             "porcentaje_nodos_componente_mayor": 0.0,
             "densidad_red": 0.0,
+            "distancia_media_conexiones_m": 0.0,
+            "distancia_maxima_conexiones_m": 0.0,
+            "numero_brechas_potenciales": 0,
+            "distancia_media_brechas_potenciales_m": 0.0,
             "red_totalmente_conectada": False,
             "intermediacion_aproximada": False,
         },
         "top_conectores": [],
         "parches_geojson": {"type": "FeatureCollection", "features": []},
+        "conexiones_geojson": {"type": "FeatureCollection", "features": []},
+        "conexiones_potenciales_geojson": {
+            "type": "FeatureCollection",
+            "features": [],
+        },
+        "hay_parches_aislados": False,
         "campo_clase": campo_clase,
         "valores_bosque": sorted(str(valor) for valor in valores_bosque),
         "area_min_ha": float(area_min_ha),
@@ -198,7 +248,8 @@ def _resultado_sin_parches(
         "origen_datos": origen_datos,
         "metodo": (
             "Parches de bosque como nodos; aristas por distancia; indice conector "
-            "40% grado, 30% intermediacion, 20% area y 10% fuerza de conexion."
+            "40% grado, 30% intermediacion, 20% area y 10% fuerza de conexion; "
+            "brechas potenciales desde parches aislados hacia su vecino mas cercano."
         ),
         "participa_indice_prioridad": False,
     }
@@ -246,6 +297,7 @@ def _calcular_metricas_parches(
 
     grados = dict(grafo.degree())
     fuerza = dict(grafo.degree(weight="peso"))
+    vecinos_mas_cercanos = _vecinos_mas_cercanos(parches, arbol)
     if grafo.number_of_nodes() > 400:
         intermediacion = nx.betweenness_centrality(
             grafo,
@@ -287,6 +339,7 @@ def _calcular_metricas_parches(
     nodos = []
     for i, parche in enumerate(parches):
         prioridad = "Alta" if indices[i] >= q75 else "Media" if indices[i] >= q50 else "Baja"
+        indice_vecino, distancia_vecino = vecinos_mas_cercanos[i]
         propiedades = {
             "patch_id": i + 1,
             "area_ha": round(areas[i], 4),
@@ -297,6 +350,13 @@ def _calcular_metricas_parches(
             "componente": componente_por_nodo[i],
             "indice_conector": round(indices[i], 6),
             "prioridad_conectividad": prioridad,
+            "esta_aislado": int(grados[i]) == 0,
+            "distancia_vecino_mas_cercano_m": (
+                round(distancia_vecino, 1) if distancia_vecino is not None else None
+            ),
+            "patch_id_vecino_mas_cercano": (
+                indice_vecino + 1 if indice_vecino is not None else None
+            ),
         }
         nodos.append(propiedades)
         geometria_wgs = deps["transform"](area_a_wgs.transform, parche)
@@ -308,10 +368,66 @@ def _calcular_metricas_parches(
             }
         )
 
+    conexiones = []
+    distancias_conexiones = []
+    for origen, destino, atributos in grafo.edges(data=True):
+        distancia = float(atributos["distancia_m"])
+        distancias_conexiones.append(distancia)
+        linea_wgs = deps["transform"](
+            area_a_wgs.transform,
+            _linea_entre_parches(parches[origen], parches[destino], deps),
+        )
+        conexiones.append(
+            {
+                "type": "Feature",
+                "properties": {
+                    "tipo": "Conexion dentro del umbral",
+                    "patch_id_origen": origen + 1,
+                    "patch_id_destino": destino + 1,
+                    "distancia_m": round(distancia, 1),
+                    "umbral_m": float(umbral_m),
+                },
+                "geometry": deps["mapping"](linea_wgs),
+            }
+        )
+
+    aislados = [indice for indice, grado in grados.items() if int(grado) == 0]
+    conexiones_potenciales = []
+    pares_potenciales = set()
+    for origen in aislados:
+        destino, distancia = vecinos_mas_cercanos[origen]
+        if destino is None or distancia is None:
+            continue
+        par = tuple(sorted((origen, destino)))
+        if par in pares_potenciales:
+            continue
+        pares_potenciales.add(par)
+        linea_wgs = deps["transform"](
+            area_a_wgs.transform,
+            _linea_entre_parches(parches[origen], parches[destino], deps),
+        )
+        conexiones_potenciales.append(
+            {
+                "type": "Feature",
+                "properties": {
+                    "tipo": "Brecha potencial para revision",
+                    "patch_id_origen": origen + 1,
+                    "patch_id_destino": destino + 1,
+                    "distancia_m": round(float(distancia), 1),
+                    "umbral_m": float(umbral_m),
+                },
+                "geometry": deps["mapping"](linea_wgs),
+            }
+        )
+
     total_bosque_ha = sum(areas.values())
     perimetro_total_m = sum(parche.length for parche in parches)
     valores_area = list(areas.values())
     mayor_componente = max((len(componente) for componente in componentes), default=0)
+    distancias_brechas = [
+        float(feature["properties"]["distancia_m"])
+        for feature in conexiones_potenciales
+    ]
     metricas_clase = {
         "numero_parches": len(parches),
         "area_total_bosque_ha": round(total_bosque_ha, 4),
@@ -342,12 +458,27 @@ def _calcular_metricas_parches(
         "umbral_m": float(umbral_m),
         "numero_nodos": grafo.number_of_nodes(),
         "numero_aristas": grafo.number_of_edges(),
+        "numero_parches_conectados": grafo.number_of_nodes() - len(aislados),
+        "numero_parches_aislados": len(aislados),
+        "porcentaje_parches_aislados": round(
+            len(aislados) / grafo.number_of_nodes() * 100, 4
+        ),
         "numero_componentes": len(componentes),
         "tamano_componente_mayor": mayor_componente,
         "porcentaje_nodos_componente_mayor": round(
             mayor_componente / grafo.number_of_nodes() * 100, 4
         ),
         "densidad_red": round(nx.density(grafo), 8),
+        "distancia_media_conexiones_m": round(mean(distancias_conexiones), 2)
+        if distancias_conexiones
+        else 0.0,
+        "distancia_maxima_conexiones_m": round(max(distancias_conexiones), 2)
+        if distancias_conexiones
+        else 0.0,
+        "numero_brechas_potenciales": len(conexiones_potenciales),
+        "distancia_media_brechas_potenciales_m": round(mean(distancias_brechas), 2)
+        if distancias_brechas
+        else 0.0,
         "red_totalmente_conectada": nx.is_connected(grafo),
         "intermediacion_aproximada": intermediacion_aproximada,
     }
@@ -357,6 +488,15 @@ def _calcular_metricas_parches(
         "metricas_red": metricas_red,
         "top_conectores": nodos[:20],
         "parches_geojson": {"type": "FeatureCollection", "features": features},
+        "conexiones_geojson": {
+            "type": "FeatureCollection",
+            "features": conexiones,
+        },
+        "conexiones_potenciales_geojson": {
+            "type": "FeatureCollection",
+            "features": conexiones_potenciales,
+        },
+        "hay_parches_aislados": bool(aislados),
         "campo_clase": campo_clase,
         "valores_bosque": sorted(str(valor) for valor in valores_bosque),
         "area_min_ha": float(area_min_ha),
@@ -364,7 +504,8 @@ def _calcular_metricas_parches(
         "origen_datos": origen_datos,
         "metodo": (
             "Parches de bosque como nodos; aristas por distancia; indice conector "
-            "40% grado, 30% intermediacion, 20% area y 10% fuerza de conexion."
+            "40% grado, 30% intermediacion, 20% area y 10% fuerza de conexion; "
+            "brechas potenciales desde parches aislados hacia su vecino mas cercano."
         ),
         "participa_indice_prioridad": False,
     }
@@ -646,10 +787,12 @@ def agregar_resultados_fragmentacion(mapa, resultados: dict[str, Any]):
     import folium
 
     if not resultados["parches_geojson"].get("features"):
-        return None
+        return []
 
     colores = {"Alta": "#b42318", "Media": "#f79009", "Baja": "#157f3b"}
-    grupo = folium.FeatureGroup(
+    capas = []
+
+    grupo_parches = folium.FeatureGroup(
         name="Parches · importancia como conectores",
         overlay=True,
         control=False,
@@ -658,8 +801,8 @@ def agregar_resultados_fragmentacion(mapa, resultados: dict[str, Any]):
     folium.GeoJson(
         resultados["parches_geojson"],
         style_function=lambda feature: {
-            "color": "#ffffff",
-            "weight": 1,
+            "color": "#0b3b36",
+            "weight": 1.2,
             "fillColor": colores[
                 feature["properties"]["prioridad_conectividad"]
             ],
@@ -672,8 +815,20 @@ def agregar_resultados_fragmentacion(mapa, resultados: dict[str, Any]):
                 "prioridad_conectividad",
                 "indice_conector",
                 "grado",
+                "componente",
+                "esta_aislado",
+                "distancia_vecino_mas_cercano_m",
             ],
-            aliases=["Parche", "Área (ha)", "Importancia", "Índice conector", "Conexiones"],
+            aliases=[
+                "Parche",
+                "Área (ha)",
+                "Importancia",
+                "Índice conector",
+                "Conexiones",
+                "Componente",
+                "Aislado al umbral",
+                "Vecino más cercano (m)",
+            ],
             localize=True,
             sticky=False,
         ),
@@ -682,6 +837,72 @@ def agregar_resultados_fragmentacion(mapa, resultados: dict[str, Any]):
             "weight": 4,
             "fillOpacity": 0.78,
         },
-    ).add_to(grupo)
-    grupo.add_to(mapa)
-    return grupo
+    ).add_to(grupo_parches)
+    grupo_parches.add_to(mapa)
+    capas.append(grupo_parches)
+
+    if resultados.get("conexiones_geojson", {}).get("features"):
+        grupo_conexiones = folium.FeatureGroup(
+            name="Conexiones · dentro del umbral",
+            overlay=True,
+            control=False,
+            show=True,
+        )
+        folium.GeoJson(
+            resultados["conexiones_geojson"],
+            style_function=lambda _: {
+                "color": "#1d4ed8",
+                "weight": 2.6,
+                "opacity": 0.86,
+            },
+            tooltip=folium.GeoJsonTooltip(
+                fields=[
+                    "patch_id_origen",
+                    "patch_id_destino",
+                    "distancia_m",
+                    "umbral_m",
+                ],
+                aliases=["Parche origen", "Parche destino", "Separación (m)", "Umbral (m)"],
+                localize=True,
+                sticky=False,
+            ),
+        ).add_to(grupo_conexiones)
+        grupo_conexiones.add_to(mapa)
+        capas.append(grupo_conexiones)
+
+    if resultados.get("conexiones_potenciales_geojson", {}).get("features"):
+        grupo_brechas = folium.FeatureGroup(
+            name="Brechas potenciales · revisar en campo",
+            overlay=True,
+            control=False,
+            show=False,
+        )
+        folium.GeoJson(
+            resultados["conexiones_potenciales_geojson"],
+            style_function=lambda _: {
+                "color": "#7c2d12",
+                "weight": 2.6,
+                "opacity": 0.9,
+                "dashArray": "8 7",
+            },
+            tooltip=folium.GeoJsonTooltip(
+                fields=[
+                    "patch_id_origen",
+                    "patch_id_destino",
+                    "distancia_m",
+                    "umbral_m",
+                ],
+                aliases=[
+                    "Parche aislado",
+                    "Vecino más cercano",
+                    "Separación (m)",
+                    "Umbral usado (m)",
+                ],
+                localize=True,
+                sticky=False,
+            ),
+        ).add_to(grupo_brechas)
+        grupo_brechas.add_to(mapa)
+        capas.append(grupo_brechas)
+
+    return capas

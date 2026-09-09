@@ -269,6 +269,18 @@ Las métricas de clase son:
 
 Cada parche es un nodo. Dos nodos se conectan cuando la distancia mínima entre sus polígonos es menor o igual al umbral seleccionado. Para una distancia `d` y umbral `u`, la fuerza de la arista es `exp(-d/u)` y el costo mínimo utilizado es 1 m.
 
+El mapa representa estas aristas con líneas azules esquemáticas entre los parches y
+muestra en cada línea la distancia mínima realmente calculada entre sus polígonos.
+Un parche con grado cero se considera aislado al umbral elegido. Para ayudar a
+planificar la inspección, la aplicación puede dibujar una línea discontinua desde
+cada parche aislado hacia el parche más cercano dentro del área analizada. Esa línea
+es una **brecha potencial para revisión**: no es un corredor confirmado, una ruta de
+menor costo ni evidencia de movimiento de fauna.
+
+Además de nodos, aristas, componentes y densidad de red, el resultado informa el
+número y porcentaje de parches aislados, el número de parches conectados, la distancia
+media y máxima de las conexiones y el número de brechas potenciales representadas.
+
 El índice conector por parche reproduce los pesos de los ejercicios R:
 
 ```text

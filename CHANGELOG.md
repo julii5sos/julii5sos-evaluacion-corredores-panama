@@ -4,7 +4,18 @@ Este historial documenta la evolución de la aplicación UX. Las versiones sigue
 el formato `MAJOR.MINOR.PATCH`: una versión principal, mejoras compatibles y
 correcciones compatibles, respectivamente.
 
-## [0.6.0] - 2026-09-08 — versión actual
+## [0.6.1] - 2026-09-09 — versión actual
+
+### Red de conectividad visible y descargable
+
+- Dibuja en el mapa las conexiones entre parches que cumplen el umbral seleccionado.
+- Identifica los parches aislados y propone una línea discontinua a su vecino más cercano como brecha para revisión, no como corredor confirmado.
+- Separa los controles de parches, conexiones y brechas potenciales para evitar ruido visual.
+- Añade métricas de parches conectados y aislados, distancias de las aristas y componentes de red.
+- Permite descargar los parches y la red de conectividad en GeoJSON.
+- Mantiene Earth Engine como fuente oficial; no usa la copia nacional simplificada porque su integridad espacial no está validada.
+
+## [0.6.0] - 2026-09-08
 
 ### Cobertura de bosque automática
 

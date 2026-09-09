@@ -657,8 +657,8 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-0.6.0-BOSQUE-AUTOMATICO"
-METHODOLOGY_VERSION = "MT-2026.8-BOSQUE-AUTOMATICO"
+APP_VERSION = "UX-0.6.1-RED-CONECTIVIDAD"
+METHODOLOGY_VERSION = "MT-2026.9-RED-CONECTIVIDAD"
 PROYECTO_EE = secreto_opcional("EE_PROJECT", "ee-julissaguevaravega")
 FUENTE_BOSQUE_NOMBRE = "Bosque y otros usos"
 FUENTE_BOSQUE_ORGANIZACION = "SINIA–MiAMBIENTE"
@@ -830,6 +830,14 @@ LEYENDAS = {
         ("#b42318", "Alta", "Cuartil superior del índice conector calculado"),
         ("#f79009", "Media", "Entre la mediana y el cuartil superior"),
         ("#157f3b", "Baja", "Por debajo de la mediana del área analizada"),
+    ],
+    "Red de conectividad": [
+        ("#1d4ed8", "Conexión calculada", "Los parches están dentro del umbral elegido"),
+        (
+            "#7c2d12",
+            "Brecha potencial",
+            "Línea discontinua desde un parche aislado a su vecino más cercano; requiere revisión",
+        ),
     ],
     "Sectores para revisión": [
         (
@@ -2567,7 +2575,9 @@ def generar_pdf(
                 f"parches y {clase_fragmentacion['area_total_bosque_ha']:.2f} ha de bosque. "
                 f"La red, calculada con un umbral de {red_fragmentacion['umbral_m']:.0f} m, "
                 f"contiene {red_fragmentacion['numero_componentes']} componentes y "
-                f"{red_fragmentacion['numero_aristas']} conexiones. La importancia "
+                f"{red_fragmentacion['numero_aristas']} conexiones; "
+                f"{red_fragmentacion.get('numero_parches_aislados', 0)} parches no tienen "
+                "otro parche dentro del umbral. La importancia "
                 "Alta/Media/Baja de los parches es relativa al área evaluada, no equivale "
                 "a las categorías de Almanaque Azul. Esta red se conecta con la decisión "
                 "para focalizar la visita en parches conectores y componentes aislados, "
@@ -3355,16 +3365,63 @@ def mostrar_resultados_fragmentacion(resultados):
     )
     clase = resultados["metricas_clase"]
     red = resultados["metricas_red"]
-    col_parches, col_bosque, col_componentes, col_mayor = st.columns(4)
-    col_parches.metric("Parches", f"{clase['numero_parches']:,}")
+    numero_parches = int(clase["numero_parches"])
+    numero_conectados = int(red.get("numero_parches_conectados", 0))
+    numero_aislados = int(red.get("numero_parches_aislados", 0))
+
+    col_bosque, col_parches, col_conexiones, col_aislados = st.columns(4)
     col_bosque.metric("Bosque en el área", f"{clase['area_total_bosque_ha']:,.2f} ha")
-    col_componentes.metric("Componentes de red", f"{red['numero_componentes']:,}")
-    col_mayor.metric(
-        "Mayor componente",
-        f"{red['porcentaje_nodos_componente_mayor']:.1f}% de parches",
+    col_parches.metric("Parches", f"{numero_parches:,}")
+    col_conexiones.metric("Conexiones calculadas", f"{red['numero_aristas']:,}")
+    col_aislados.metric(
+        "Parches aislados",
+        f"{numero_aislados:,}",
+        help=f"Parches sin otro parche a {red['umbral_m']:.0f} m o menos.",
     )
-    resumen, conectores = st.tabs(["Métricas del paisaje", "Parches conectores"])
-    with resumen:
+
+    if numero_parches == 0:
+        st.info(
+            "La cobertura institucional de 2021 no identifica parches de bosque "
+            "dentro del área seleccionada."
+        )
+    elif numero_parches == 1:
+        st.info(
+            "La cobertura del área forma un solo parche. No se dibujan conexiones "
+            "porque no existe un segundo parche dentro del recorte."
+        )
+    else:
+        st.info(
+            f"Con un umbral de {red['umbral_m']:.0f} m, {numero_conectados} de "
+            f"{numero_parches} parches tienen al menos una conexión y {numero_aislados} "
+            f"quedan aislados. El componente mayor reúne "
+            f"{red['porcentaje_nodos_componente_mayor']:.1f}% de los parches."
+        )
+
+    red_tab, paisaje_tab, conectores_tab, descarga_tab = st.tabs(
+        ["Conectividad de la red", "Métricas del paisaje", "Parches conectores", "Descargar"]
+    )
+    with red_tab:
+        st.dataframe(
+            [
+                {"Métrica": "Parches conectados", "Valor": f"{numero_conectados:,}"},
+                {"Métrica": "Parches aislados", "Valor": f"{numero_aislados:,}"},
+                {"Métrica": "Componentes de red", "Valor": f"{red['numero_componentes']:,}"},
+                {"Métrica": "Conexiones dentro del umbral", "Valor": f"{red['numero_aristas']:,}"},
+                {"Métrica": "Distancia media de conexiones", "Valor": f"{red.get('distancia_media_conexiones_m', 0):,.1f} m"},
+                {"Métrica": "Distancia máxima de conexiones", "Valor": f"{red.get('distancia_maxima_conexiones_m', 0):,.1f} m"},
+                {"Métrica": "Brechas potenciales para revisar", "Valor": f"{red.get('numero_brechas_potenciales', 0):,}"},
+                {"Métrica": "Densidad de la red", "Valor": f"{red['densidad_red']:.6f}"},
+                {"Métrica": "Umbral de conexión", "Valor": f"{red['umbral_m']:.0f} m"},
+            ],
+            hide_index=True,
+            use_container_width=True,
+        )
+        st.caption(
+            "En el mapa, las líneas azules son conexiones dentro del umbral. Las líneas "
+            "discontinuas muestran el vecino más cercano de un parche aislado y se presentan "
+            "solo como brechas potenciales para revisión, no como corredores confirmados."
+        )
+    with paisaje_tab:
         st.dataframe(
             [
                 {"Métrica": "Bosque en el paisaje", "Valor": f"{clase['porcentaje_paisaje_bosque']:.2f}%"},
@@ -3373,13 +3430,11 @@ def mostrar_resultados_fragmentacion(resultados):
                 {"Métrica": "Área media de parche", "Valor": f"{clase['area_media_parche_ha']:.2f} ha"},
                 {"Métrica": "Área mediana de parche", "Valor": f"{clase['area_mediana_parche_ha']:.2f} ha"},
                 {"Métrica": "Índice del parche mayor", "Valor": f"{clase['indice_parche_mayor_pct']:.2f}%"},
-                {"Métrica": "Densidad de la red", "Valor": f"{red['densidad_red']:.6f}"},
-                {"Métrica": "Umbral de conexión", "Valor": f"{red['umbral_m']:.0f} m"},
             ],
             hide_index=True,
             use_container_width=True,
         )
-    with conectores:
+    with conectores_tab:
         if resultados["top_conectores"]:
             st.dataframe(
                 resultados["top_conectores"],
@@ -3390,13 +3445,50 @@ def mostrar_resultados_fragmentacion(resultados):
                     "area_ha": st.column_config.NumberColumn("Área (ha)", format="%.2f"),
                     "indice_conector": st.column_config.NumberColumn("Índice conector", format="%.3f"),
                     "prioridad_conectividad": "Importancia",
+                    "esta_aislado": "Aislado",
+                    "distancia_vecino_mas_cercano_m": st.column_config.NumberColumn(
+                        "Vecino más cercano (m)", format="%.1f"
+                    ),
                 },
+                column_order=[
+                    "patch_id",
+                    "area_ha",
+                    "prioridad_conectividad",
+                    "indice_conector",
+                    "grado",
+                    "componente",
+                    "esta_aislado",
+                    "distancia_vecino_mas_cercano_m",
+                ],
             )
         else:
             st.info(
                 "La cobertura institucional de 2021 no identifica parches de bosque "
                 "dentro del área seleccionada."
             )
+    with descarga_tab:
+        red_geojson = {
+            "type": "FeatureCollection",
+            "features": (
+                resultados.get("conexiones_geojson", {}).get("features", [])
+                + resultados.get("conexiones_potenciales_geojson", {}).get("features", [])
+            ),
+        }
+        col_descarga_parches, col_descarga_red = st.columns(2)
+        col_descarga_parches.download_button(
+            "Descargar parches y métricas (GeoJSON)",
+            data=json.dumps(resultados["parches_geojson"], ensure_ascii=False),
+            file_name=f"parches_bosque_{ANO_BOSQUE_REFERENCIA}.geojson",
+            mime="application/geo+json",
+            use_container_width=True,
+        )
+        col_descarga_red.download_button(
+            "Descargar conexiones (GeoJSON)",
+            data=json.dumps(red_geojson, ensure_ascii=False),
+            file_name=f"red_conectividad_bosque_{ANO_BOSQUE_REFERENCIA}.geojson",
+            mime="application/geo+json",
+            use_container_width=True,
+        )
     st.caption(
         "La importancia Alta/Media/Baja se calcula dentro del área analizada mediante los "
         "cuantiles del índice conector; no corresponde a las categorías de Almanaque Azul "
@@ -3442,7 +3534,7 @@ st.markdown(
         <article class="resumen-paso" role="listitem">
           <span class="resumen-paso-numero" aria-hidden="true">2</span>
           <h3>La aplicación busca señales</h3>
-          <p>Revisa cambios del bosque, corredores publicados y, si carga su archivo, la red de parches.</p>
+          <p>Revisa cambios del bosque, corredores publicados y la red de parches calculada automáticamente.</p>
         </article>
         <article class="resumen-paso" role="listitem">
           <span class="resumen-paso-numero" aria-hidden="true">3</span>
@@ -4527,11 +4619,11 @@ try:
         mapa,
         mostrar=objetivo == "Diagnóstico territorial integrado",
     )
-    capa_fragmentacion_mapa = None
+    capas_fragmentacion_mapa = []
     if st.session_state.get("firma_analisis") == firma_analisis_actual:
         resultados_mapa = st.session_state.get("resultados_analisis", {})
         if resultados_mapa.get("fragmentacion"):
-            capa_fragmentacion_mapa = agregar_resultados_fragmentacion(
+            capas_fragmentacion_mapa = agregar_resultados_fragmentacion(
                 mapa,
                 resultados_mapa["fragmentacion"],
             )
@@ -4581,12 +4673,12 @@ try:
         exclusive_groups=False,
         collapsed=True,
     ).add_to(mapa)
-    if capa_fragmentacion_mapa is not None:
+    if capas_fragmentacion_mapa:
         GroupedLayerControl(
             groups={
-                f"Conectividad calculada · bosque {ANO_BOSQUE_REFERENCIA}": [
-                    capa_fragmentacion_mapa
-                ],
+                f"Conectividad calculada · bosque {ANO_BOSQUE_REFERENCIA}": (
+                    capas_fragmentacion_mapa
+                ),
             },
             exclusive_groups=False,
             collapsed=True,
@@ -4625,7 +4717,9 @@ try:
             "administran por separado en «Referencias». Los corredores se controlan en el "
             "grupo «Corredores ecológicos»: no modifican el índice satelital, pero sí "
             "aportan al valor estratégico. La red de parches 2021 se controla en "
-            "«Conectividad calculada» y orienta dónde focalizar la visita."
+            "«Conectividad calculada»: puede activar por separado los parches, las conexiones "
+            "azules dentro del umbral y las brechas potenciales discontinuas. Estas últimas "
+            "inician apagadas para mantener el mapa legible."
         )
     with mapa_resultados_contenedor:
         st_folium(
@@ -4651,9 +4745,12 @@ try:
         leyendas_activas = [
             ("Corredores · Almanaque Azul", LEYENDAS["Corredores Almanaque Azul"])
         ]
-        if capa_fragmentacion_mapa is not None:
+        if capas_fragmentacion_mapa:
             leyendas_activas.append(
                 ("Importancia calculada de parches", LEYENDAS["Importancia de parches"])
+            )
+            leyendas_activas.append(
+                ("Red de conectividad", LEYENDAS["Red de conectividad"])
             )
         if modo_comparador in ("JRC TMF", "ESRI LULC", "NDVI Sentinel-2"):
             leyendas_activas.append((modo_comparador, LEYENDAS[modo_comparador]))

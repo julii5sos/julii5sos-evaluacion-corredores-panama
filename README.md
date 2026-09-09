@@ -18,6 +18,7 @@ La aplicación orienta revisiones territoriales. No es una certificación, no de
 - Lectura automática del recorte vectorial de **Bosque y otros usos 2021** desde un asset privado de Earth Engine.
 - Métricas de fragmentación equivalentes a las utilizadas en los ejercicios R: número y densidad de parches, área total/media/mediana, borde, forma y parche mayor.
 - Red de parches conectados por una distancia configurable e índice conector compuesto por grado (40%), intermediación (30%), área (20%) y fuerza de conexión (10%).
+- Mapa de conexiones dentro del umbral y de brechas potenciales desde parches aislados hacia su vecino más cercano; ambas capas se pueden consultar y descargar como GeoJSON.
 - Resultados de corredores y fragmentación en la interfaz, el PDF y el registro metodológico JSON.
 - Diagnóstico de visita que combina la urgencia por cambios con el valor estratégico
   del corredor y usa la estructura del bosque 2021 para indicar dónde focalizarla.
@@ -38,8 +39,11 @@ conectores, separaciones y componentes aislados.
 4. Elija **Diagnóstico territorial integrado** o cualquiera de las vistas satelitales.
 5. Ejecute el análisis y revise sus cuatro lecturas: urgencia por cambios, valor del
    corredor, condición estructural 2021 y prioridad integrada de visita.
-6. Use el mapa para localizar coincidencias de cambio, corredores, parches conectores
-   y componentes aislados; descargue el PDF y el JSON para conservar el diagnóstico.
+6. Use el grupo **Conectividad calculada** del mapa para encender o apagar los parches,
+   las conexiones dentro del umbral y las brechas potenciales. Las brechas son una
+   orientación para revisar en campo, no corredores confirmados.
+7. Descargue el PDF, el registro metodológico y los GeoJSON de parches y conexiones
+   para conservar el diagnóstico.
 
 ## Fuentes
 

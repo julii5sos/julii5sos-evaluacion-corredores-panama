@@ -46,7 +46,8 @@ Los colores originales de Almanaque Azul (`#345a01`, `#a1d303`, `#e0c504`) solo 
 
 ## Reglas de interacción
 
-- El shapefile se configura dentro de un expander opcional para no bloquear el flujo principal.
+- La cobertura institucional se configura una sola vez mediante un asset privado; la interfaz pública no solicita shapefiles.
+- La conectividad se presenta con parches, conexiones y brechas potenciales en capas independientes. Las brechas inician apagadas para reducir el ruido visual.
 - Los errores aparecen junto al archivo o campo que los produce.
 - La aplicación nunca presenta `Alta/Media/Baja` de parches como si fueran las categorías de Almanaque Azul.
 - Los enlaces de fuente permanecen visibles en resultados, metodología y atribuciones.
@@ -59,4 +60,5 @@ Los colores originales de Almanaque Azul (`#345a01`, `#a1d303`, `#e0c504`) solo 
 - [x] Leyendas con texto además de color.
 - [x] Carga sin secretos produce un mensaje amigable, no un traceback público.
 - [ ] Verificar el flujo completo con secretos válidos de Earth Engine en el entorno de despliegue.
-- [ ] Verificar el shapefile nacional real y confirmar el campo/valor de bosque.
+- [x] Verificar el shapefile nacional real y confirmar el campo/valor de bosque.
+- [x] Ofrecer una tabla alternativa a la red cartográfica para no depender solo del mapa o del color.

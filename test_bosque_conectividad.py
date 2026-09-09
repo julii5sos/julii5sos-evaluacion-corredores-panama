@@ -112,8 +112,33 @@ class BosqueConectividadTests(unittest.TestCase):
         self.assertEqual(resultado["metricas_red"]["numero_nodos"], 3)
         self.assertEqual(resultado["metricas_red"]["numero_aristas"], 1)
         self.assertEqual(resultado["metricas_red"]["numero_componentes"], 2)
+        self.assertEqual(resultado["metricas_red"]["numero_parches_conectados"], 2)
+        self.assertEqual(resultado["metricas_red"]["numero_parches_aislados"], 1)
+        self.assertEqual(resultado["metricas_red"]["numero_brechas_potenciales"], 1)
         self.assertIsNone(resultado["campo_clase"])
         self.assertEqual(resultado["origen_datos"], "asset_institucional_earth_engine")
+        self.assertEqual(len(resultado["conexiones_geojson"]["features"]), 1)
+        self.assertEqual(
+            resultado["conexiones_geojson"]["features"][0]["geometry"]["type"],
+            "LineString",
+        )
+        self.assertLessEqual(
+            resultado["conexiones_geojson"]["features"][0]["properties"]["distancia_m"],
+            500,
+        )
+        self.assertEqual(len(resultado["conexiones_potenciales_geojson"]["features"]), 1)
+        self.assertGreater(
+            resultado["conexiones_potenciales_geojson"]["features"][0]["properties"][
+                "distancia_m"
+            ],
+            500,
+        )
+        self.assertTrue(
+            any(
+                feature["properties"]["esta_aislado"]
+                for feature in resultado["parches_geojson"]["features"]
+            )
+        )
 
     def test_asset_sin_bosque_devuelve_ceros(self):
         resultado = analizar_fragmentacion_geojson(
@@ -123,6 +148,8 @@ class BosqueConectividadTests(unittest.TestCase):
 
         self.assertEqual(resultado["metricas_clase"]["numero_parches"], 0)
         self.assertEqual(resultado["metricas_red"]["numero_nodos"], 0)
+        self.assertEqual(resultado["conexiones_geojson"]["features"], [])
+        self.assertEqual(resultado["conexiones_potenciales_geojson"]["features"], [])
 
 
 if __name__ == "__main__":
