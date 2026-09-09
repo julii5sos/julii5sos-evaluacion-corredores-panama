@@ -660,6 +660,13 @@ def secreto_opcional(nombre, predeterminado=None):
 APP_VERSION = "UX-0.4.0-PRIORIDAD-VISITA"
 METHODOLOGY_VERSION = "MT-2026.6-PRIORIDAD-VISITA"
 PROYECTO_EE = secreto_opcional("EE_PROJECT", "ee-julissaguevaravega")
+FUENTE_BOSQUE_NOMBRE = "Bosque y otros usos"
+FUENTE_BOSQUE_ORGANIZACION = "SINIA–MiAMBIENTE"
+ANO_BOSQUE_REFERENCIA = 2021
+FUENTE_BOSQUE_CORTA = (
+    f"{FUENTE_BOSQUE_ORGANIZACION} · {FUENTE_BOSQUE_NOMBRE} · "
+    f"{ANO_BOSQUE_REFERENCIA}"
+)
 
 ASSET_CUENCA = (
     "projects/ee-julissaguevaravega/assets/"
@@ -1006,6 +1013,16 @@ def construir_registro_metodologico(
                     "el indice satelital de cambios"
                 ),
             },
+            {
+                "nombre": FUENTE_BOSQUE_NOMBRE,
+                "organizacion": FUENTE_BOSQUE_ORGANIZACION,
+                "ano_referencia": ANO_BOSQUE_REFERENCIA,
+                "formato": "recorte vectorial aportado durante la sesion",
+                "uso": (
+                    "fragmentacion y conectividad estructural; no participa "
+                    "en el indice satelital ni constituye una serie anual"
+                ),
+            },
         ],
         "umbrales": dict(UMBRALES_INDICE),
         "justificacion_umbrales": dict(JUSTIFICACION_UMBRALES),
@@ -1113,6 +1130,12 @@ def construir_registro_metodologico(
                 "top_conectores": resultados["fragmentacion"]["top_conectores"],
                 "campo_clase": resultados["fragmentacion"]["campo_clase"],
                 "valores_bosque": resultados["fragmentacion"]["valores_bosque"],
+                "fuente_cobertura": resultados["fragmentacion"].get(
+                    "fuente_cobertura", FUENTE_BOSQUE_CORTA
+                ),
+                "ano_referencia_cobertura": resultados["fragmentacion"].get(
+                    "ano_referencia_cobertura", ANO_BOSQUE_REFERENCIA
+                ),
                 "metodo": resultados["fragmentacion"]["metodo"],
                 "participa_indice_prioridad": False,
             }
@@ -2505,7 +2528,8 @@ def generar_pdf(
             5,
             (
                 "FRAGMENTACIÓN Y RED DE PARCHES",
-                f"El shapefile aportado produjo {clase_fragmentacion['numero_parches']} "
+                f"El recorte de {FUENTE_BOSQUE_CORTA} produjo "
+                f"{clase_fragmentacion['numero_parches']} "
                 f"parches y {clase_fragmentacion['area_total_bosque_ha']:.2f} ha de bosque. "
                 f"La red, calculada con un umbral de {red_fragmentacion['umbral_m']:.0f} m, "
                 f"contiene {red_fragmentacion['numero_componentes']} componentes y "
@@ -3262,7 +3286,11 @@ def mostrar_resultados_corredores(resultados):
 
 
 def mostrar_resultados_fragmentacion(resultados):
-    st.subheader("Fragmentación y conectividad del bosque aportado")
+    st.subheader(f"Fragmentación y conectividad del bosque de {ANO_BOSQUE_REFERENCIA}")
+    st.caption(
+        f"Fuente de cobertura: {resultados.get('fuente_cobertura', FUENTE_BOSQUE_CORTA)}. "
+        "Es un corte de cobertura; no representa una serie anual de deforestación."
+    )
     clase = resultados["metricas_clase"]
     red = resultados["metricas_red"]
     col_parches, col_bosque, col_componentes, col_mayor = st.columns(4)
@@ -3318,8 +3346,8 @@ st.markdown(
       <h1>EVALUACIÓN TERRITORIAL Y CORREDORES</h1>
       <div class="subtitulo-app">Bosque, fragmentación y conectividad ecológica en Panamá</div>
       <p>Integra evidencia satelital, los corredores interpretados por Almanaque Azul y,
-      opcionalmente, su shapefile de bosque/no bosque para reconocer señales de cambio,
-      fragmentación y conexiones entre parches.</p>
+      opcionalmente, el recorte de Bosque y otros usos 2021 de SINIA–MiAMBIENTE para
+      reconocer fragmentación y conexiones entre parches.</p>
       <div class="alcance-app">Resultado indicativo · requiere interpretación documental y
       verificación de campo · no determina cumplimiento EUDR</div>
     </div>
@@ -3372,7 +3400,7 @@ with st.expander("Ver qué información revisa la aplicación", expanded=False):
         - **Altura del dosel (GEDI):** aporta información sobre la estructura vertical de la vegetación.
         - **Vigor vegetal (NDVI de Sentinel-2):** permite observar qué tan activa o densa parece la vegetación; se usa como apoyo visual y no aumenta la prioridad.
         - **Corredores de Almanaque Azul:** muestra categorías originales alta, mediana y media-baja, incluidos los tramos mesoamericanos oeste, San Lorenzo y este.
-        - **Shapefile bosque/no bosque (opcional):** calcula métricas de fragmentación, componentes de red y parches importantes como conectores.
+        - **Bosque y otros usos 2021 (opcional):** el recorte vectorial de SINIA–MiAMBIENTE permite calcular fragmentación, componentes de red y parches importantes como conectores.
 
         Los corredores y la conectividad calculada son dimensiones contextuales independientes:
         no alteran los pesos de las señales satelitales.
@@ -3549,18 +3577,19 @@ try:
     catalogo_corredores = cargar_catalogo_corredores()
 
     st.sidebar.markdown("---")
-    st.sidebar.caption("Paso 2 de 3 · Aporte bosque/no bosque (opcional)")
+    st.sidebar.caption(f"Paso 2 de 3 · Cobertura de {ANO_BOSQUE_REFERENCIA} (opcional)")
     st.sidebar.caption(
         f"Corredores públicos listos: {catalogo_corredores['corredores_poligonos']} "
         f"polígonos y {catalogo_corredores['puntos_criticos']} puntos críticos."
     )
     with st.sidebar.expander("Cargar shapefile y configurar la red", expanded=False):
         archivo_bosque = st.file_uploader(
-            "Shapefile bosque/no bosque (.zip)",
+            f"Recorte de Bosque y otros usos {ANO_BOSQUE_REFERENCIA} (.zip)",
             type=["zip"],
             help=(
                 "Incluya un único conjunto .shp, .shx, .dbf y .prj. El archivo se "
-                "procesa temporalmente y no se publica en el repositorio."
+                "procesa temporalmente y no se publica en el repositorio. Fuente: "
+                f"{FUENTE_BOSQUE_CORTA}."
             ),
         )
         if archivo_bosque is not None:
@@ -3587,7 +3616,7 @@ try:
                         0,
                     )
                     campo_bosque = st.selectbox(
-                        "Campo que distingue bosque/no bosque",
+                        "Campo que distingue bosque de otros usos",
                         campos,
                         index=campo_preferido,
                     )
@@ -3896,7 +3925,7 @@ try:
           <div class="contexto-item"><small>Modo de mapa</small><strong>{html_lib.escape(modo_mapa)}</strong></div>
           <div class="contexto-item"><small>Vista</small><strong>{html_lib.escape(objetivo)}</strong></div>
           <div class="contexto-item"><small>Corredores</small><strong>Almanaque Azul {catalogo_corredores['version_publicada']}</strong></div>
-          <div class="contexto-item"><small>Bosque/no bosque</small><strong>{'Archivo listo' if datos_bosque is not None else 'No aportado'}</strong></div>
+          <div class="contexto-item"><small>Bosque y otros usos {ANO_BOSQUE_REFERENCIA}</small><strong>{'Archivo listo' if datos_bosque is not None else 'No aportado'}</strong></div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -3999,6 +4028,12 @@ try:
                     umbral_conectividad_m,
                     area_min_parche_ha,
                 )
+                resultados_nuevos["fragmentacion"][
+                    "fuente_cobertura"
+                ] = FUENTE_BOSQUE_CORTA
+                resultados_nuevos["fragmentacion"][
+                    "ano_referencia_cobertura"
+                ] = ANO_BOSQUE_REFERENCIA
             st.session_state["resultados_analisis"] = resultados_nuevos
             st.session_state["firma_analisis"] = firma_analisis_actual
             if firma_anterior != firma_analisis_actual:
@@ -4498,7 +4533,7 @@ try:
     if capa_fragmentacion_mapa is not None:
         GroupedLayerControl(
             groups={
-                "Conectividad calculada · shapefile aportado": [
+                f"Conectividad calculada · bosque {ANO_BOSQUE_REFERENCIA}": [
                     capa_fragmentacion_mapa
                 ],
             },
@@ -4605,7 +4640,7 @@ try:
                 | GEDI / OpenForis | Producto disponible | 100 m | Altura y cobertura válida del dosel |
                 | Sentinel-2 SR Harmonized | {periodo_ndvi_visual} | 10 m | Vigor vegetal; apoyo visual |
                 | Almanaque Azul | {catalogo_corredores['version_publicada']} | Vector interpretado | Valor estratégico para planificar visitas |
-                | Bosque/no bosque aportado | {'Sesión actual' if datos_bosque is not None else 'No aportado'} | Vector original | Fragmentación y red de parches; contexto |
+                | SINIA–MiAMBIENTE · Bosque y otros usos | {ANO_BOSQUE_REFERENCIA if datos_bosque is not None else 'No aportado'} | Vector original | Fragmentación y red de parches; contexto |
                 """
             )
             st.markdown(
@@ -4647,8 +4682,9 @@ try:
                    alcanzar 25% del área** y el Corredor Biológico Mesoamericano aporta **0.5**.
                 8. El corredor por sí solo nunca genera una prioridad alta: sin señales de
                    cambio, el resultado integrado queda limitado a **preventiva**.
-                9. Cuando se aporta bosque/no bosque, cada parche es un nodo y se conecta
-                   con otros dentro del umbral elegido. El índice conector usa 40% grado,
+                9. Cuando se aporta el recorte de **Bosque y otros usos 2021** de
+                   SINIA–MiAMBIENTE, cada parche de bosque es un nodo y se conecta con
+                   otros dentro del umbral elegido. El índice conector usa 40% grado,
                    30% intermediación, 20% área y 10% fuerza; sus categorías son relativas
                    al área evaluada y no deben confundirse con las de Almanaque Azul.
 
@@ -4723,8 +4759,8 @@ try:
                 - Los resultados deben contrastarse con documentos, imágenes recientes y campo.
                 - Los corredores publicados representan conectividad estructural a escala de paisaje;
                   no garantizan movimiento efectivo de una especie concreta.
-                - La calidad del análisis de fragmentación depende de la fecha, escala, topología y
-                  clasificación del shapefile aportado.
+                - La cobertura SINIA–MiAMBIENTE representa bosque y otros usos en 2021; no indica por sí sola el año de una pérdida.
+                - La calidad del análisis de fragmentación depende de la escala, topología y clasificación del recorte aportado.
 
                 **Esta herramienta orienta revisiones. No es una certificación, una validación de
                 campo ni una determinación de cumplimiento EUDR.**

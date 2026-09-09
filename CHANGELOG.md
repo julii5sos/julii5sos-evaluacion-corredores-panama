@@ -13,6 +13,7 @@ correcciones compatibles, respectivamente.
 - Presenta por separado la urgencia por cambios, el valor estratégico del corredor y la prioridad final de visita.
 - Impide que la presencia de un corredor, sin señales suficientes de cambio, genere por sí sola una prioridad alta.
 - Incorpora la prioridad de visita en la interfaz, el PDF y el registro metodológico JSON.
+- Identifica la cobertura usada para fragmentación como **SINIA–MiAMBIENTE, Bosque y otros usos, 2021**, y separa este corte de cobertura de las series anuales de cambio.
 
 ## [0.3.0] - 2026-09-01
 

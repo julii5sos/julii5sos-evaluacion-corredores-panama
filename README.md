@@ -4,7 +4,7 @@ Aplicación Streamlit para integrar tres lecturas que conservan su trazabilidad:
 
 1. señales satelitales de cambio forestal y prioridad de revisión;
 2. corredores ecológicos interpretados y publicados por Fundación Almanaque Azul;
-3. fragmentación y conectividad estructural calculadas desde un shapefile bosque/no bosque aportado durante la sesión.
+3. fragmentación y conectividad estructural calculadas desde un recorte de la capa **Bosque y otros usos 2021** de SINIA–MiAMBIENTE, aportado durante la sesión.
 
 La aplicación orienta revisiones territoriales. No es una certificación, no determina cumplimiento EUDR y no demuestra por sí sola conectividad funcional para una especie.
 
@@ -14,7 +14,7 @@ La aplicación orienta revisiones territoriales. No es una certificación, no de
 - Las categorías originales `alta`, `mediana` y `media-baja`, sin sustituirlas por una clasificación inventada.
 - Los tres tramos panameños identificados como Corredor Biológico Mesoamericano: oeste, San Lorenzo y este.
 - Intersección del área evaluada con corredores, medida en hectáreas mediante un sistema equivalente en área.
-- Carga temporal de un ZIP de shapefile bosque/no bosque.
+- Carga temporal de un ZIP con el recorte vectorial de **Bosque y otros usos 2021**.
 - Métricas de fragmentación equivalentes a las utilizadas en los ejercicios R: número y densidad de parches, área total/media/mediana, borde, forma y parche mayor.
 - Red de parches conectados por una distancia configurable e índice conector compuesto por grado (40%), intermediación (30%), área (20%) y fuerza de conexión (10%).
 - Resultados de corredores y fragmentación en la interfaz, el PDF y el registro metodológico JSON.
@@ -43,7 +43,7 @@ nunca genera por sí solo una prioridad alta.
 - GEDI / OpenForis para altura del dosel.
 - Sentinel-2 SR Harmonized para NDVI.
 - [Mapa de corredores naturales de Panamá](https://www.almanaqueazul.org/conectividad/mapa/), Fundación Almanaque Azul, versión mostrada `2024.05`.
-- Shapefile bosque/no bosque aportado por la persona usuaria; no se almacena en Git.
+- SINIA–MiAMBIENTE, capa **Bosque y otros usos**, referencia 2021. El recorte aportado por la persona usuaria se procesa temporalmente y no se almacena en Git.
 
 La procedencia de los GeoJSON incluidos se documenta en [THIRD_PARTY_DATA.md](THIRD_PARTY_DATA.md).
 

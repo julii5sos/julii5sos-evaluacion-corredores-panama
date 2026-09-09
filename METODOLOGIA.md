@@ -243,9 +243,11 @@ cambios ya sea alta y que el aporte estratégico del corredor alcance al menos
 1 punto. Así, la herramienta responde dos preguntas diferentes: por qué urge
 revisar el área y por qué esa revisión tiene relevancia para la continuidad ecológica.
 
-## Fragmentación del bosque aportado
+## Fragmentación del bosque de referencia 2021
 
-El ZIP debe contener un único conjunto `.shp`, `.shx`, `.dbf` y `.prj`. La persona usuaria selecciona el campo y los valores que representan bosque. Las geometrías se transforman a EPSG:8857, se recortan al área evaluada, se validan y se separan en parches poligonales.
+La cobertura utilizada corresponde a un recorte de la capa **Bosque y otros usos**, referencia 2021, publicada por SINIA–MiAMBIENTE. El ZIP debe contener un único conjunto `.shp`, `.shx`, `.dbf` y `.prj`. La persona usuaria selecciona el campo y los valores que representan bosque. Las geometrías se transforman a EPSG:8857, se recortan al área evaluada, se validan y se separan en parches poligonales.
+
+Esta capa representa la cobertura clasificada para 2021. Se utiliza para describir la fragmentación y conectividad estructural del bosque de ese año; por sí sola no permite determinar cuándo ocurrió un cambio ni debe interpretarse como una serie anual de deforestación.
 
 Las métricas de clase son:
 
