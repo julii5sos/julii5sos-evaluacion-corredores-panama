@@ -199,6 +199,49 @@ REGLAS_CONSISTENCIA = {
     "sin_senal": "menos de dos fuentes principales coinciden en deterioro",
 }
 
+# La prioridad de visita es una capa de decisión separada del índice satelital.
+# El cambio observado mantiene el mayor peso (hasta 6 puntos) y el corredor
+# únicamente aumenta el valor estratégico del área (hasta 1.5 puntos).
+REGLAS_PRIORIDAD_VISITA = {
+    "nombre": "Prioridad integrada de visita",
+    "puntaje_maximo_cambios": PUNTAJE_MAXIMO,
+    "aporte_maximo_corredor": 1.5,
+    "porcentaje_saturacion_corredor": 25.0,
+    "aporte_maximo_solapamiento": 1.0,
+    "aporte_corredor_mesoamericano": 0.5,
+    "principios": {
+        "dominancia_cambios": (
+            "Las señales satelitales determinan la urgencia; el corredor solo "
+            "aumenta la relevancia estratégica de organizar una visita."
+        ),
+        "sin_urgencia_por_corredor_solo": (
+            "Un corredor sin señales de cambio puede justificar seguimiento "
+            "preventivo, pero nunca una prioridad alta o muy alta de visita."
+        ),
+        "categorias_externas": (
+            "Las categorías alta, mediana y media-baja de Almanaque Azul se "
+            "conservan como atributos y no se convierten en evidencia de deterioro."
+        ),
+    },
+    "clases": {
+        "Muy alta": (
+            "Cambios con prioridad alta y aporte estratégico del corredor de al "
+            "menos 1 punto."
+        ),
+        "Alta": "Puntaje integrado de al menos 3 puntos.",
+        "Media": "Puntaje integrado de al menos 1.5 puntos.",
+        "Preventiva": (
+            "Puntaje integrado de al menos 0.5 puntos o valor de corredor sin "
+            "señales suficientes de cambio."
+        ),
+        "Baja": "Puntaje integrado menor de 0.5 puntos.",
+    },
+}
+
+PUNTAJE_MAXIMO_VISITA = (
+    PUNTAJE_MAXIMO + REGLAS_PRIORIDAD_VISITA["aporte_maximo_corredor"]
+)
+
 
 def clasificar_prioridad(puntaje):
     """Clasifica un puntaje ya calculado sin alterar su valor."""
@@ -209,6 +252,120 @@ def clasificar_prioridad(puntaje):
     if puntaje >= 0.5:
         return "Preventiva"
     return "Baja"
+
+
+def calcular_prioridad_visita(*, puntaje_cambios, contexto_corredores):
+    """Integra urgencia por cambios y valor estratégico del corredor.
+
+    La fórmula no altera el índice satelital. El solapamiento aporta de forma
+    proporcional hasta alcanzar un punto cuando 25 % del AOI está dentro de
+    corredores. La pertenencia al Corredor Biológico Mesoamericano añade 0.5.
+    Sin señales satelitales, el resultado queda limitado a Preventiva.
+    """
+
+    contexto = contexto_corredores or {}
+    porcentaje = max(
+        0.0,
+        min(100.0, float(contexto.get("porcentaje_aoi_en_corredores") or 0.0)),
+    )
+    intersecta = bool(contexto.get("intersecta")) and porcentaje > 0
+    intersecta_mesoamericano = bool(
+        contexto.get("intersecta_mesoamericano")
+    )
+    saturacion = REGLAS_PRIORIDAD_VISITA["porcentaje_saturacion_corredor"]
+    aporte_solapamiento = (
+        min(
+            porcentaje / saturacion,
+            REGLAS_PRIORIDAD_VISITA["aporte_maximo_solapamiento"],
+        )
+        if intersecta
+        else 0.0
+    )
+    aporte_mesoamericano = (
+        REGLAS_PRIORIDAD_VISITA["aporte_corredor_mesoamericano"]
+        if intersecta_mesoamericano
+        else 0.0
+    )
+    aporte_corredor = round(
+        min(
+            aporte_solapamiento + aporte_mesoamericano,
+            REGLAS_PRIORIDAD_VISITA["aporte_maximo_corredor"],
+        ),
+        2,
+    )
+    puntaje_cambios = round(max(0.0, min(PUNTAJE_MAXIMO, float(puntaje_cambios))), 1)
+    puntaje_integrado = round(puntaje_cambios + aporte_corredor, 2)
+
+    if not intersecta:
+        valor_corredor = "Sin intersección"
+    elif aporte_corredor >= 1.0:
+        valor_corredor = "Alto"
+    elif aporte_corredor >= 0.5:
+        valor_corredor = "Medio"
+    else:
+        valor_corredor = "Contextual"
+
+    # El corredor por sí solo no se interpreta como evidencia que obligue a
+    # una visita. Solo puede elevar el resultado hasta Preventiva.
+    if puntaje_cambios < 0.5:
+        prioridad_visita = "Preventiva" if aporte_corredor >= 0.5 else "Baja"
+    elif puntaje_cambios >= 3.0 and aporte_corredor >= 1.0:
+        prioridad_visita = "Muy alta"
+    elif puntaje_integrado >= 3.0:
+        prioridad_visita = "Alta"
+    elif puntaje_integrado >= 1.5:
+        prioridad_visita = "Media"
+    elif puntaje_integrado >= 0.5:
+        prioridad_visita = "Preventiva"
+    else:
+        prioridad_visita = "Baja"
+
+    return {
+        "puntaje_cambios": puntaje_cambios,
+        "prioridad_cambios": clasificar_prioridad(puntaje_cambios),
+        "porcentaje_aoi_en_corredores": round(porcentaje, 4),
+        "intersecta_corredor": intersecta,
+        "intersecta_mesoamericano": intersecta_mesoamericano,
+        "aporte_solapamiento": round(aporte_solapamiento, 2),
+        "aporte_mesoamericano": round(aporte_mesoamericano, 2),
+        "aporte_corredor": aporte_corredor,
+        "valor_corredor": valor_corredor,
+        "puntaje_integrado": puntaje_integrado,
+        "puntaje_maximo": PUNTAJE_MAXIMO_VISITA,
+        "prioridad_visita": prioridad_visita,
+        "limitacion": (
+            "La prioridad de visita orienta la planificación operativa. No "
+            "demuestra la causa del cambio, daño ambiental ni conectividad "
+            "funcional para una especie."
+        ),
+    }
+
+
+def texto_recomendacion_visita(prioridad):
+    """Devuelve una acción operativa para cada clase de prioridad de visita."""
+
+    return {
+        "Muy alta": (
+            "Programar una visita prioritaria a los sectores con cambios "
+            "coincidentes que también aportan al corredor."
+        ),
+        "Alta": (
+            "Programar la revisión detallada y preparar una visita de campo a "
+            "los sectores señalados."
+        ),
+        "Media": (
+            "Revisar imágenes recientes y documentación; realizar una visita si "
+            "las señales se confirman o afectan la continuidad del corredor."
+        ),
+        "Preventiva": (
+            "Mantener seguimiento periódico y documentar el estado del corredor; "
+            "no se requiere una visita urgente con la evidencia disponible."
+        ),
+        "Baja": (
+            "Continuar el monitoreo ordinario; no hay evidencia suficiente para "
+            "priorizar una visita."
+        ),
+    }[prioridad]
 
 
 def evaluar_senales(

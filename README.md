@@ -1,6 +1,6 @@
 # Evaluación territorial y corredores ecológicos de Panamá
 
-Aplicación Streamlit para integrar tres lecturas que deben mantenerse separadas:
+Aplicación Streamlit para integrar tres lecturas que conservan su trazabilidad:
 
 1. señales satelitales de cambio forestal y prioridad de revisión;
 2. corredores ecológicos interpretados y publicados por Fundación Almanaque Azul;
@@ -18,8 +18,13 @@ La aplicación orienta revisiones territoriales. No es una certificación, no de
 - Métricas de fragmentación equivalentes a las utilizadas en los ejercicios R: número y densidad de parches, área total/media/mediana, borde, forma y parche mayor.
 - Red de parches conectados por una distancia configurable e índice conector compuesto por grado (40%), intermediación (30%), área (20%) y fuerza de conexión (10%).
 - Resultados de corredores y fragmentación en la interfaz, el PDF y el registro metodológico JSON.
+- Prioridad de visita que combina la urgencia por cambios con el valor estratégico del corredor.
 
-Los corredores y el análisis de parches no alteran el índice satelital existente. Se reportan como dimensiones contextuales independientes.
+El índice satelital de cambios no se altera. La prioridad de visita lo conserva
+como componente dominante y añade hasta 1.5 puntos de valor estratégico: hasta
+1.0 por la proporción del área dentro de corredores y 0.5 por pertenencia al
+Corredor Biológico Mesoamericano. Un corredor sin señales suficientes de cambio
+nunca genera por sí solo una prioridad alta.
 
 ## Flujo de uso
 
@@ -28,7 +33,7 @@ Los corredores y el análisis de parches no alteran el índice satelital existen
 3. Seleccione el campo de clase y el valor o valores que representan bosque.
 4. Defina la distancia máxima entre parches y el área mínima de parche.
 5. Elija **Evaluar conectividad ecológica y corredores** o cualquiera de las vistas satelitales.
-6. Ejecute el análisis y revise por separado la prioridad satelital, el contexto de corredores y la red de bosque aportada.
+6. Ejecute el análisis y revise la prioridad integrada de visita, sus dos componentes y la red de bosque aportada.
 
 ## Fuentes
 

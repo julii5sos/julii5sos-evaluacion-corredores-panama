@@ -212,7 +212,36 @@ La capa vectorial externa contiene 22 polígonos interpretados y 14 puntos crít
 
 Los originales están en EPSG:3857 y se convierten a EPSG:4326 mediante `scripts/preparar_datos_corredores.py`. Para medir intersecciones, el área evaluada y los corredores se proyectan a Equal Earth Americas (EPSG:8857). Se informa el área y porcentaje de superposición total, por categoría y con los tramos mesoamericanos.
 
-Esta superposición es contextual y no modifica el índice operativo de prioridad. Tampoco demuestra conectividad funcional para una especie particular.
+Esta superposición no modifica el índice satelital de cambios. Se utiliza como
+valor estratégico en una prioridad separada de visita y tampoco demuestra
+conectividad funcional para una especie particular.
+
+## Prioridad integrada de visita
+
+La aplicación conserva dos componentes visibles para evitar que el contexto
+ecológico se confunda con evidencia de deterioro:
+
+1. **Urgencia por cambios:** el índice satelital original, de 0 a 6 puntos.
+2. **Valor estratégico del corredor:** hasta 1.5 puntos adicionales.
+
+El aporte por corredor se calcula así:
+
+```text
+aporte por solapamiento = mínimo(% del AOI en corredores / 25, 1.0)
+aporte mesoamericano = 0.5 cuando existe intersección
+puntaje integrado = puntaje de cambios + ambos aportes
+```
+
+El aporte por superficie alcanza su máximo cuando al menos 25% del área está
+dentro de corredores. Las categorías alta, mediana y media-baja publicadas por
+Almanaque Azul se muestran como atributos, pero no se convierten en señales de
+deterioro ni en una jerarquía inventada de valor ecológico.
+
+El corredor por sí solo puede justificar seguimiento preventivo, pero nunca una
+prioridad alta o muy alta. La clase **Muy alta** exige que la prioridad por
+cambios ya sea alta y que el aporte estratégico del corredor alcance al menos
+1 punto. Así, la herramienta responde dos preguntas diferentes: por qué urge
+revisar el área y por qué esa revisión tiene relevancia para la continuidad ecológica.
 
 ## Fragmentación del bosque aportado
 

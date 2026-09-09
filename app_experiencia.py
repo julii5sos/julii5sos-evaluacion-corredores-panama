@@ -51,13 +51,17 @@ from metodologia_indice import (
     PERIODOS_ANALISIS,
     PESOS_INDICE,
     PUNTAJE_MAXIMO,
+    PUNTAJE_MAXIMO_VISITA,
     REGLAS_CONSISTENCIA,
     REGLAS_MAPA_COINCIDENCIA,
     REGLAS_PRIORIDAD,
+    REGLAS_PRIORIDAD_VISITA,
     UMBRALES_INDICE,
     calcular_indice_prioridad,
+    calcular_prioridad_visita,
     evaluar_consistencia,
     evaluar_senales,
+    texto_recomendacion_visita,
 )
 
 
@@ -653,8 +657,8 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-0.3.0-CORREDORES"
-METHODOLOGY_VERSION = "MT-2026.5-CORREDORES"
+APP_VERSION = "UX-0.4.0-PRIORIDAD-VISITA"
+METHODOLOGY_VERSION = "MT-2026.6-PRIORIDAD-VISITA"
 PROYECTO_EE = secreto_opcional("EE_PROJECT", "ee-julissaguevaravega")
 
 ASSET_CUENCA = (
@@ -997,7 +1001,10 @@ def construir_registro_metodologico(
                 "version": cargar_catalogo_corredores()["version_publicada"],
                 "url": URL_MAPA_CORREDORES,
                 "categorias": ["alta", "mediana", "media-baja"],
-                "uso": "contexto territorial; no participa en el indice",
+                "uso": (
+                    "valor estrategico de la prioridad de visita; no modifica "
+                    "el indice satelital de cambios"
+                ),
             },
         ],
         "umbrales": dict(UMBRALES_INDICE),
@@ -1005,6 +1012,7 @@ def construir_registro_metodologico(
         "pesos": dict(PESOS_INDICE),
         "justificacion_pesos": dict(JUSTIFICACION_PESOS),
         "reglas_prioridad": dict(REGLAS_PRIORIDAD),
+        "reglas_prioridad_visita": dict(REGLAS_PRIORIDAD_VISITA),
         "reglas_consistencia": dict(REGLAS_CONSISTENCIA),
         "mapa_coincidencia_espacial": {
             "nombre": REGLAS_MAPA_COINCIDENCIA["nombre"],
@@ -1035,7 +1043,9 @@ def construir_registro_metodologico(
             ),
             "corredores": (
                 "Interseccion vectorial en Equal Earth Americas (EPSG:8857); "
-                "conserva las categorias originales de Almanaque Azul."
+                "conserva las categorias originales de Almanaque Azul. El "
+                "solapamiento y la pertenencia al Corredor Biologico "
+                "Mesoamericano aportan a la prioridad separada de visita."
             ),
         },
     }
@@ -1068,6 +1078,7 @@ def construir_registro_metodologico(
             "aportes_indice": resultados["aportes_indice"],
             "consistencia": resultados["consistencia"],
             "corredores": resultados.get("corredores"),
+            "prioridad_visita": resultados.get("prioridad_visita"),
             "estadisticas": {
                 "cobertura_arborea_persistente_2020_ha": resultados["linea_base"],
                 "hansen_pre_2021_ha": resultados["hansen_pre"],
@@ -2310,17 +2321,31 @@ def generar_pdf(
     )
     historia.extend([tabla, Spacer(1, 7)])
 
+    visita = r.get("prioridad_visita")
+    prioridad_pdf = visita["prioridad_visita"] if visita else r["prioridad"]
+    accion_pdf = (
+        texto_recomendacion_visita(prioridad_pdf)
+        if visita
+        else texto_recomendacion(prioridad_pdf)
+    )
+    detalle_puntaje_pdf = (
+        f"Cambios: {visita['puntaje_cambios']:.1f}/{PUNTAJE_MAXIMO:.1f}; "
+        f"corredor: +{visita['aporte_corredor']:.2f}; "
+        f"total: {visita['puntaje_integrado']:.2f}/{PUNTAJE_MAXIMO_VISITA:.1f}"
+        if visita
+        else f"Índice operativo: {r['puntaje']:.1f}/{PUNTAJE_MAXIMO:.1f}"
+    )
     color_prioridad = {
+        "Muy alta": "#7f0000",
         "Alta": "#b71c1c",
         "Media": "#e65100",
         "Preventiva": "#b8860b",
         "Baja": "#2e7d32",
-    }[r["prioridad"]]
+    }[prioridad_pdf]
     tarjeta_prioridad = Table(
         [[Paragraph(
-            f"<b>PRIORIDAD {r['prioridad'].upper()} DE REVISIÓN</b><br/>"
-            f"Índice operativo: {r['puntaje']:.1f}/{PUNTAJE_MAXIMO:.1f} - "
-            f"{texto_recomendacion(r['prioridad'])}",
+            f"<b>PRIORIDAD {prioridad_pdf.upper()} DE VISITA</b><br/>"
+            f"{detalle_puntaje_pdf} - {accion_pdf}",
             ParagraphStyle(
                 "Prioridad",
                 fontName="Times-Roman",
@@ -2441,10 +2466,10 @@ def generar_pdf(
             "registros de manejo, información del predio y verificación de campo "
             "cuando corresponda.",
         ),
-        ("ACCIÓN RECOMENDADA", texto_recomendacion(r["prioridad"])),
+        ("ACCIÓN RECOMENDADA", accion_pdf),
         (
             "CONCLUSIÓN DE LA PREEVALUACIÓN",
-            f"El área presenta prioridad {r['prioridad'].lower()} de revisión. La decisión "
+            f"El área presenta prioridad {prioridad_pdf.lower()} de visita. La decisión "
             "final debe complementarse con información del productor, documentación del "
             "predio, imágenes recientes y verificación de campo cuando corresponda.",
         ),
@@ -2468,7 +2493,8 @@ def generar_pdf(
                 f"Intersección con el Corredor Biológico Mesoamericano: "
                 f"{'sí' if contexto_corredores['intersecta_mesoamericano'] else 'no'}. "
                 "Las categorías originales son alta, mediana y media-baja. Este contexto "
-                "no modifica el índice de prioridad satelital.",
+                "no modifica el índice satelital de cambios; aporta únicamente al valor "
+                "estratégico de la prioridad integrada de visita.",
             ),
         )
     contexto_fragmentacion = r.get("fragmentacion")
@@ -2485,7 +2511,8 @@ def generar_pdf(
                 f"contiene {red_fragmentacion['numero_componentes']} componentes y "
                 f"{red_fragmentacion['numero_aristas']} conexiones. La importancia "
                 "Alta/Media/Baja de los parches es relativa al área evaluada, no equivale "
-                "a las categorías de Almanaque Azul y no modifica el índice satelital.",
+                "a las categorías de Almanaque Azul y se presenta como diagnóstico "
+                "complementario de la visita.",
             ),
         )
     for titulo, cuerpo in secciones:
@@ -2845,8 +2872,18 @@ def mostrar_resultados(
     anio_esri_inicial,
     anio_esri_final,
 ):
-    prioridad = resultados["prioridad"]
+    prioridad_cambios = resultados["prioridad"]
+    visita = resultados.get("prioridad_visita")
+    prioridad = (
+        visita["prioridad_visita"] if visita else prioridad_cambios
+    )
+    recomendacion_resultado = (
+        texto_recomendacion_visita(prioridad)
+        if visita
+        else texto_recomendacion(prioridad)
+    )
     color = {
+        "Muy alta": "#7f0000",
         "Alta": "#b71c1c",
         "Media": "#a33a00",
         "Preventiva": "#8a5b00",
@@ -2906,18 +2943,53 @@ def mostrar_resultados(
             "No se detectaron píxeles con las tres señales espaciales definidas. "
             "Consulte los mapas individuales si necesita documentar el área."
         )
+    if visita:
+        detalle_resultado = (
+            f"Resultado integrado · cambios {visita['puntaje_cambios']:.1f}/"
+            f"{PUNTAJE_MAXIMO:.1f} + corredor {visita['aporte_corredor']:.2f}/"
+            f"{REGLAS_PRIORIDAD_VISITA['aporte_maximo_corredor']:.1f}"
+        )
+    else:
+        detalle_resultado = (
+            f"Índice operativo {resultados['puntaje']:.1f}/{PUNTAJE_MAXIMO:.1f}"
+        )
     st.markdown(
         f"""
         <div class="resultado-prioridad" style="--prioridad-color:{color};">
-          <small>Resultado integrado · índice operativo {resultados['puntaje']:.1f}/{PUNTAJE_MAXIMO:.1f}</small>
-          <strong>Prioridad {prioridad.lower()} de revisión</strong>
-          <p>{html_lib.escape(texto_recomendacion(prioridad))}</p>
+          <small>{html_lib.escape(detalle_resultado)}</small>
+          <strong>Prioridad {prioridad.lower()} de visita</strong>
+          <p>{html_lib.escape(recomendacion_resultado)}</p>
         </div>
         """,
         unsafe_allow_html=True,
     )
+    if visita:
+        col_cambios, col_corredor, col_final = st.columns(3)
+        col_cambios.metric(
+            "Urgencia por cambios",
+            prioridad_cambios,
+            f"{visita['puntaje_cambios']:.1f} de {PUNTAJE_MAXIMO:.1f}",
+            delta_color="off",
+        )
+        col_corredor.metric(
+            "Valor estratégico del corredor",
+            visita["valor_corredor"],
+            f"+{visita['aporte_corredor']:.2f} puntos",
+            delta_color="off",
+        )
+        col_final.metric(
+            "Prioridad integrada",
+            prioridad,
+            f"{visita['puntaje_integrado']:.2f} de {PUNTAJE_MAXIMO_VISITA:.1f}",
+            delta_color="off",
+        )
+        st.caption(
+            "El corredor aumenta la relevancia estratégica de la visita, pero "
+            "no se interpreta como evidencia de pérdida ni modifica el índice "
+            "satelital de cambios."
+        )
     aportes = resultados["aportes_indice"]
-    st.markdown("#### Composición ponderada del índice")
+    st.markdown("#### Evidencia de cambio territorial")
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("JRC TMF", f"{aportes['tmf']:.1f} / {PESOS_INDICE['tmf']:.1f}")
     c2.metric("Hansen GFC", f"{aportes['hansen']:.1f} / {PESOS_INDICE['hansen']:.1f}")
@@ -2960,7 +3032,7 @@ def mostrar_resultados(
           <div class="lectura-tarjeta">
             <small>Qué hacer después</small>
             <b>Documente la revisión</b>
-            <p>{html_lib.escape(texto_recomendacion(prioridad))}</p>
+            <p>{html_lib.escape(recomendacion_resultado)}</p>
           </div>
         </div>
         """,
@@ -2998,7 +3070,7 @@ def mostrar_resultados(
             "Priorice las coincidencias de dos o tres fuentes. Este mapa no modifica "
             "el índice y no confirma por sí solo la causa del cambio."
         )
-        st.markdown(f"**Acción sugerida:** {texto_recomendacion(prioridad)}")
+        st.markdown(f"**Acción sugerida:** {recomendacion_resultado}")
 
     filas = [
         (
@@ -3146,9 +3218,10 @@ def mostrar_resultados_corredores(resultados):
     )
     st.markdown(
         """
-        <div class="corredor-aviso"><strong>Lectura independiente:</strong> esta superposición
-        describe el contexto territorial publicado por Almanaque Azul. No suma ni resta puntos
-        al índice satelital y no demuestra por sí sola conectividad funcional para una especie.</div>
+        <div class="corredor-aviso"><strong>Valor estratégico:</strong> esta superposición
+        describe el contexto territorial publicado por Almanaque Azul. No modifica el índice
+        satelital de cambios; aporta únicamente a la prioridad integrada de visita y no demuestra
+        por sí sola conectividad funcional para una especie.</div>
         """,
         unsafe_allow_html=True,
     )
@@ -3231,7 +3304,7 @@ def mostrar_resultados_fragmentacion(resultados):
     st.caption(
         "La importancia Alta/Media/Baja se calcula dentro del área analizada mediante los "
         "cuantiles del índice conector; no corresponde a las categorías de Almanaque Azul "
-        "y no modifica el índice de prioridad satelital."
+        "y no modifica el índice satelital ni la prioridad integrada de visita."
     )
 
 
@@ -3277,7 +3350,7 @@ st.markdown(
         <article class="resumen-paso" role="listitem">
           <span class="resumen-paso-numero" aria-hidden="true">3</span>
           <h3>Usted recibe una guía</h3>
-          <p>Obtiene una prioridad de revisión, contexto mesoamericano y métricas de conectividad separadas.</p>
+          <p>Obtiene una prioridad de visita que integra las señales de cambio y el valor estratégico del corredor.</p>
         </article>
       </div>
       <div class="resumen-aclaracion">
@@ -3779,6 +3852,7 @@ try:
             st.sidebar.warning("Seleccione al menos una capa temática.")
 
     firma_analisis_actual = (
+        METHODOLOGY_VERSION,
         tipo_area,
         finca_seleccionada,
         ANO_DIAG_TMF,
@@ -3911,6 +3985,10 @@ try:
             )
             resultados_nuevos["corredores"] = analizar_corredores_cache(
                 aoi_geojson_serializado
+            )
+            resultados_nuevos["prioridad_visita"] = calcular_prioridad_visita(
+                puntaje_cambios=resultados_nuevos["puntaje"],
+                contexto_corredores=resultados_nuevos["corredores"],
             )
             if datos_bosque is not None:
                 resultados_nuevos["fragmentacion"] = analizar_bosque_cache(
@@ -4459,7 +4537,8 @@ try:
             "Use «Capas temáticas» dentro del mapa para encender o apagar una o varias capas. "
             "Su orden se controla en el panel lateral; los límites permanecen arriba y se "
             "administran por separado en «Referencias». Los corredores se controlan en el "
-            "grupo «Corredores ecológicos» y no modifican el índice satelital."
+            "grupo «Corredores ecológicos»: no modifican el índice satelital, pero sí "
+            "aportan al valor estratégico de la prioridad de visita."
         )
     st_folium(
         mapa,
@@ -4525,7 +4604,7 @@ try:
                 | ESRI Land Use/Land Cover | Diagnóstico {ANO_ESRI_MIN}-{ANO_ESRI_MAX} | 10 m | Transiciones de la clase árboles |
                 | GEDI / OpenForis | Producto disponible | 100 m | Altura y cobertura válida del dosel |
                 | Sentinel-2 SR Harmonized | {periodo_ndvi_visual} | 10 m | Vigor vegetal; apoyo visual |
-                | Almanaque Azul | {catalogo_corredores['version_publicada']} | Vector interpretado | Corredores alta, mediana y media-baja; contexto |
+                | Almanaque Azul | {catalogo_corredores['version_publicada']} | Vector interpretado | Valor estratégico para planificar visitas |
                 | Bosque/no bosque aportado | {'Sesión actual' if datos_bosque is not None else 'No aportado'} | Vector original | Fragmentación y red de parches; contexto |
                 """
             )
@@ -4563,8 +4642,12 @@ try:
                    dos o tres fuentes coincidentes, pero **no modifica el índice**.
                 7. Los corredores de Almanaque Azul conservan sus categorías publicadas:
                    **alta, mediana y media-baja**. Su intersección se mide en un sistema
-                   equivalente en área y **no modifica el índice**.
-                8. Cuando se aporta bosque/no bosque, cada parche es un nodo y se conecta
+                   equivalente en área y **no modifica el índice satelital**. Para la prioridad
+                   de visita, el solapamiento aporta proporcionalmente hasta **1.0 punto al
+                   alcanzar 25% del área** y el Corredor Biológico Mesoamericano aporta **0.5**.
+                8. El corredor por sí solo nunca genera una prioridad alta: sin señales de
+                   cambio, el resultado integrado queda limitado a **preventiva**.
+                9. Cuando se aporta bosque/no bosque, cada parche es un nodo y se conecta
                    con otros dentro del umbral elegido. El índice conector usa 40% grado,
                    30% intermediación, 20% área y 10% fuerza; sus categorías son relativas
                    al área evaluada y no deben confundirse con las de Almanaque Azul.

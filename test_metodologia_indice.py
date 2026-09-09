@@ -5,8 +5,10 @@ from metodologia_indice import (
     PERIODOS_ANALISIS,
     PESOS_INDICE,
     PUNTAJE_MAXIMO,
+    PUNTAJE_MAXIMO_VISITA,
     REGLAS_MAPA_COINCIDENCIA,
     calcular_indice_prioridad,
+    calcular_prioridad_visita,
     evaluar_consistencia,
     evaluar_senales,
 )
@@ -105,6 +107,54 @@ class IndicePrioridadTest(unittest.TestCase):
         self.assertTrue(all(valor == 0.0 for valor in aportes.values()))
         self.assertEqual(puntaje, 0.0)
         self.assertEqual(prioridad, "Baja")
+
+    def test_corredor_no_genera_visita_urgente_sin_cambios(self):
+        resultado = calcular_prioridad_visita(
+            puntaje_cambios=0.0,
+            contexto_corredores={
+                "intersecta": True,
+                "porcentaje_aoi_en_corredores": 100.0,
+                "intersecta_mesoamericano": True,
+            },
+        )
+        self.assertEqual(resultado["aporte_corredor"], 1.5)
+        self.assertEqual(resultado["prioridad_visita"], "Preventiva")
+
+    def test_cambios_medios_y_corredor_elevan_prioridad_visita(self):
+        resultado = calcular_prioridad_visita(
+            puntaje_cambios=1.5,
+            contexto_corredores={
+                "intersecta": True,
+                "porcentaje_aoi_en_corredores": 25.0,
+                "intersecta_mesoamericano": True,
+            },
+        )
+        self.assertEqual(resultado["puntaje_integrado"], 3.0)
+        self.assertEqual(resultado["prioridad_visita"], "Alta")
+
+    def test_cambios_altos_y_corredor_estrategico_son_muy_altos(self):
+        resultado = calcular_prioridad_visita(
+            puntaje_cambios=3.0,
+            contexto_corredores={
+                "intersecta": True,
+                "porcentaje_aoi_en_corredores": 25.0,
+                "intersecta_mesoamericano": False,
+            },
+        )
+        self.assertEqual(resultado["prioridad_visita"], "Muy alta")
+        self.assertEqual(resultado["puntaje_maximo"], PUNTAJE_MAXIMO_VISITA)
+
+    def test_interseccion_minima_no_infla_la_prioridad(self):
+        resultado = calcular_prioridad_visita(
+            puntaje_cambios=0.0,
+            contexto_corredores={
+                "intersecta": True,
+                "porcentaje_aoi_en_corredores": 1.0,
+                "intersecta_mesoamericano": False,
+            },
+        )
+        self.assertEqual(resultado["aporte_corredor"], 0.04)
+        self.assertEqual(resultado["prioridad_visita"], "Baja")
 
     def evaluar(self, **cambios):
         valores = {

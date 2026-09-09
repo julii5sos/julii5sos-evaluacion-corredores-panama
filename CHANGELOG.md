@@ -4,7 +4,17 @@ Este historial documenta la evolución de la aplicación UX. Las versiones sigue
 el formato `MAJOR.MINOR.PATCH`: una versión principal, mejoras compatibles y
 correcciones compatibles, respectivamente.
 
-## [0.3.0] - 2026-09-01 — versión actual
+## [0.4.0] - 2026-09-08 — versión actual
+
+### Prioridad integrada de visita
+
+- Conserva sin cambios el índice satelital de 0 a 6 puntos y lo presenta como urgencia por cambios.
+- Añade hasta 1 punto según la proporción del área dentro de corredores y 0.5 por intersección con el Corredor Biológico Mesoamericano.
+- Presenta por separado la urgencia por cambios, el valor estratégico del corredor y la prioridad final de visita.
+- Impide que la presencia de un corredor, sin señales suficientes de cambio, genere por sí sola una prioridad alta.
+- Incorpora la prioridad de visita en la interfaz, el PDF y el registro metodológico JSON.
+
+## [0.3.0] - 2026-09-01
 
 ### Corredores y conectividad
 
