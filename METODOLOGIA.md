@@ -1,8 +1,8 @@
 # Metodología del índice operativo de prioridad
 
-**Versión del método:** MT-2026.4
+**Versión del método:** MT-2026.7-DIAGNOSTICO-INTEGRADO
 
-**Versión de implementación auditada:** UX-0.2.9
+**Versión de implementación auditada:** UX-0.5.0-DIAGNOSTICO-INTEGRADO
 
 ## Finalidad y alcance
 
@@ -20,6 +20,8 @@ determinación de cumplimiento EUDR.
 | ESRI Land Use/Land Cover | 10 m | Transición de la clase árboles a otra cobertura |
 | Altura de dosel GEDI / OpenForis | 100 m | Contexto estructural y cobertura válida |
 | Sentinel-2 SR Harmonized | 10 m | NDVI y cambio de vigor vegetal, solo visual |
+| Corredores de Almanaque Azul, versión publicada 2024.05 | Vector | Valor estratégico y ubicación respecto a corredores |
+| SINIA–MiAMBIENTE, Bosque y otros usos 2021 | Vector aportado | Fragmentación, red de parches y foco espacial de la visita |
 
 Cada producto se procesa en su propia proyección y resolución. Las superficies se
 calculan dentro del área seleccionada y se integran como evidencia por fuente para
@@ -195,10 +197,11 @@ o verificación de campo.
 
 Las constantes y funciones se mantienen en `metodologia_indice.py`. Las pruebas de
 `test_metodologia_indice.py` verifican pesos, umbrales, suma única por fuente,
-clasificación, consistencia y exclusión de NDVI. El registro JSON conserva fuentes,
+clasificación, consistencia, exclusión de NDVI e integración estructural sin aumento
+del puntaje. El registro JSON conserva fuentes,
 períodos, umbrales, justificaciones, pesos, aportes efectivos, estadísticas y reglas
-de prioridad y consistencia, además de la regla y las superficies del mapa de
-coincidencia espacial.
+de prioridad, consistencia y contexto estructural, además de la regla y las
+superficies del mapa de coincidencia espacial.
 
 ## Corredores ecológicos de Almanaque Azul
 
@@ -212,11 +215,45 @@ La capa vectorial externa contiene 22 polígonos interpretados y 14 puntos crít
 
 Los originales están en EPSG:3857 y se convierten a EPSG:4326 mediante `scripts/preparar_datos_corredores.py`. Para medir intersecciones, el área evaluada y los corredores se proyectan a Equal Earth Americas (EPSG:8857). Se informa el área y porcentaje de superposición total, por categoría y con los tramos mesoamericanos.
 
-Esta superposición es contextual y no modifica el índice operativo de prioridad. Tampoco demuestra conectividad funcional para una especie particular.
+Esta superposición no modifica el índice satelital de cambios. Se utiliza como
+valor estratégico en una prioridad separada de visita y tampoco demuestra
+conectividad funcional para una especie particular.
 
-## Fragmentación del bosque aportado
+## Prioridad integrada de visita
 
-El ZIP debe contener un único conjunto `.shp`, `.shx`, `.dbf` y `.prj`. La persona usuaria selecciona el campo y los valores que representan bosque. Las geometrías se transforman a EPSG:8857, se recortan al área evaluada, se validan y se separan en parches poligonales.
+La aplicación conserva tres dimensiones visibles para evitar que el contexto
+ecológico se confunda con evidencia de deterioro:
+
+1. **Urgencia por cambios:** el índice satelital original, de 0 a 6 puntos.
+2. **Valor estratégico del corredor:** hasta 1.5 puntos adicionales.
+3. **Condición estructural 2021:** indica dónde focalizar la visita, sin sumar puntos.
+
+El aporte por corredor se calcula así:
+
+```text
+aporte por solapamiento = mínimo(% del AOI en corredores / 25, 1.0)
+aporte mesoamericano = 0.5 cuando existe intersección
+puntaje integrado = puntaje de cambios + ambos aportes
+```
+
+El aporte por superficie alcanza su máximo cuando al menos 25% del área está
+dentro de corredores. Las categorías alta, mediana y media-baja publicadas por
+Almanaque Azul se muestran como atributos, pero no se convierten en señales de
+deterioro ni en una jerarquía inventada de valor ecológico.
+
+El corredor por sí solo puede justificar seguimiento preventivo, pero nunca una
+prioridad alta o muy alta. La clase **Muy alta** exige que la prioridad por
+cambios ya sea alta y que el aporte estratégico del corredor alcance al menos
+1 punto. Así, la herramienta responde dos preguntas diferentes: por qué urge
+revisar el área y por qué esa revisión tiene relevancia para la continuidad ecológica.
+La tercera pregunta —dónde concentrar el trabajo de campo— se responde con la red
+de parches de la cobertura 2021.
+
+## Fragmentación del bosque de referencia 2021
+
+La cobertura utilizada corresponde a un recorte de la capa **Bosque y otros usos**, referencia 2021, publicada por SINIA–MiAMBIENTE. El ZIP debe contener un único conjunto `.shp`, `.shx`, `.dbf` y `.prj`. La persona usuaria selecciona el campo y los valores que representan bosque. Las geometrías se transforman a EPSG:8857, se recortan al área evaluada, se validan y se separan en parches poligonales.
+
+Esta capa representa la cobertura clasificada para 2021. Se utiliza para describir la fragmentación y conectividad estructural del bosque de ese año; por sí sola no permite determinar cuándo ocurrió un cambio ni debe interpretarse como una serie anual de deforestación.
 
 Las métricas de clase son:
 
@@ -243,4 +280,18 @@ El índice conector por parche reproduce los pesos de los ejercicios R:
 
 La importancia `Alta`, `Media` o `Baja` se asigna mediante los cuantiles 75% y 50% del índice dentro del área analizada. Es una clasificación relativa y no equivale a las categorías publicadas por Almanaque Azul. Con más de 400 nodos, la intermediación se aproxima con una muestra reproducible de hasta 200 nodos.
 
-Estas métricas tampoco modifican el índice satelital de prioridad.
+La condición estructural se resume con reglas operativas transparentes:
+
+| Condición | Regla |
+|---|---|
+| Un solo parche | La cobertura seleccionada forma un parche |
+| Conectada al umbral | Todos los parches forman un componente |
+| Conectividad predominante | El componente mayor reúne al menos 75% de los parches |
+| Conectividad intermedia | El componente mayor reúne entre 50% y menos de 75% |
+| Red dividida | El componente mayor reúne menos de 50% |
+
+Estas categorías dependen del umbral de distancia elegido y describen conectividad
+estructural, no movimiento comprobado de fauna. Se conectan con el diagnóstico para
+orientar la visita hacia parches conectores y componentes aislados, pero no modifican
+el puntaje: asignarles peso requeriría calibración ecológica para el territorio y las
+especies objetivo.

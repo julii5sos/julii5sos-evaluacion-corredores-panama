@@ -51,6 +51,7 @@ class CorredoresDatosTests(unittest.TestCase):
         self.assertGreater(resultado["area_en_corredores_ha"], 0)
         self.assertEqual(len(resultado["corredores"]), 22)
         self.assertFalse(resultado["participa_indice_prioridad"])
+        self.assertTrue(resultado["participa_prioridad_visita"])
 
 
 if __name__ == "__main__":

@@ -1,10 +1,11 @@
 # Evaluación territorial y corredores ecológicos de Panamá
 
-Aplicación Streamlit para integrar tres lecturas que deben mantenerse separadas:
+Aplicación Streamlit para conectar tres lecturas en un diagnóstico territorial
+único, conservando la trazabilidad de cada una:
 
 1. señales satelitales de cambio forestal y prioridad de revisión;
 2. corredores ecológicos interpretados y publicados por Fundación Almanaque Azul;
-3. fragmentación y conectividad estructural calculadas desde un shapefile bosque/no bosque aportado durante la sesión.
+3. fragmentación y conectividad estructural calculadas desde un recorte de la capa **Bosque y otros usos 2021** de SINIA–MiAMBIENTE, aportado durante la sesión.
 
 La aplicación orienta revisiones territoriales. No es una certificación, no determina cumplimiento EUDR y no demuestra por sí sola conectividad funcional para una especie.
 
@@ -14,12 +15,20 @@ La aplicación orienta revisiones territoriales. No es una certificación, no de
 - Las categorías originales `alta`, `mediana` y `media-baja`, sin sustituirlas por una clasificación inventada.
 - Los tres tramos panameños identificados como Corredor Biológico Mesoamericano: oeste, San Lorenzo y este.
 - Intersección del área evaluada con corredores, medida en hectáreas mediante un sistema equivalente en área.
-- Carga temporal de un ZIP de shapefile bosque/no bosque.
+- Carga temporal de un ZIP con el recorte vectorial de **Bosque y otros usos 2021**.
 - Métricas de fragmentación equivalentes a las utilizadas en los ejercicios R: número y densidad de parches, área total/media/mediana, borde, forma y parche mayor.
 - Red de parches conectados por una distancia configurable e índice conector compuesto por grado (40%), intermediación (30%), área (20%) y fuerza de conexión (10%).
 - Resultados de corredores y fragmentación en la interfaz, el PDF y el registro metodológico JSON.
+- Diagnóstico de visita que combina la urgencia por cambios con el valor estratégico
+  del corredor y usa la estructura del bosque 2021 para indicar dónde focalizarla.
 
-Los corredores y el análisis de parches no alteran el índice satelital existente. Se reportan como dimensiones contextuales independientes.
+El índice satelital de cambios no se altera. La prioridad de visita lo conserva
+como componente dominante y añade hasta 1.5 puntos de valor estratégico: hasta
+1.0 por la proporción del área dentro de corredores y 0.5 por pertenencia al
+Corredor Biológico Mesoamericano. Un corredor sin señales suficientes de cambio
+nunca genera por sí solo una prioridad alta. La fragmentación no recibe un peso
+inventado: clasifica la condición estructural y dirige la revisión hacia parches
+conectores, separaciones y componentes aislados.
 
 ## Flujo de uso
 
@@ -27,8 +36,11 @@ Los corredores y el análisis de parches no alteran el índice satelital existen
 2. Opcionalmente cargue un ZIP con un único conjunto `.shp`, `.shx`, `.dbf` y `.prj`.
 3. Seleccione el campo de clase y el valor o valores que representan bosque.
 4. Defina la distancia máxima entre parches y el área mínima de parche.
-5. Elija **Evaluar conectividad ecológica y corredores** o cualquiera de las vistas satelitales.
-6. Ejecute el análisis y revise por separado la prioridad satelital, el contexto de corredores y la red de bosque aportada.
+5. Elija **Diagnóstico territorial integrado** o cualquiera de las vistas satelitales.
+6. Ejecute el análisis y revise sus cuatro lecturas: urgencia por cambios, valor del
+   corredor, condición estructural 2021 y prioridad integrada de visita.
+7. Use el mapa para localizar coincidencias de cambio, corredores, parches conectores
+   y componentes aislados; descargue el PDF y el JSON para conservar el diagnóstico.
 
 ## Fuentes
 
@@ -38,7 +50,7 @@ Los corredores y el análisis de parches no alteran el índice satelital existen
 - GEDI / OpenForis para altura del dosel.
 - Sentinel-2 SR Harmonized para NDVI.
 - [Mapa de corredores naturales de Panamá](https://www.almanaqueazul.org/conectividad/mapa/), Fundación Almanaque Azul, versión mostrada `2024.05`.
-- Shapefile bosque/no bosque aportado por la persona usuaria; no se almacena en Git.
+- SINIA–MiAMBIENTE, capa **Bosque y otros usos**, referencia 2021. El recorte aportado por la persona usuaria se procesa temporalmente y no se almacena en Git.
 
 La procedencia de los GeoJSON incluidos se documenta en [THIRD_PARTY_DATA.md](THIRD_PARTY_DATA.md).
 

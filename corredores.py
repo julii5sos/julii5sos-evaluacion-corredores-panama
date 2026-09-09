@@ -172,8 +172,8 @@ def agregar_capas_corredores(mapa, mostrar: bool = False):
 def analizar_interseccion_corredores(aoi_geojson: dict[str, Any]) -> dict[str, Any]:
     """Calcula intersecciones en un CRS de area equivalente para Panama.
 
-    Este resultado es contexto cartografico independiente. No modifica el indice
-    de prioridad satelital de la aplicacion.
+    Este resultado no modifica el índice satelital. Su solapamiento se utiliza
+    únicamente como valor estratégico en la prioridad separada de visita.
     """
 
     try:
@@ -258,9 +258,11 @@ def analizar_interseccion_corredores(aoi_geojson: dict[str, Any]) -> dict[str, A
         "fuente": FUENTE_CORTA,
         "url": URL_MAPA,
         "participa_indice_prioridad": False,
+        "participa_prioridad_visita": True,
         "limitacion": (
             "La superposicion indica contexto territorial; no demuestra conectividad "
-            "funcional para una especie ni modifica el indice de prioridad satelital."
+            "funcional para una especie ni modifica el indice satelital de cambios. "
+            "Solo aporta valor estrategico a la planificacion de visitas."
         ),
     }
 
