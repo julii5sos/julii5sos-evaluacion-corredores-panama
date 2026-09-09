@@ -15,6 +15,7 @@ correcciones compatibles, respectivamente.
 - Mantiene configurables únicamente la distancia entre parches y el área mínima, como opciones de análisis.
 - Distingue correctamente un recorte sin bosque de un paisaje formado por un solo parche.
 - Documenta el secreto `EE_ASSET_BOSQUE_2021` y el flujo de publicación administrado.
+- Coloca el mapa interactivo inmediatamente después de ejecutar el análisis, antes de las tablas y descargas.
 
 ## [0.5.0] - 2026-09-08
 

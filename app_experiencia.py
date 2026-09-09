@@ -4084,6 +4084,10 @@ try:
     if analisis_actual:
         entregables_contenedor.empty()
 
+    # El contenedor se declara antes de las tarjetas para que el mapa quede
+    # inmediatamente después de ejecutar, aunque sus capas se construyan más abajo.
+    mapa_resultados_contenedor = st.container()
+
     if st.session_state.get("firma_analisis") == firma_analisis_actual:
         resultados = st.session_state["resultados_analisis"]
         mostrar_resultados(
@@ -4278,8 +4282,15 @@ try:
             "Cuando ejecute el análisis aparecerán el resumen, el detalle por fuente y los archivos de respaldo."
         )
 
-    st.divider()
-    st.subheader("Evidencia cartográfica")
+    mapa_resultados_contenedor.divider()
+    mapa_resultados_contenedor.subheader(
+        "Mapa del resultado" if analisis_actual else "Evidencia cartográfica"
+    )
+    if analisis_actual:
+        mapa_resultados_contenedor.caption(
+            "La evidencia espacial del análisis aparece primero. Después del mapa se "
+            "presentan las métricas, tablas y descargas."
+        )
 
     mapa = folium.Map(
         location=[8.7, -80.0],
@@ -4591,9 +4602,9 @@ try:
         collapsed=True,
     ).add_to(mapa)
 
-    st.markdown("#### Mapa interactivo del área evaluada")
+    mapa_resultados_contenedor.markdown("#### Mapa interactivo del área evaluada")
     if etiqueta_inicial and etiqueta_final:
-        st.markdown(
+        mapa_resultados_contenedor.markdown(
             f"""
             <div class="comparador-anios">
               <span>◀ <b>Año inicial</b><br>{etiqueta_inicial}</span>
@@ -4602,13 +4613,13 @@ try:
             """,
             unsafe_allow_html=True,
         )
-        st.caption(
+        mapa_resultados_contenedor.caption(
             "Arrastre el control circular del divisor vertical. El lado izquierdo muestra el "
             "año inicial y el derecho el año final. Este modo muestra únicamente la comparación "
             "temporal para que ninguna capa temática la cubra."
         )
     else:
-        st.caption(
+        mapa_resultados_contenedor.caption(
             "Use «Capas temáticas» dentro del mapa para encender o apagar una o varias capas. "
             "Su orden se controla en el panel lateral; los límites permanecen arriba y se "
             "administran por separado en «Referencias». Los corredores se controlan en el "
@@ -4616,25 +4627,26 @@ try:
             "aportan al valor estratégico. La red de parches 2021 se controla en "
             "«Conectividad calculada» y orienta dónde focalizar la visita."
         )
-    st_folium(
-        mapa,
-        height=650,
-        use_container_width=True,
-        returned_objects=[],
-        key=(
-            f"mapa-{APP_VERSION}-{tipo_area}-{finca_seleccionada}-{modo_mapa}-{modo_comparador}-"
-            f"{anio_tmf_inicial}-{anio_tmf_final}-{anio_esri_inicial}-"
-            f"{anio_esri_final}-{anio_ndvi_inicial}-{anio_ndvi_final}-"
-            f"{anio_tmf_capa}-{anio_esri_capa}-{anio_ndvi_capa}-"
-            f"{'-'.join(orden_capas_mapa)}-"
-            f"{capa_visible_inicial}-"
-            f"{catalogo_corredores['version_publicada']}-{huella_bosque}-"
-            f"{umbral_conectividad_m}-{area_min_parche_ha}-"
-            f"{hash(geometria_dibujada_json or '')}"
-        ),
-    )
+    with mapa_resultados_contenedor:
+        st_folium(
+            mapa,
+            height=650,
+            use_container_width=True,
+            returned_objects=[],
+            key=(
+                f"mapa-{APP_VERSION}-{tipo_area}-{finca_seleccionada}-{modo_mapa}-{modo_comparador}-"
+                f"{anio_tmf_inicial}-{anio_tmf_final}-{anio_esri_inicial}-"
+                f"{anio_esri_final}-{anio_ndvi_inicial}-{anio_ndvi_final}-"
+                f"{anio_tmf_capa}-{anio_esri_capa}-{anio_ndvi_capa}-"
+                f"{'-'.join(orden_capas_mapa)}-"
+                f"{capa_visible_inicial}-"
+                f"{catalogo_corredores['version_publicada']}-{huella_bosque}-"
+                f"{umbral_conectividad_m}-{area_min_parche_ha}-"
+                f"{hash(geometria_dibujada_json or '')}"
+            ),
+        )
 
-    with st.expander("Ver leyendas de colores", expanded=True):
+    with mapa_resultados_contenedor.expander("Ver leyendas de colores", expanded=True):
         columnas_leyenda = st.columns(2)
         leyendas_activas = [
             ("Corredores · Almanaque Azul", LEYENDAS["Corredores Almanaque Azul"])
