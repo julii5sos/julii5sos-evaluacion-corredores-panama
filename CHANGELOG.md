@@ -10,6 +10,7 @@ correcciones compatibles, respectivamente.
 
 - Elimina el cargador de shapefiles de la interfaz pública.
 - Lee el recorte forestal 2021 desde un asset institucional privado de Earth Engine.
+- Filtra automáticamente la categoría oficial `Bosques y Otras Tierras Boscosas` de la capa nacional; el usuario no selecciona clases.
 - Recorta automáticamente la cobertura al área seleccionada antes de calcular fragmentación y conectividad.
 - Mantiene configurables únicamente la distancia entre parches y el área mínima, como opciones de análisis.
 - Distingue correctamente un recorte sin bosque de un paisaje formado por un solo parche.

@@ -667,6 +667,8 @@ FUENTE_BOSQUE_CORTA = (
     f"{FUENTE_BOSQUE_ORGANIZACION} · {FUENTE_BOSQUE_NOMBRE} · "
     f"{ANO_BOSQUE_REFERENCIA}"
 )
+CAMPO_COBERTURA_BOSQUE_2021 = "Categoria"
+VALOR_COBERTURA_BOSQUE_2021 = "Bosques y Otras Tierras Boscosas"
 
 ASSET_CUENCA = (
     "projects/ee-julissaguevaravega/assets/"
@@ -1019,6 +1021,8 @@ def construir_registro_metodologico(
                 "ano_referencia": ANO_BOSQUE_REFERENCIA,
                 "formato": "asset vectorial institucional privado de Earth Engine",
                 "configurado": bool(ASSET_BOSQUE_2021),
+                "campo_clase": CAMPO_COBERTURA_BOSQUE_2021,
+                "valor_bosque": VALOR_COBERTURA_BOSQUE_2021,
                 "uso": (
                     "fragmentacion y conectividad estructural para focalizar "
                     "la visita; no participa en el puntaje ni constituye una serie anual"
@@ -1679,13 +1683,19 @@ def analizar_corredores_cache(aoi_geojson_serializado):
 @st.cache_data(ttl=3600, show_spinner=False)
 def analizar_bosque_asset_cache(
     asset_id,
+    campo_clase,
+    valor_bosque,
     aoi_geojson_serializado,
     umbral_m,
     area_min_ha,
 ):
     aoi_geojson = json.loads(aoi_geojson_serializado)
     aoi_ee = ee.Geometry(aoi_geojson)
-    bosque_en_area = ee.FeatureCollection(asset_id).filterBounds(aoi_ee)
+    bosque_en_area = (
+        ee.FeatureCollection(asset_id)
+        .filter(ee.Filter.eq(campo_clase, valor_bosque))
+        .filterBounds(aoi_ee)
+    )
     if int(bosque_en_area.size().getInfo()) == 0:
         geometria_bosque = {"type": "FeatureCollection", "features": []}
     else:
@@ -3632,7 +3642,12 @@ try:
     umbral_conectividad_m = 500
     area_min_parche_ha = 0.0
     huella_bosque = (
-        hashlib.sha256(ASSET_BOSQUE_2021.encode("utf-8")).hexdigest()[:16]
+        hashlib.sha256(
+            (
+                f"{ASSET_BOSQUE_2021}|{CAMPO_COBERTURA_BOSQUE_2021}|"
+                f"{VALOR_COBERTURA_BOSQUE_2021}"
+            ).encode("utf-8")
+        ).hexdigest()[:16]
         if bosque_automatico_disponible
         else "sin-asset-bosque"
     )
@@ -3655,7 +3670,9 @@ try:
                 "El resto del diagnóstico puede ejecutarse, pero no mostrará la red de parches."
             )
         st.caption(
-            f"Fuente: {FUENTE_BOSQUE_CORTA}. La persona usuaria no necesita cargar archivos."
+            f"Fuente: {FUENTE_BOSQUE_CORTA}. Se usa automáticamente la categoría "
+            f"«{VALOR_COBERTURA_BOSQUE_2021}»; la persona usuaria no necesita cargar "
+            "archivos ni seleccionar clases."
         )
         umbral_conectividad_m = st.select_slider(
             "Distancia máxima entre parches",
@@ -4032,6 +4049,8 @@ try:
                 try:
                     resultados_nuevos["fragmentacion"] = analizar_bosque_asset_cache(
                         ASSET_BOSQUE_2021,
+                        CAMPO_COBERTURA_BOSQUE_2021,
+                        VALOR_COBERTURA_BOSQUE_2021,
                         aoi_geojson_serializado,
                         umbral_conectividad_m,
                         area_min_parche_ha,

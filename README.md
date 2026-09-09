@@ -71,7 +71,7 @@ Guarde los secretos únicamente en `.streamlit/secrets.toml` para desarrollo loc
 ```toml
 EE_PROJECT = "proyecto-de-earth-engine"
 EE_ASSET_FINCAS = "projects/PROYECTO/assets/COLECCION_PRIVADA_DE_FINCAS"
-EE_ASSET_BOSQUE_2021 = "projects/PROYECTO/assets/BOSQUE_OTROS_USOS_2021"
+EE_ASSET_BOSQUE_2021 = "projects/ee-julissaguevaravega/assets/CBOTB_2021_25k"
 FINCAS_ACCESS_CODE = "CODIGO_PRIVADO_DE_AL_MENOS_8_CARACTERES"
 
 EE_SERVICE_ACCOUNT_JSON = '''
@@ -90,13 +90,13 @@ Nunca confirme en Git el JSON real de la cuenta de servicio, las direcciones pri
 
 Esta tarea corresponde a la administración, no a las personas que consultan la aplicación:
 
-1. Exporte el recorte forestal en EPSG:4326 y reúna sus archivos `.shp`, `.shx`, `.dbf`, `.prj` y `.cpg` en un único ZIP.
-2. En **Earth Engine > Assets**, seleccione **NEW > Table upload** y cargue ese ZIP.
-3. Use una ruta estable, por ejemplo `projects/ee-julissaguevaravega/assets/bosque_otros_usos_2021`. El asset debe contener únicamente los polígonos que representan bosque.
+1. Use `CBOTB_2021_25k.zip`, que contiene un único shapefile completo con `.shp`, `.shx`, `.dbf`, `.prj` y `.cpg`. Si prepara una copia normalizada, se recomienda EPSG:4326.
+2. En **Earth Engine > Assets**, seleccione **NEW > Table upload** y cargue el ZIP.
+3. Use una ruta estable, por ejemplo `projects/ee-julissaguevaravega/assets/CBOTB_2021_25k`.
 4. Verifique que la cuenta de servicio de Streamlit pueda leer el asset.
 5. Copie la ruta completa en el secreto `EE_ASSET_BOSQUE_2021` y reinicie la aplicación.
 
-Desde ese momento, cada área seleccionada usa la misma fuente: la aplicación consulta el asset, lo recorta al área activa y calcula los parches sin mostrar un cargador de archivos.
+Desde ese momento, cada área seleccionada usa la misma fuente: la aplicación filtra internamente `Categoria = Bosques y Otras Tierras Boscosas`, recorta el resultado al área activa y calcula los parches sin mostrar un cargador ni un selector de clases.
 
 ## Estructura principal
 
