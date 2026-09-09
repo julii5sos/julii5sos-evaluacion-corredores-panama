@@ -1,6 +1,7 @@
 # Evaluación territorial y corredores ecológicos de Panamá
 
-Aplicación Streamlit para integrar tres lecturas que conservan su trazabilidad:
+Aplicación Streamlit para conectar tres lecturas en un diagnóstico territorial
+único, conservando la trazabilidad de cada una:
 
 1. señales satelitales de cambio forestal y prioridad de revisión;
 2. corredores ecológicos interpretados y publicados por Fundación Almanaque Azul;
@@ -18,13 +19,16 @@ La aplicación orienta revisiones territoriales. No es una certificación, no de
 - Métricas de fragmentación equivalentes a las utilizadas en los ejercicios R: número y densidad de parches, área total/media/mediana, borde, forma y parche mayor.
 - Red de parches conectados por una distancia configurable e índice conector compuesto por grado (40%), intermediación (30%), área (20%) y fuerza de conexión (10%).
 - Resultados de corredores y fragmentación en la interfaz, el PDF y el registro metodológico JSON.
-- Prioridad de visita que combina la urgencia por cambios con el valor estratégico del corredor.
+- Diagnóstico de visita que combina la urgencia por cambios con el valor estratégico
+  del corredor y usa la estructura del bosque 2021 para indicar dónde focalizarla.
 
 El índice satelital de cambios no se altera. La prioridad de visita lo conserva
 como componente dominante y añade hasta 1.5 puntos de valor estratégico: hasta
 1.0 por la proporción del área dentro de corredores y 0.5 por pertenencia al
 Corredor Biológico Mesoamericano. Un corredor sin señales suficientes de cambio
-nunca genera por sí solo una prioridad alta.
+nunca genera por sí solo una prioridad alta. La fragmentación no recibe un peso
+inventado: clasifica la condición estructural y dirige la revisión hacia parches
+conectores, separaciones y componentes aislados.
 
 ## Flujo de uso
 
@@ -32,8 +36,11 @@ nunca genera por sí solo una prioridad alta.
 2. Opcionalmente cargue un ZIP con un único conjunto `.shp`, `.shx`, `.dbf` y `.prj`.
 3. Seleccione el campo de clase y el valor o valores que representan bosque.
 4. Defina la distancia máxima entre parches y el área mínima de parche.
-5. Elija **Evaluar conectividad ecológica y corredores** o cualquiera de las vistas satelitales.
-6. Ejecute el análisis y revise la prioridad integrada de visita, sus dos componentes y la red de bosque aportada.
+5. Elija **Diagnóstico territorial integrado** o cualquiera de las vistas satelitales.
+6. Ejecute el análisis y revise sus cuatro lecturas: urgencia por cambios, valor del
+   corredor, condición estructural 2021 y prioridad integrada de visita.
+7. Use el mapa para localizar coincidencias de cambio, corredores, parches conectores
+   y componentes aislados; descargue el PDF y el JSON para conservar el diagnóstico.
 
 ## Fuentes
 

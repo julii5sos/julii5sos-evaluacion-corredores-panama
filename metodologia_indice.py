@@ -200,8 +200,9 @@ REGLAS_CONSISTENCIA = {
 }
 
 # La prioridad de visita es una capa de decisión separada del índice satelital.
-# El cambio observado mantiene el mayor peso (hasta 6 puntos) y el corredor
-# únicamente aumenta el valor estratégico del área (hasta 1.5 puntos).
+# El cambio observado mantiene el mayor peso (hasta 6 puntos), el corredor
+# aumenta el valor estratégico (hasta 1.5 puntos) y la condición estructural
+# orienta espacialmente la visita sin recibir un peso no calibrado.
 REGLAS_PRIORIDAD_VISITA = {
     "nombre": "Prioridad integrada de visita",
     "puntaje_maximo_cambios": PUNTAJE_MAXIMO,
@@ -222,6 +223,11 @@ REGLAS_PRIORIDAD_VISITA = {
             "Las categorías alta, mediana y media-baja de Almanaque Azul se "
             "conservan como atributos y no se convierten en evidencia de deterioro."
         ),
+        "estructura_sin_peso_inventado": (
+            "La fragmentación y la conectividad del bosque de 2021 orientan "
+            "dónde focalizar la visita, pero no suman puntos hasta contar con "
+            "umbrales ecológicos calibrados para el territorio y las especies objetivo."
+        ),
     },
     "clases": {
         "Muy alta": (
@@ -236,6 +242,22 @@ REGLAS_PRIORIDAD_VISITA = {
         ),
         "Baja": "Puntaje integrado menor de 0.5 puntos.",
     },
+}
+
+REGLAS_CONTEXTO_ESTRUCTURAL = {
+    "fuente": "SINIA–MiAMBIENTE · Bosque y otros usos · 2021",
+    "participa_puntaje": False,
+    "criterios": {
+        "conectada": "un solo componente al umbral seleccionado",
+        "predominante": "más de un componente y al menos 75% de los parches en el mayor",
+        "intermedia": "entre 50% y menos de 75% de los parches en el mayor componente",
+        "dividida": "menos de 50% de los parches en el mayor componente",
+    },
+    "limitacion": (
+        "Es una lectura estructural dependiente del umbral entre parches y de la "
+        "cobertura clasificada en 2021. No demuestra conectividad funcional ni "
+        "movimiento de una especie."
+    ),
 }
 
 PUNTAJE_MAXIMO_VISITA = (
@@ -254,13 +276,106 @@ def clasificar_prioridad(puntaje):
     return "Baja"
 
 
-def calcular_prioridad_visita(*, puntaje_cambios, contexto_corredores):
-    """Integra urgencia por cambios y valor estratégico del corredor.
+def evaluar_contexto_estructural(contexto_fragmentacion):
+    """Resume la red de parches sin convertirla en un puntaje no calibrado."""
+
+    contexto = contexto_fragmentacion or {}
+    metricas_clase = contexto.get("metricas_clase") or {}
+    metricas_red = contexto.get("metricas_red") or {}
+    if not metricas_clase or not metricas_red:
+        return {
+            "disponible": False,
+            "estado": "No evaluada",
+            "requiere_focalizacion": False,
+            "numero_parches": 0,
+            "numero_componentes": 0,
+            "porcentaje_componente_mayor": 0.0,
+            "porcentaje_bosque": 0.0,
+            "umbral_m": None,
+            "interpretacion": (
+                "Cargue el recorte de Bosque y otros usos 2021 para incorporar "
+                "fragmentación y conectividad al diagnóstico territorial."
+            ),
+            "participa_puntaje": False,
+            "limitacion": REGLAS_CONTEXTO_ESTRUCTURAL["limitacion"],
+        }
+
+    numero_parches = max(0, int(metricas_clase.get("numero_parches") or 0))
+    numero_componentes = max(0, int(metricas_red.get("numero_componentes") or 0))
+    porcentaje_mayor = max(
+        0.0,
+        min(
+            100.0,
+            float(metricas_red.get("porcentaje_nodos_componente_mayor") or 0.0),
+        ),
+    )
+    porcentaje_bosque = max(
+        0.0,
+        min(
+            100.0,
+            float(metricas_clase.get("porcentaje_paisaje_bosque") or 0.0),
+        ),
+    )
+
+    if numero_parches <= 1:
+        estado = "Un solo parche"
+        requiere_focalizacion = False
+        interpretacion = (
+            "La cobertura seleccionada forma un único parche dentro del área evaluada."
+        )
+    elif numero_componentes <= 1:
+        estado = "Conectada al umbral"
+        requiere_focalizacion = False
+        interpretacion = (
+            "Todos los parches pertenecen a una sola red con la distancia seleccionada."
+        )
+    elif porcentaje_mayor >= 75.0:
+        estado = "Conectividad predominante"
+        requiere_focalizacion = True
+        interpretacion = (
+            "La mayoría de los parches pertenece a una red principal, aunque existen "
+            "componentes aislados que conviene revisar."
+        )
+    elif porcentaje_mayor >= 50.0:
+        estado = "Conectividad intermedia"
+        requiere_focalizacion = True
+        interpretacion = (
+            "La red principal reúne entre la mitad y tres cuartas partes de los "
+            "parches; los conectores y separaciones requieren atención espacial."
+        )
+    else:
+        estado = "Red dividida"
+        requiere_focalizacion = True
+        interpretacion = (
+            "Menos de la mitad de los parches pertenece al componente principal; "
+            "la red está distribuida en varios grupos al umbral seleccionado."
+        )
+
+    return {
+        "disponible": True,
+        "estado": estado,
+        "requiere_focalizacion": requiere_focalizacion,
+        "numero_parches": numero_parches,
+        "numero_componentes": numero_componentes,
+        "porcentaje_componente_mayor": round(porcentaje_mayor, 4),
+        "porcentaje_bosque": round(porcentaje_bosque, 4),
+        "umbral_m": float(metricas_red.get("umbral_m") or 0.0),
+        "interpretacion": interpretacion,
+        "participa_puntaje": False,
+        "limitacion": REGLAS_CONTEXTO_ESTRUCTURAL["limitacion"],
+    }
+
+
+def calcular_prioridad_visita(
+    *, puntaje_cambios, contexto_corredores, contexto_fragmentacion=None
+):
+    """Integra urgencia, corredor y condición estructural en una decisión.
 
     La fórmula no altera el índice satelital. El solapamiento aporta de forma
     proporcional hasta alcanzar un punto cuando 25 % del AOI está dentro de
     corredores. La pertenencia al Corredor Biológico Mesoamericano añade 0.5.
-    Sin señales satelitales, el resultado queda limitado a Preventiva.
+    Sin señales satelitales, el resultado queda limitado a Preventiva. La red
+    de parches orienta el foco espacial sin sumar un peso no calibrado.
     """
 
     contexto = contexto_corredores or {}
@@ -269,7 +384,7 @@ def calcular_prioridad_visita(*, puntaje_cambios, contexto_corredores):
         min(100.0, float(contexto.get("porcentaje_aoi_en_corredores") or 0.0)),
     )
     intersecta = bool(contexto.get("intersecta")) and porcentaje > 0
-    intersecta_mesoamericano = bool(
+    intersecta_mesoamericano = intersecta and bool(
         contexto.get("intersecta_mesoamericano")
     )
     saturacion = REGLAS_PRIORIDAD_VISITA["porcentaje_saturacion_corredor"]
@@ -320,6 +435,63 @@ def calcular_prioridad_visita(*, puntaje_cambios, contexto_corredores):
     else:
         prioridad_visita = "Baja"
 
+    estructura = evaluar_contexto_estructural(contexto_fragmentacion)
+    hay_cambio = puntaje_cambios >= 0.5
+    red_requiere_focalizacion = bool(
+        estructura["disponible"] and estructura["requiere_focalizacion"]
+    )
+
+    if hay_cambio and intersecta and red_requiere_focalizacion:
+        combinacion_territorial = "Cambios + corredor + estructura"
+        foco_visita = (
+            "Ubique primero los sectores con señales recientes dentro del corredor; "
+            "entre ellos, priorice parches conectores y separaciones entre componentes."
+        )
+    elif hay_cambio and intersecta:
+        combinacion_territorial = "Cambios + corredor"
+        foco_visita = (
+            "Ubique primero las señales recientes que se encuentran dentro del corredor."
+        )
+    elif hay_cambio and red_requiere_focalizacion:
+        combinacion_territorial = "Cambios + estructura"
+        foco_visita = (
+            "Contraste las señales recientes con los parches conectores y los "
+            "componentes aislados de la red."
+        )
+    elif hay_cambio:
+        combinacion_territorial = "Cambios recientes"
+        foco_visita = (
+            "Revise los sectores señalados por dos o tres fuentes y contraste su causa."
+        )
+    elif intersecta and red_requiere_focalizacion:
+        combinacion_territorial = "Corredor + estructura preventiva"
+        foco_visita = (
+            "Sin urgencia satelital, documente preventivamente los conectores y "
+            "separaciones de la red que se encuentran dentro del corredor."
+        )
+    elif intersecta:
+        combinacion_territorial = "Corredor preventivo"
+        foco_visita = (
+            "Mantenga seguimiento preventivo del área incluida en el corredor."
+        )
+    elif red_requiere_focalizacion:
+        combinacion_territorial = "Estructura preventiva"
+        foco_visita = (
+            "Mantenga seguimiento de los conectores y componentes aislados sin "
+            "interpretarlos como cambio reciente."
+        )
+    else:
+        combinacion_territorial = "Monitoreo ordinario"
+        foco_visita = (
+            "No se identificó una combinación que aumente la focalización de la visita."
+        )
+
+    lectura_integrada = (
+        f"Urgencia por cambios: {clasificar_prioridad(puntaje_cambios)}; "
+        f"valor del corredor: {valor_corredor}; condición estructural: "
+        f"{estructura['estado']}."
+    )
+
     return {
         "puntaje_cambios": puntaje_cambios,
         "prioridad_cambios": clasificar_prioridad(puntaje_cambios),
@@ -333,6 +505,11 @@ def calcular_prioridad_visita(*, puntaje_cambios, contexto_corredores):
         "puntaje_integrado": puntaje_integrado,
         "puntaje_maximo": PUNTAJE_MAXIMO_VISITA,
         "prioridad_visita": prioridad_visita,
+        "contexto_estructural": estructura,
+        "combinacion_territorial": combinacion_territorial,
+        "foco_visita": foco_visita,
+        "lectura_integrada": lectura_integrada,
+        "diagnostico_completo": estructura["disponible"],
         "limitacion": (
             "La prioridad de visita orienta la planificación operativa. No "
             "demuestra la causa del cambio, daño ambiental ni conectividad "

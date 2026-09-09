@@ -6,15 +6,33 @@ from metodologia_indice import (
     PESOS_INDICE,
     PUNTAJE_MAXIMO,
     PUNTAJE_MAXIMO_VISITA,
+    REGLAS_CONTEXTO_ESTRUCTURAL,
     REGLAS_MAPA_COINCIDENCIA,
     calcular_indice_prioridad,
     calcular_prioridad_visita,
+    evaluar_contexto_estructural,
     evaluar_consistencia,
     evaluar_senales,
 )
 
 
 class IndicePrioridadTest(unittest.TestCase):
+    @staticmethod
+    def contexto_fragmentacion(
+        *, parches=100, componentes=8, porcentaje_mayor=60.0, porcentaje_bosque=45.0
+    ):
+        return {
+            "metricas_clase": {
+                "numero_parches": parches,
+                "porcentaje_paisaje_bosque": porcentaje_bosque,
+            },
+            "metricas_red": {
+                "numero_componentes": componentes,
+                "porcentaje_nodos_componente_mayor": porcentaje_mayor,
+                "umbral_m": 250.0,
+            },
+        }
+
     def calcular(self, tmf=False, hansen=False, esri=False, gedi=False):
         return calcular_indice_prioridad(
             senal_tmf=tmf,
@@ -155,6 +173,63 @@ class IndicePrioridadTest(unittest.TestCase):
         )
         self.assertEqual(resultado["aporte_corredor"], 0.04)
         self.assertEqual(resultado["prioridad_visita"], "Baja")
+
+    def test_bandera_mesoamericana_sin_superficie_no_aporta(self):
+        resultado = calcular_prioridad_visita(
+            puntaje_cambios=0.0,
+            contexto_corredores={
+                "intersecta": False,
+                "porcentaje_aoi_en_corredores": 0.0,
+                "intersecta_mesoamericano": True,
+            },
+        )
+        self.assertEqual(resultado["aporte_mesoamericano"], 0.0)
+        self.assertEqual(resultado["valor_corredor"], "Sin intersección")
+
+    def test_contexto_estructural_no_disponible_es_explicito(self):
+        estructura = evaluar_contexto_estructural(None)
+        self.assertFalse(estructura["disponible"])
+        self.assertEqual(estructura["estado"], "No evaluada")
+        self.assertFalse(estructura["participa_puntaje"])
+
+    def test_red_intermedia_requiere_focalizacion(self):
+        estructura = evaluar_contexto_estructural(self.contexto_fragmentacion())
+        self.assertEqual(estructura["estado"], "Conectividad intermedia")
+        self.assertTrue(estructura["requiere_focalizacion"])
+        self.assertEqual(estructura["umbral_m"], 250.0)
+
+    def test_un_componente_se_interpreta_como_conectado_al_umbral(self):
+        estructura = evaluar_contexto_estructural(
+            self.contexto_fragmentacion(componentes=1, porcentaje_mayor=100.0)
+        )
+        self.assertEqual(estructura["estado"], "Conectada al umbral")
+        self.assertFalse(estructura["requiere_focalizacion"])
+
+    def test_estructura_focaliza_sin_inflar_el_puntaje(self):
+        corredor = {
+            "intersecta": True,
+            "porcentaje_aoi_en_corredores": 25.0,
+            "intersecta_mesoamericano": False,
+        }
+        sin_estructura = calcular_prioridad_visita(
+            puntaje_cambios=1.5,
+            contexto_corredores=corredor,
+        )
+        integrado = calcular_prioridad_visita(
+            puntaje_cambios=1.5,
+            contexto_corredores=corredor,
+            contexto_fragmentacion=self.contexto_fragmentacion(),
+        )
+        self.assertEqual(
+            integrado["puntaje_integrado"], sin_estructura["puntaje_integrado"]
+        )
+        self.assertEqual(
+            integrado["combinacion_territorial"],
+            "Cambios + corredor + estructura",
+        )
+        self.assertIn("parches conectores", integrado["foco_visita"])
+        self.assertTrue(integrado["diagnostico_completo"])
+        self.assertFalse(REGLAS_CONTEXTO_ESTRUCTURAL["participa_puntaje"])
 
     def evaluar(self, **cambios):
         valores = {

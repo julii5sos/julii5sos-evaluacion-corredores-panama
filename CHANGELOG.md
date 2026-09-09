@@ -4,7 +4,18 @@ Este historial documenta la evolución de la aplicación UX. Las versiones sigue
 el formato `MAJOR.MINOR.PATCH`: una versión principal, mejoras compatibles y
 correcciones compatibles, respectivamente.
 
-## [0.4.0] - 2026-09-08 — versión actual
+## [0.5.0] - 2026-09-08 — versión actual
+
+### Diagnóstico territorial integrado
+
+- Conecta cambios recientes, corredores y estructura del bosque 2021 en una sola lectura operativa.
+- Mantiene el puntaje trazable: los cambios determinan urgencia y los corredores aportan valor estratégico.
+- Usa la fragmentación y la red de parches para focalizar la visita sin asignar un peso ecológico no calibrado.
+- Presenta cuatro resultados coordinados: urgencia, valor del corredor, condición estructural y prioridad final.
+- Lleva la combinación territorial y el foco de visita al mapa, al informe PDF y al registro metodológico JSON.
+- Activa automáticamente los corredores en el perfil **Diagnóstico territorial integrado** y reduce las capas iniciales para evitar ruido visual.
+
+## [0.4.0] - 2026-09-08
 
 ### Prioridad integrada de visita
 

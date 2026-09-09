@@ -53,6 +53,7 @@ from metodologia_indice import (
     PUNTAJE_MAXIMO,
     PUNTAJE_MAXIMO_VISITA,
     REGLAS_CONSISTENCIA,
+    REGLAS_CONTEXTO_ESTRUCTURAL,
     REGLAS_MAPA_COINCIDENCIA,
     REGLAS_PRIORIDAD,
     REGLAS_PRIORIDAD_VISITA,
@@ -657,8 +658,8 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-0.4.0-PRIORIDAD-VISITA"
-METHODOLOGY_VERSION = "MT-2026.6-PRIORIDAD-VISITA"
+APP_VERSION = "UX-0.5.0-DIAGNOSTICO-INTEGRADO"
+METHODOLOGY_VERSION = "MT-2026.7-DIAGNOSTICO-INTEGRADO"
 PROYECTO_EE = secreto_opcional("EE_PROJECT", "ee-julissaguevaravega")
 FUENTE_BOSQUE_NOMBRE = "Bosque y otros usos"
 FUENTE_BOSQUE_ORGANIZACION = "SINIA–MiAMBIENTE"
@@ -777,15 +778,14 @@ VIS_COINCIDENCIA_REVISION = {
 VIS_RGB = {"min": 150, "max": 3200, "gamma": 1.15, "bands": ["B4", "B3", "B2"]}
 
 PERFILES_VISUALIZACION = {
-    "Evaluar conectividad ecológica y corredores": {
+    "Diagnóstico territorial integrado": {
         "descripcion": (
-            "Superpone los corredores interpretados por Almanaque Azul, destaca los "
-            "tramos mesoamericanos y, si aporta su shapefile, calcula métricas de parches."
+            "Conecta señales recientes, corredores y la estructura del bosque de 2021 "
+            "para orientar la prioridad y el lugar de una visita."
         ),
         "modo": "Explorar capas",
         "comparador": "Sin comparador",
         "capas": [
-            "Estado forestal JRC",
             "Sectores para revisión",
         ],
     },
@@ -1019,8 +1019,8 @@ def construir_registro_metodologico(
                 "ano_referencia": ANO_BOSQUE_REFERENCIA,
                 "formato": "recorte vectorial aportado durante la sesion",
                 "uso": (
-                    "fragmentacion y conectividad estructural; no participa "
-                    "en el indice satelital ni constituye una serie anual"
+                    "fragmentacion y conectividad estructural para focalizar "
+                    "la visita; no participa en el puntaje ni constituye una serie anual"
                 ),
             },
         ],
@@ -1030,6 +1030,7 @@ def construir_registro_metodologico(
         "justificacion_pesos": dict(JUSTIFICACION_PESOS),
         "reglas_prioridad": dict(REGLAS_PRIORIDAD),
         "reglas_prioridad_visita": dict(REGLAS_PRIORIDAD_VISITA),
+        "reglas_contexto_estructural": dict(REGLAS_CONTEXTO_ESTRUCTURAL),
         "reglas_consistencia": dict(REGLAS_CONSISTENCIA),
         "mapa_coincidencia_espacial": {
             "nombre": REGLAS_MAPA_COINCIDENCIA["nombre"],
@@ -1063,6 +1064,11 @@ def construir_registro_metodologico(
                 "conserva las categorias originales de Almanaque Azul. El "
                 "solapamiento y la pertenencia al Corredor Biologico "
                 "Mesoamericano aportan a la prioridad separada de visita."
+            ),
+            "estructura_bosque": (
+                "Los parches de Bosque y otros usos 2021 forman una red según el "
+                "umbral seleccionado. Su condición orienta la focalización de la "
+                "visita sin añadir un peso ecológico no calibrado."
             ),
         },
     }
@@ -1138,6 +1144,10 @@ def construir_registro_metodologico(
                 ),
                 "metodo": resultados["fragmentacion"]["metodo"],
                 "participa_indice_prioridad": False,
+                "papel_diagnostico": (
+                    "orienta la focalizacion espacial de la visita y permite "
+                    "identificar conectores y componentes aislados"
+                ),
             }
     return registro
 
@@ -2354,6 +2364,7 @@ def generar_pdf(
     detalle_puntaje_pdf = (
         f"Cambios: {visita['puntaje_cambios']:.1f}/{PUNTAJE_MAXIMO:.1f}; "
         f"corredor: +{visita['aporte_corredor']:.2f}; "
+        f"estructura 2021: {visita['contexto_estructural']['estado']} (sin puntos); "
         f"total: {visita['puntaje_integrado']:.2f}/{PUNTAJE_MAXIMO_VISITA:.1f}"
         if visita
         else f"Índice operativo: {r['puntaje']:.1f}/{PUNTAJE_MAXIMO:.1f}"
@@ -2497,6 +2508,18 @@ def generar_pdf(
             "predio, imágenes recientes y verificación de campo cuando corresponda.",
         ),
     ]
+    if visita:
+        secciones.insert(
+            1,
+            (
+                "DIAGNÓSTICO TERRITORIAL INTEGRADO",
+                f"{visita['lectura_integrada']} "
+                f"La combinación territorial es <b>{visita['combinacion_territorial']}</b>. "
+                f"Orientación operativa: {visita['foco_visita']} La condición estructural "
+                "sirve para ubicar la revisión, pero no añade puntos porque requiere "
+                "calibración ecológica para el territorio y las especies objetivo.",
+            ),
+        )
     contexto_corredores = r.get("corredores")
     if contexto_corredores:
         nombres_corredores = ", ".join(
@@ -2535,8 +2558,9 @@ def generar_pdf(
                 f"contiene {red_fragmentacion['numero_componentes']} componentes y "
                 f"{red_fragmentacion['numero_aristas']} conexiones. La importancia "
                 "Alta/Media/Baja de los parches es relativa al área evaluada, no equivale "
-                "a las categorías de Almanaque Azul y se presenta como diagnóstico "
-                "complementario de la visita.",
+                "a las categorías de Almanaque Azul. Esta red se conecta con la decisión "
+                "para focalizar la visita en parches conectores y componentes aislados, "
+                "sin modificar el puntaje integrado.",
             ),
         )
     for titulo, cuerpo in secciones:
@@ -2968,11 +2992,15 @@ def mostrar_resultados(
             "Consulte los mapas individuales si necesita documentar el área."
         )
     if visita:
+        estructura = visita["contexto_estructural"]
         detalle_resultado = (
             f"Resultado integrado · cambios {visita['puntaje_cambios']:.1f}/"
             f"{PUNTAJE_MAXIMO:.1f} + corredor {visita['aporte_corredor']:.2f}/"
-            f"{REGLAS_PRIORIDAD_VISITA['aporte_maximo_corredor']:.1f}"
+            f"{REGLAS_PRIORIDAD_VISITA['aporte_maximo_corredor']:.1f} · "
+            f"estructura: {estructura['estado']}"
         )
+        titulo_ubicacion = visita["combinacion_territorial"]
+        detalle_ubicacion = f"{visita['foco_visita']} {detalle_ubicacion}"
     else:
         detalle_resultado = (
             f"Índice operativo {resultados['puntaje']:.1f}/{PUNTAJE_MAXIMO:.1f}"
@@ -2988,7 +3016,7 @@ def mostrar_resultados(
         unsafe_allow_html=True,
     )
     if visita:
-        col_cambios, col_corredor, col_final = st.columns(3)
+        col_cambios, col_corredor, col_estructura, col_final = st.columns(4)
         col_cambios.metric(
             "Urgencia por cambios",
             prioridad_cambios,
@@ -3001,6 +3029,18 @@ def mostrar_resultados(
             f"+{visita['aporte_corredor']:.2f} puntos",
             delta_color="off",
         )
+        detalle_estructura = (
+            f"{estructura['numero_componentes']} componentes · "
+            f"{estructura['porcentaje_componente_mayor']:.1f}% en la red mayor"
+            if estructura["disponible"]
+            else "Cargue la cobertura 2021"
+        )
+        col_estructura.metric(
+            "Condición estructural 2021",
+            estructura["estado"],
+            detalle_estructura,
+            delta_color="off",
+        )
         col_final.metric(
             "Prioridad integrada",
             prioridad,
@@ -3008,9 +3048,20 @@ def mostrar_resultados(
             delta_color="off",
         )
         st.caption(
-            "El corredor aumenta la relevancia estratégica de la visita, pero "
-            "no se interpreta como evidencia de pérdida ni modifica el índice "
-            "satelital de cambios."
+            "Las señales recientes determinan la urgencia; el corredor aumenta el "
+            "valor estratégico; y la estructura del bosque 2021 orienta dónde "
+            "concentrar la visita. La estructura no suma puntos hasta contar con "
+            "umbrales ecológicos calibrados."
+        )
+        st.markdown(
+            f"""
+            <div class="resultado-fuente">
+              <b>{html_lib.escape(visita['combinacion_territorial'])}</b><br/>
+              {html_lib.escape(visita['foco_visita'])}<br/>
+              <small>{html_lib.escape(estructura['interpretacion'])}</small>
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
     aportes = resultados["aportes_indice"]
     st.markdown("#### Evidencia de cambio territorial")
@@ -3332,7 +3383,8 @@ def mostrar_resultados_fragmentacion(resultados):
     st.caption(
         "La importancia Alta/Media/Baja se calcula dentro del área analizada mediante los "
         "cuantiles del índice conector; no corresponde a las categorías de Almanaque Azul "
-        "y no modifica el índice satelital ni la prioridad integrada de visita."
+        "y no añade puntos. Sí orienta la focalización de la visita hacia conectores y "
+        "componentes aislados."
     )
 
 
@@ -3347,7 +3399,7 @@ st.markdown(
       <div class="subtitulo-app">Bosque, fragmentación y conectividad ecológica en Panamá</div>
       <p>Integra evidencia satelital, los corredores interpretados por Almanaque Azul y,
       opcionalmente, el recorte de Bosque y otros usos 2021 de SINIA–MiAMBIENTE para
-      reconocer fragmentación y conexiones entre parches.</p>
+      definir la urgencia, el valor estratégico y el lugar donde conviene revisar.</p>
       <div class="alcance-app">Resultado indicativo · requiere interpretación documental y
       verificación de campo · no determina cumplimiento EUDR</div>
     </div>
@@ -3378,7 +3430,7 @@ st.markdown(
         <article class="resumen-paso" role="listitem">
           <span class="resumen-paso-numero" aria-hidden="true">3</span>
           <h3>Usted recibe una guía</h3>
-          <p>Obtiene una prioridad de visita que integra las señales de cambio y el valor estratégico del corredor.</p>
+          <p>Obtiene una prioridad y un foco de visita: cambios, corredor y estructura del bosque se leen juntos.</p>
         </article>
       </div>
       <div class="resumen-aclaracion">
@@ -3402,8 +3454,9 @@ with st.expander("Ver qué información revisa la aplicación", expanded=False):
         - **Corredores de Almanaque Azul:** muestra categorías originales alta, mediana y media-baja, incluidos los tramos mesoamericanos oeste, San Lorenzo y este.
         - **Bosque y otros usos 2021 (opcional):** el recorte vectorial de SINIA–MiAMBIENTE permite calcular fragmentación, componentes de red y parches importantes como conectores.
 
-        Los corredores y la conectividad calculada son dimensiones contextuales independientes:
-        no alteran los pesos de las señales satelitales.
+        Los tres componentes se conectan en una recomendación operativa. Los corredores
+        aportan valor estratégico y la red de parches orienta el lugar de la revisión;
+        ninguno se confunde con evidencia satelital de pérdida.
         La configuración se mantiene igual entre análisis para que los resultados puedan compararse.
         Al finalizar podrá descargar el informe PDF y el registro metodológico JSON con las fuentes,
         períodos, umbrales, pesos y reglas utilizados.
@@ -4015,10 +4068,6 @@ try:
             resultados_nuevos["corredores"] = analizar_corredores_cache(
                 aoi_geojson_serializado
             )
-            resultados_nuevos["prioridad_visita"] = calcular_prioridad_visita(
-                puntaje_cambios=resultados_nuevos["puntaje"],
-                contexto_corredores=resultados_nuevos["corredores"],
-            )
             if datos_bosque is not None:
                 resultados_nuevos["fragmentacion"] = analizar_bosque_cache(
                     datos_bosque,
@@ -4034,6 +4083,11 @@ try:
                 resultados_nuevos["fragmentacion"][
                     "ano_referencia_cobertura"
                 ] = ANO_BOSQUE_REFERENCIA
+            resultados_nuevos["prioridad_visita"] = calcular_prioridad_visita(
+                puntaje_cambios=resultados_nuevos["puntaje"],
+                contexto_corredores=resultados_nuevos["corredores"],
+                contexto_fragmentacion=resultados_nuevos.get("fragmentacion"),
+            )
             st.session_state["resultados_analisis"] = resultados_nuevos
             st.session_state["firma_analisis"] = firma_analisis_actual
             if firma_anterior != firma_analisis_actual:
@@ -4474,7 +4528,7 @@ try:
 
     capas_corredores_mapa = agregar_capas_corredores(
         mapa,
-        mostrar=objetivo == "Evaluar conectividad ecológica y corredores",
+        mostrar=objetivo == "Diagnóstico territorial integrado",
     )
     capa_fragmentacion_mapa = None
     if st.session_state.get("firma_analisis") == firma_analisis_actual:
@@ -4573,7 +4627,8 @@ try:
             "Su orden se controla en el panel lateral; los límites permanecen arriba y se "
             "administran por separado en «Referencias». Los corredores se controlan en el "
             "grupo «Corredores ecológicos»: no modifican el índice satelital, pero sí "
-            "aportan al valor estratégico de la prioridad de visita."
+            "aportan al valor estratégico. La red de parches 2021 se controla en "
+            "«Conectividad calculada» y orienta dónde focalizar la visita."
         )
     st_folium(
         mapa,
@@ -4687,6 +4742,10 @@ try:
                    otros dentro del umbral elegido. El índice conector usa 40% grado,
                    30% intermediación, 20% área y 10% fuerza; sus categorías son relativas
                    al área evaluada y no deben confundirse con las de Almanaque Azul.
+                10. La estructura 2021 se conecta con el diagnóstico para indicar **dónde**
+                    focalizar la visita —conectores y componentes aislados—, pero no suma
+                    puntos hasta contar con umbrales calibrados para el territorio y las
+                    especies objetivo.
 
                 El NDVI se calcula como `(B8 - B4) / (B8 + B4)` y se utiliza únicamente
                 como apoyo visual. No modifica el índice de prioridad.
