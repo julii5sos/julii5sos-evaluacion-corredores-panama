@@ -1,8 +1,11 @@
-"""Fragmentacion y conectividad estructural desde un shapefile bosque/no bosque.
+"""Fragmentacion y conectividad estructural desde cobertura bosque/no bosque.
 
 La implementacion traslada a Python las decisiones principales de los scripts R
 aportados por la usuaria: parches como nodos, aristas por distancia y un indice
 compuesto de importancia como conector.
+
+La cobertura puede llegar desde un ZIP durante pruebas locales o, en produccion,
+como GeoJSON recortado desde un asset institucional de Earth Engine.
 """
 
 from __future__ import annotations
@@ -148,6 +151,222 @@ def _escala01(valores: dict[int, float]) -> dict[int, float]:
     return {
         clave: (valor - minimo) / (maximo - minimo)
         for clave, valor in valores.items()
+    }
+
+
+def _resultado_sin_parches(
+    *,
+    area_paisaje_ha: float,
+    umbral_m: float,
+    area_min_ha: float,
+    campo_clase: str | None,
+    valores_bosque: Iterable[Any],
+    origen_datos: str,
+) -> dict[str, Any]:
+    """Devuelve un resultado valido cuando el recorte no contiene bosque."""
+
+    return {
+        "metricas_clase": {
+            "numero_parches": 0,
+            "area_total_bosque_ha": 0.0,
+            "porcentaje_paisaje_bosque": 0.0,
+            "densidad_parches_por_100ha": 0.0,
+            "densidad_borde_m_ha": 0.0,
+            "indice_parche_mayor_pct": 0.0,
+            "area_media_parche_ha": 0.0,
+            "area_mediana_parche_ha": 0.0,
+            "desviacion_area_parche_ha": 0.0,
+            "indice_forma_medio": 0.0,
+        },
+        "metricas_red": {
+            "umbral_m": float(umbral_m),
+            "numero_nodos": 0,
+            "numero_aristas": 0,
+            "numero_componentes": 0,
+            "tamano_componente_mayor": 0,
+            "porcentaje_nodos_componente_mayor": 0.0,
+            "densidad_red": 0.0,
+            "red_totalmente_conectada": False,
+            "intermediacion_aproximada": False,
+        },
+        "top_conectores": [],
+        "parches_geojson": {"type": "FeatureCollection", "features": []},
+        "campo_clase": campo_clase,
+        "valores_bosque": sorted(str(valor) for valor in valores_bosque),
+        "area_min_ha": float(area_min_ha),
+        "area_paisaje_ha": round(float(area_paisaje_ha), 4),
+        "origen_datos": origen_datos,
+        "metodo": (
+            "Parches de bosque como nodos; aristas por distancia; indice conector "
+            "40% grado, 30% intermediacion, 20% area y 10% fuerza de conexion."
+        ),
+        "participa_indice_prioridad": False,
+    }
+
+
+def _calcular_metricas_parches(
+    *,
+    parches: list[Any],
+    deps: dict[str, Any],
+    area_paisaje_ha: float,
+    area_a_wgs,
+    umbral_m: float,
+    area_min_ha: float,
+    campo_clase: str | None,
+    valores_bosque: Iterable[Any],
+    origen_datos: str,
+) -> dict[str, Any]:
+    if not parches:
+        return _resultado_sin_parches(
+            area_paisaje_ha=area_paisaje_ha,
+            umbral_m=umbral_m,
+            area_min_ha=area_min_ha,
+            campo_clase=campo_clase,
+            valores_bosque=valores_bosque,
+            origen_datos=origen_datos,
+        )
+
+    nx = deps["nx"]
+    grafo = nx.Graph()
+    for indice, parche in enumerate(parches):
+        grafo.add_node(indice, area_ha=parche.area / 10_000)
+
+    arbol = deps["STRtree"](parches)
+    for i, parche in enumerate(parches):
+        candidatos = arbol.query(parche.buffer(umbral_m), predicate="intersects")
+        for candidato in candidatos:
+            j = int(candidato)
+            if j <= i:
+                continue
+            distancia = parche.distance(parches[j])
+            if distancia <= umbral_m:
+                costo = max(1.0, float(distancia))
+                peso = math.exp(-float(distancia) / umbral_m) if umbral_m else 1.0
+                grafo.add_edge(i, j, distancia_m=float(distancia), costo=costo, peso=peso)
+
+    grados = dict(grafo.degree())
+    fuerza = dict(grafo.degree(weight="peso"))
+    if grafo.number_of_nodes() > 400:
+        intermediacion = nx.betweenness_centrality(
+            grafo,
+            k=min(200, grafo.number_of_nodes()),
+            weight="costo",
+            normalized=True,
+            seed=123,
+        )
+        intermediacion_aproximada = True
+    else:
+        intermediacion = nx.betweenness_centrality(
+            grafo, weight="costo", normalized=True
+        )
+        intermediacion_aproximada = False
+    cercania = nx.closeness_centrality(grafo, distance="costo")
+    componentes = list(nx.connected_components(grafo))
+    componente_por_nodo = {
+        nodo: indice + 1
+        for indice, componente in enumerate(componentes)
+        for nodo in componente
+    }
+
+    areas = {indice: parche.area / 10_000 for indice, parche in enumerate(parches)}
+    grado_01 = _escala01({i: float(v) for i, v in grados.items()})
+    fuerza_01 = _escala01({i: float(v) for i, v in fuerza.items()})
+    intermediacion_01 = _escala01(intermediacion)
+    area_01 = _escala01(areas)
+    indices = {
+        i: 0.40 * grado_01[i]
+        + 0.30 * intermediacion_01[i]
+        + 0.20 * area_01[i]
+        + 0.10 * fuerza_01[i]
+        for i in range(len(parches))
+    }
+    q75 = _percentil(list(indices.values()), 0.75)
+    q50 = _percentil(list(indices.values()), 0.50)
+
+    features = []
+    nodos = []
+    for i, parche in enumerate(parches):
+        prioridad = "Alta" if indices[i] >= q75 else "Media" if indices[i] >= q50 else "Baja"
+        propiedades = {
+            "patch_id": i + 1,
+            "area_ha": round(areas[i], 4),
+            "grado": int(grados[i]),
+            "grado_ponderado": round(float(fuerza[i]), 6),
+            "intermediacion": round(float(intermediacion[i]), 6),
+            "cercania": round(float(cercania[i]), 6),
+            "componente": componente_por_nodo[i],
+            "indice_conector": round(indices[i], 6),
+            "prioridad_conectividad": prioridad,
+        }
+        nodos.append(propiedades)
+        geometria_wgs = deps["transform"](area_a_wgs.transform, parche)
+        features.append(
+            {
+                "type": "Feature",
+                "properties": propiedades,
+                "geometry": deps["mapping"](geometria_wgs),
+            }
+        )
+
+    total_bosque_ha = sum(areas.values())
+    perimetro_total_m = sum(parche.length for parche in parches)
+    valores_area = list(areas.values())
+    mayor_componente = max((len(componente) for componente in componentes), default=0)
+    metricas_clase = {
+        "numero_parches": len(parches),
+        "area_total_bosque_ha": round(total_bosque_ha, 4),
+        "porcentaje_paisaje_bosque": round(total_bosque_ha / area_paisaje_ha * 100, 4)
+        if area_paisaje_ha
+        else 0.0,
+        "densidad_parches_por_100ha": round(len(parches) / area_paisaje_ha * 100, 4)
+        if area_paisaje_ha
+        else 0.0,
+        "densidad_borde_m_ha": round(perimetro_total_m / area_paisaje_ha, 4)
+        if area_paisaje_ha
+        else 0.0,
+        "indice_parche_mayor_pct": round(max(valores_area) / area_paisaje_ha * 100, 4)
+        if area_paisaje_ha
+        else 0.0,
+        "area_media_parche_ha": round(mean(valores_area), 4),
+        "area_mediana_parche_ha": round(median(valores_area), 4),
+        "desviacion_area_parche_ha": round(pstdev(valores_area), 4),
+        "indice_forma_medio": round(
+            mean(
+                parche.length / (2 * math.sqrt(math.pi * parche.area))
+                for parche in parches
+            ),
+            4,
+        ),
+    }
+    metricas_red = {
+        "umbral_m": float(umbral_m),
+        "numero_nodos": grafo.number_of_nodes(),
+        "numero_aristas": grafo.number_of_edges(),
+        "numero_componentes": len(componentes),
+        "tamano_componente_mayor": mayor_componente,
+        "porcentaje_nodos_componente_mayor": round(
+            mayor_componente / grafo.number_of_nodes() * 100, 4
+        ),
+        "densidad_red": round(nx.density(grafo), 8),
+        "red_totalmente_conectada": nx.is_connected(grafo),
+        "intermediacion_aproximada": intermediacion_aproximada,
+    }
+    nodos.sort(key=lambda item: item["indice_conector"], reverse=True)
+    return {
+        "metricas_clase": metricas_clase,
+        "metricas_red": metricas_red,
+        "top_conectores": nodos[:20],
+        "parches_geojson": {"type": "FeatureCollection", "features": features},
+        "campo_clase": campo_clase,
+        "valores_bosque": sorted(str(valor) for valor in valores_bosque),
+        "area_min_ha": float(area_min_ha),
+        "area_paisaje_ha": round(float(area_paisaje_ha), 4),
+        "origen_datos": origen_datos,
+        "metodo": (
+            "Parches de bosque como nodos; aristas por distancia; indice conector "
+            "40% grado, 30% intermediacion, 20% area y 10% fuerza de conexion."
+        ),
+        "participa_indice_prioridad": False,
     }
 
 
@@ -347,8 +566,87 @@ def analizar_fragmentacion_conectividad(
     }
 
 
+def _geometrias_desde_geojson(contenido: dict[str, Any]) -> list[dict[str, Any]]:
+    tipo = contenido.get("type")
+    if tipo == "FeatureCollection":
+        return [
+            feature["geometry"]
+            for feature in contenido.get("features", [])
+            if feature.get("geometry")
+        ]
+    if tipo == "Feature":
+        return [contenido["geometry"]] if contenido.get("geometry") else []
+    if tipo in {"Polygon", "MultiPolygon", "GeometryCollection"}:
+        return [contenido]
+    raise ValueError("La cobertura de bosque no contiene un GeoJSON compatible.")
+
+
+def analizar_fragmentacion_geojson(
+    bosque_geojson: dict[str, Any],
+    aoi_geojson: dict[str, Any],
+    umbral_m: float = 500,
+    area_min_ha: float = 0,
+) -> dict[str, Any]:
+    """Analiza una cobertura preclasificada como bosque recibida desde Earth Engine.
+
+    Todas las geometrias del asset representan bosque; por eso el usuario final no
+    debe cargar archivos ni escoger un campo de clase.
+    """
+
+    deps = _dependencias()
+    crs_area = deps["CRS"].from_epsg(8857)
+    wgs_a_area = deps["Transformer"].from_crs(
+        "EPSG:4326", crs_area, always_xy=True
+    )
+    area_a_wgs = deps["Transformer"].from_crs(
+        crs_area, "EPSG:4326", always_xy=True
+    )
+
+    aoi = deps["shape"](
+        {"type": aoi_geojson["type"], "coordinates": aoi_geojson["coordinates"]}
+    )
+    if not aoi.is_valid:
+        aoi = deps["make_valid"](aoi)
+    aoi_m = deps["transform"](wgs_a_area.transform, aoi)
+    area_paisaje_ha = aoi_m.area / 10_000
+
+    parches = []
+    for geometria_geojson in _geometrias_desde_geojson(bosque_geojson):
+        try:
+            geometria = deps["shape"](geometria_geojson)
+        except (TypeError, ValueError):
+            continue
+        if geometria.is_empty:
+            continue
+        if not geometria.is_valid:
+            geometria = deps["make_valid"](geometria)
+        geometria_m = deps["transform"](wgs_a_area.transform, geometria)
+        if not geometria_m.intersects(aoi_m):
+            continue
+        recorte = deps["make_valid"](geometria_m.intersection(aoi_m))
+        for parte in _partes_poligonales(recorte, deps):
+            area_ha = parte.area / 10_000
+            if area_ha >= area_min_ha and area_ha > 0:
+                parches.append(parte)
+
+    return _calcular_metricas_parches(
+        parches=parches,
+        deps=deps,
+        area_paisaje_ha=area_paisaje_ha,
+        area_a_wgs=area_a_wgs,
+        umbral_m=umbral_m,
+        area_min_ha=area_min_ha,
+        campo_clase=None,
+        valores_bosque=("bosque preclasificado",),
+        origen_datos="asset_institucional_earth_engine",
+    )
+
+
 def agregar_resultados_fragmentacion(mapa, resultados: dict[str, Any]):
     import folium
+
+    if not resultados["parches_geojson"].get("features"):
+        return None
 
     colores = {"Alta": "#b42318", "Media": "#f79009", "Baja": "#157f3b"}
     grupo = folium.FeatureGroup(

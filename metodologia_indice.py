@@ -293,8 +293,8 @@ def evaluar_contexto_estructural(contexto_fragmentacion):
             "porcentaje_bosque": 0.0,
             "umbral_m": None,
             "interpretacion": (
-                "Cargue el recorte de Bosque y otros usos 2021 para incorporar "
-                "fragmentación y conectividad al diagnóstico territorial."
+                "La administración debe configurar el asset de Bosque y otros usos "
+                "2021 para incorporar fragmentación y conectividad al diagnóstico."
             ),
             "participa_puntaje": False,
             "limitacion": REGLAS_CONTEXTO_ESTRUCTURAL["limitacion"],
@@ -317,7 +317,14 @@ def evaluar_contexto_estructural(contexto_fragmentacion):
         ),
     )
 
-    if numero_parches <= 1:
+    if numero_parches == 0:
+        estado = "Sin bosque identificado"
+        requiere_focalizacion = True
+        interpretacion = (
+            "La cobertura institucional de 2021 no identifica parches de bosque "
+            "dentro del área evaluada. Conviene verificar el recorte y el estado en campo."
+        )
+    elif numero_parches == 1:
         estado = "Un solo parche"
         requiere_focalizacion = False
         interpretacion = (

@@ -4,7 +4,18 @@ Este historial documenta la evolución de la aplicación UX. Las versiones sigue
 el formato `MAJOR.MINOR.PATCH`: una versión principal, mejoras compatibles y
 correcciones compatibles, respectivamente.
 
-## [0.5.0] - 2026-09-08 — versión actual
+## [0.6.0] - 2026-09-08 — versión actual
+
+### Cobertura de bosque automática
+
+- Elimina el cargador de shapefiles de la interfaz pública.
+- Lee el recorte forestal 2021 desde un asset institucional privado de Earth Engine.
+- Recorta automáticamente la cobertura al área seleccionada antes de calcular fragmentación y conectividad.
+- Mantiene configurables únicamente la distancia entre parches y el área mínima, como opciones de análisis.
+- Distingue correctamente un recorte sin bosque de un paisaje formado por un solo parche.
+- Documenta el secreto `EE_ASSET_BOSQUE_2021` y el flujo de publicación administrado.
+
+## [0.5.0] - 2026-09-08
 
 ### Diagnóstico territorial integrado
 

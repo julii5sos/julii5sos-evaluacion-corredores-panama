@@ -251,7 +251,7 @@ de parches de la cobertura 2021.
 
 ## Fragmentación del bosque de referencia 2021
 
-La cobertura utilizada corresponde a un recorte de la capa **Bosque y otros usos**, referencia 2021, publicada por SINIA–MiAMBIENTE. El ZIP debe contener un único conjunto `.shp`, `.shx`, `.dbf` y `.prj`. La persona usuaria selecciona el campo y los valores que representan bosque. Las geometrías se transforman a EPSG:8857, se recortan al área evaluada, se validan y se separan en parches poligonales.
+La cobertura utilizada corresponde a un recorte de la capa **Bosque y otros usos**, referencia 2021, publicada por SINIA–MiAMBIENTE. La administración prepara una versión que contiene únicamente bosque y la publica una sola vez como asset privado de Earth Engine. La aplicación consulta esa fuente y la recorta automáticamente al área evaluada; la persona usuaria no carga archivos ni selecciona campos de clase. Las geometrías se transforman a EPSG:8857, se validan y se separan en parches poligonales.
 
 Esta capa representa la cobertura clasificada para 2021. Se utiliza para describir la fragmentación y conectividad estructural del bosque de ese año; por sí sola no permite determinar cuándo ocurrió un cambio ni debe interpretarse como una serie anual de deforestación.
 

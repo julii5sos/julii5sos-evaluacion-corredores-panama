@@ -33,8 +33,7 @@ from streamlit_folium import st_folium
 
 from bosque_conectividad import (
     agregar_resultados_fragmentacion,
-    analizar_fragmentacion_conectividad,
-    inspeccionar_shapefile,
+    analizar_fragmentacion_geojson,
 )
 from corredores import (
     FUENTE_CORTA as FUENTE_CORREDORES,
@@ -658,8 +657,8 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-0.5.0-DIAGNOSTICO-INTEGRADO"
-METHODOLOGY_VERSION = "MT-2026.7-DIAGNOSTICO-INTEGRADO"
+APP_VERSION = "UX-0.6.0-BOSQUE-AUTOMATICO"
+METHODOLOGY_VERSION = "MT-2026.8-BOSQUE-AUTOMATICO"
 PROYECTO_EE = secreto_opcional("EE_PROJECT", "ee-julissaguevaravega")
 FUENTE_BOSQUE_NOMBRE = "Bosque y otros usos"
 FUENTE_BOSQUE_ORGANIZACION = "SINIA–MiAMBIENTE"
@@ -674,6 +673,7 @@ ASSET_CUENCA = (
     "CuencasHidrograficadeInteres"
 )
 ASSET_FINCAS = secreto_opcional("EE_ASSET_FINCAS")
+ASSET_BOSQUE_2021 = secreto_opcional("EE_ASSET_BOSQUE_2021")
 ACCESO_FINCA_DURACION_SEG = 30 * 60
 ACCESO_FINCA_MAX_INTENTOS = 5
 ACCESO_FINCA_BLOQUEO_SEG = 60
@@ -1017,7 +1017,8 @@ def construir_registro_metodologico(
                 "nombre": FUENTE_BOSQUE_NOMBRE,
                 "organizacion": FUENTE_BOSQUE_ORGANIZACION,
                 "ano_referencia": ANO_BOSQUE_REFERENCIA,
-                "formato": "recorte vectorial aportado durante la sesion",
+                "formato": "asset vectorial institucional privado de Earth Engine",
+                "configurado": bool(ASSET_BOSQUE_2021),
                 "uso": (
                     "fragmentacion y conectividad estructural para focalizar "
                     "la visita; no participa en el puntaje ni constituye una serie anual"
@@ -1670,30 +1671,30 @@ def reducir_superficies(imagen, geometria, escala, proyeccion=None):
     return ee.Dictionary(imagen.reduceRegion(**parametros))
 
 
-@st.cache_data(show_spinner=False)
-def inspeccionar_shapefile_cache(datos_zip):
-    return inspeccionar_shapefile(datos_zip)
-
-
 @st.cache_data(ttl=3600, show_spinner=False)
 def analizar_corredores_cache(aoi_geojson_serializado):
     return analizar_interseccion_corredores(json.loads(aoi_geojson_serializado))
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
-def analizar_bosque_cache(
-    datos_zip,
-    campo_clase,
-    valores_bosque,
+def analizar_bosque_asset_cache(
+    asset_id,
     aoi_geojson_serializado,
     umbral_m,
     area_min_ha,
 ):
-    return analizar_fragmentacion_conectividad(
-        datos_zip=datos_zip,
-        campo_clase=campo_clase,
-        valores_bosque=valores_bosque,
-        aoi_geojson=json.loads(aoi_geojson_serializado),
+    aoi_geojson = json.loads(aoi_geojson_serializado)
+    aoi_ee = ee.Geometry(aoi_geojson)
+    bosque_en_area = ee.FeatureCollection(asset_id).filterBounds(aoi_ee)
+    if int(bosque_en_area.size().getInfo()) == 0:
+        geometria_bosque = {"type": "FeatureCollection", "features": []}
+    else:
+        geometria_bosque = (
+            bosque_en_area.geometry(1).intersection(aoi_ee, 1).getInfo()
+        )
+    return analizar_fragmentacion_geojson(
+        bosque_geojson=geometria_bosque,
+        aoi_geojson=aoi_geojson,
         umbral_m=umbral_m,
         area_min_ha=area_min_ha,
     )
@@ -3369,17 +3370,23 @@ def mostrar_resultados_fragmentacion(resultados):
             use_container_width=True,
         )
     with conectores:
-        st.dataframe(
-            resultados["top_conectores"],
-            hide_index=True,
-            use_container_width=True,
-            column_config={
-                "patch_id": "Parche",
-                "area_ha": st.column_config.NumberColumn("Área (ha)", format="%.2f"),
-                "indice_conector": st.column_config.NumberColumn("Índice conector", format="%.3f"),
-                "prioridad_conectividad": "Importancia",
-            },
-        )
+        if resultados["top_conectores"]:
+            st.dataframe(
+                resultados["top_conectores"],
+                hide_index=True,
+                use_container_width=True,
+                column_config={
+                    "patch_id": "Parche",
+                    "area_ha": st.column_config.NumberColumn("Área (ha)", format="%.2f"),
+                    "indice_conector": st.column_config.NumberColumn("Índice conector", format="%.3f"),
+                    "prioridad_conectividad": "Importancia",
+                },
+            )
+        else:
+            st.info(
+                "La cobertura institucional de 2021 no identifica parches de bosque "
+                "dentro del área seleccionada."
+            )
     st.caption(
         "La importancia Alta/Media/Baja se calcula dentro del área analizada mediante los "
         "cuantiles del índice conector; no corresponde a las categorías de Almanaque Azul "
@@ -3397,8 +3404,8 @@ st.markdown(
     <div class="cabecera-app">
       <h1>EVALUACIÓN TERRITORIAL Y CORREDORES</h1>
       <div class="subtitulo-app">Bosque, fragmentación y conectividad ecológica en Panamá</div>
-      <p>Integra evidencia satelital, los corredores interpretados por Almanaque Azul y,
-      opcionalmente, el recorte de Bosque y otros usos 2021 de SINIA–MiAMBIENTE para
+      <p>Integra evidencia satelital, los corredores interpretados por Almanaque Azul y
+      el recorte institucional de Bosque y otros usos 2021 de SINIA–MiAMBIENTE para
       definir la urgencia, el valor estratégico y el lugar donde conviene revisar.</p>
       <div class="alcance-app">Resultado indicativo · requiere interpretación documental y
       verificación de campo · no determina cumplimiento EUDR</div>
@@ -3452,7 +3459,7 @@ with st.expander("Ver qué información revisa la aplicación", expanded=False):
         - **Altura del dosel (GEDI):** aporta información sobre la estructura vertical de la vegetación.
         - **Vigor vegetal (NDVI de Sentinel-2):** permite observar qué tan activa o densa parece la vegetación; se usa como apoyo visual y no aumenta la prioridad.
         - **Corredores de Almanaque Azul:** muestra categorías originales alta, mediana y media-baja, incluidos los tramos mesoamericanos oeste, San Lorenzo y este.
-        - **Bosque y otros usos 2021 (opcional):** el recorte vectorial de SINIA–MiAMBIENTE permite calcular fragmentación, componentes de red y parches importantes como conectores.
+        - **Bosque y otros usos 2021:** el recorte institucional de SINIA–MiAMBIENTE se carga automáticamente y permite calcular fragmentación, componentes de red y parches importantes como conectores.
 
         Los tres componentes se conectan en una recomendación operativa. Los corredores
         aportan valor estratégico y la red de parches orienta el lugar de la revisión;
@@ -3621,93 +3628,48 @@ try:
                 "Una parte del polígono estaba fuera de la cuenca y fue excluida del análisis."
             )
 
-    datos_bosque = None
-    campo_bosque = None
-    valores_bosque = ()
+    bosque_automatico_disponible = bool(ASSET_BOSQUE_2021)
     umbral_conectividad_m = 500
     area_min_parche_ha = 0.0
-    huella_bosque = "sin-shapefile"
+    huella_bosque = (
+        hashlib.sha256(ASSET_BOSQUE_2021.encode("utf-8")).hexdigest()[:16]
+        if bosque_automatico_disponible
+        else "sin-asset-bosque"
+    )
     catalogo_corredores = cargar_catalogo_corredores()
 
     st.sidebar.markdown("---")
-    st.sidebar.caption(f"Paso 2 de 3 · Cobertura de {ANO_BOSQUE_REFERENCIA} (opcional)")
+    st.sidebar.caption(f"Paso 2 de 3 · Cobertura institucional de {ANO_BOSQUE_REFERENCIA}")
     st.sidebar.caption(
         f"Corredores públicos listos: {catalogo_corredores['corredores_poligonos']} "
         f"polígonos y {catalogo_corredores['puntos_criticos']} puntos críticos."
     )
-    with st.sidebar.expander("Cargar shapefile y configurar la red", expanded=False):
-        archivo_bosque = st.file_uploader(
-            f"Recorte de Bosque y otros usos {ANO_BOSQUE_REFERENCIA} (.zip)",
-            type=["zip"],
-            help=(
-                "Incluya un único conjunto .shp, .shx, .dbf y .prj. El archivo se "
-                "procesa temporalmente y no se publica en el repositorio. Fuente: "
-                f"{FUENTE_BOSQUE_CORTA}."
-            ),
+    with st.sidebar.expander("Cobertura de bosque y opciones de red", expanded=False):
+        if bosque_automatico_disponible:
+            st.success(
+                "Cobertura lista. La aplicación la recortará automáticamente al área elegida."
+            )
+        else:
+            st.warning(
+                "La cobertura institucional todavía no fue configurada por la administración. "
+                "El resto del diagnóstico puede ejecutarse, pero no mostrará la red de parches."
+            )
+        st.caption(
+            f"Fuente: {FUENTE_BOSQUE_CORTA}. La persona usuaria no necesita cargar archivos."
         )
-        if archivo_bosque is not None:
-            datos_candidatos = archivo_bosque.getvalue()
-            try:
-                inspeccion_bosque = inspeccionar_shapefile_cache(datos_candidatos)
-                st.caption(
-                    f"{inspeccion_bosque['numero_features']:,} elementos · "
-                    f"{len(inspeccion_bosque['campos'])} campos"
-                )
-                if not inspeccion_bosque["tiene_prj"]:
-                    st.error("Falta el archivo .prj; no es seguro asumir el sistema de coordenadas.")
-                else:
-                    campos = inspeccion_bosque["campos"]
-                    campo_preferido = next(
-                        (
-                            indice
-                            for indice, campo in enumerate(campos)
-                            if any(
-                                termino in campo.lower()
-                                for termino in ("bosq", "clase", "cobert", "class")
-                            )
-                        ),
-                        0,
-                    )
-                    campo_bosque = st.selectbox(
-                        "Campo que distingue bosque de otros usos",
-                        campos,
-                        index=campo_preferido,
-                    )
-                    opciones_valores = inspeccion_bosque["valores"][campo_bosque]
-                    sugeridos = [
-                        valor
-                        for valor in opciones_valores
-                        if str(valor).strip().lower()
-                        in {"bosque", "forest", "1", "b", "bosque natural"}
-                    ]
-                    valores_bosque = tuple(
-                        st.multiselect(
-                            "Valor o valores que significan bosque",
-                            opciones_valores,
-                            default=sugeridos,
-                            help="Solo estos valores se convertirán en parches de bosque.",
-                        )
-                    )
-                    umbral_conectividad_m = st.select_slider(
-                        "Distancia máxima entre parches",
-                        options=[100, 250, 500, 1000, 1500, 3000, 6000],
-                        value=500,
-                        format_func=lambda valor: f"{valor:,} m",
-                    )
-                    area_min_parche_ha = st.number_input(
-                        "Área mínima de parche (ha)",
-                        min_value=0.0,
-                        value=0.0,
-                        step=0.1,
-                        help="Aumente este valor si el archivo contiene miles de fragmentos pequeños.",
-                    )
-                    if valores_bosque:
-                        datos_bosque = datos_candidatos
-                        huella_bosque = hashlib.sha256(datos_bosque).hexdigest()[:16]
-                    else:
-                        st.warning("Seleccione al menos un valor que represente bosque.")
-            except Exception as error:
-                st.error(f"No fue posible leer el shapefile: {error}")
+        umbral_conectividad_m = st.select_slider(
+            "Distancia máxima entre parches",
+            options=[100, 250, 500, 1000, 1500, 3000, 6000],
+            value=500,
+            format_func=lambda valor: f"{valor:,} m",
+        )
+        area_min_parche_ha = st.number_input(
+            "Área mínima de parche (ha)",
+            min_value=0.0,
+            value=0.0,
+            step=0.1,
+            help="Permite excluir fragmentos demasiado pequeños del análisis estructural.",
+        )
 
     st.sidebar.markdown("---")
     st.sidebar.caption("Paso 3 de 3 · Elija cómo explorar el mapa")
@@ -3943,8 +3905,6 @@ try:
         geometria_dibujada_json,
         catalogo_corredores["version_publicada"],
         huella_bosque,
-        campo_bosque,
-        tuple(str(valor) for valor in valores_bosque),
         umbral_conectividad_m,
         area_min_parche_ha,
     )
@@ -3978,7 +3938,7 @@ try:
           <div class="contexto-item"><small>Modo de mapa</small><strong>{html_lib.escape(modo_mapa)}</strong></div>
           <div class="contexto-item"><small>Vista</small><strong>{html_lib.escape(objetivo)}</strong></div>
           <div class="contexto-item"><small>Corredores</small><strong>Almanaque Azul {catalogo_corredores['version_publicada']}</strong></div>
-          <div class="contexto-item"><small>Bosque y otros usos {ANO_BOSQUE_REFERENCIA}</small><strong>{'Archivo listo' if datos_bosque is not None else 'No aportado'}</strong></div>
+          <div class="contexto-item"><small>Bosque y otros usos {ANO_BOSQUE_REFERENCIA}</small><strong>{'Disponible automáticamente' if bosque_automatico_disponible else 'Pendiente de configuración'}</strong></div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -4068,21 +4028,22 @@ try:
             resultados_nuevos["corredores"] = analizar_corredores_cache(
                 aoi_geojson_serializado
             )
-            if datos_bosque is not None:
-                resultados_nuevos["fragmentacion"] = analizar_bosque_cache(
-                    datos_bosque,
-                    campo_bosque,
-                    tuple(valores_bosque),
-                    aoi_geojson_serializado,
-                    umbral_conectividad_m,
-                    area_min_parche_ha,
-                )
-                resultados_nuevos["fragmentacion"][
-                    "fuente_cobertura"
-                ] = FUENTE_BOSQUE_CORTA
-                resultados_nuevos["fragmentacion"][
-                    "ano_referencia_cobertura"
-                ] = ANO_BOSQUE_REFERENCIA
+            if bosque_automatico_disponible:
+                try:
+                    resultados_nuevos["fragmentacion"] = analizar_bosque_asset_cache(
+                        ASSET_BOSQUE_2021,
+                        aoi_geojson_serializado,
+                        umbral_conectividad_m,
+                        area_min_parche_ha,
+                    )
+                    resultados_nuevos["fragmentacion"][
+                        "fuente_cobertura"
+                    ] = FUENTE_BOSQUE_CORTA
+                    resultados_nuevos["fragmentacion"][
+                        "ano_referencia_cobertura"
+                    ] = ANO_BOSQUE_REFERENCIA
+                except Exception as error:
+                    resultados_nuevos["fragmentacion_error"] = str(error)
             resultados_nuevos["prioridad_visita"] = calcular_prioridad_visita(
                 puntaje_cambios=resultados_nuevos["puntaje"],
                 contexto_corredores=resultados_nuevos["corredores"],
@@ -4115,6 +4076,12 @@ try:
         mostrar_resultados_corredores(resultados["corredores"])
         if resultados.get("fragmentacion"):
             mostrar_resultados_fragmentacion(resultados["fragmentacion"])
+        elif resultados.get("fragmentacion_error"):
+            st.warning(
+                "La cobertura institucional de bosque no pudo incorporarse en esta ejecución. "
+                "La administración debe revisar el secreto EE_ASSET_BOSQUE_2021 y el permiso "
+                f"de lectura del asset. Detalle técnico: {resultados['fragmentacion_error']}"
+            )
         registro_resultados = construir_registro_metodologico(
             tipo_area=tipo_area,
             finca_id=finca_seleccionada,
@@ -4643,7 +4610,7 @@ try:
             f"{'-'.join(orden_capas_mapa)}-"
             f"{capa_visible_inicial}-"
             f"{catalogo_corredores['version_publicada']}-{huella_bosque}-"
-            f"{campo_bosque}-{umbral_conectividad_m}-{area_min_parche_ha}-"
+            f"{umbral_conectividad_m}-{area_min_parche_ha}-"
             f"{hash(geometria_dibujada_json or '')}"
         ),
     )
@@ -4695,7 +4662,7 @@ try:
                 | GEDI / OpenForis | Producto disponible | 100 m | Altura y cobertura válida del dosel |
                 | Sentinel-2 SR Harmonized | {periodo_ndvi_visual} | 10 m | Vigor vegetal; apoyo visual |
                 | Almanaque Azul | {catalogo_corredores['version_publicada']} | Vector interpretado | Valor estratégico para planificar visitas |
-                | SINIA–MiAMBIENTE · Bosque y otros usos | {ANO_BOSQUE_REFERENCIA if datos_bosque is not None else 'No aportado'} | Vector original | Fragmentación y red de parches; contexto |
+                | SINIA–MiAMBIENTE · Bosque y otros usos | {ANO_BOSQUE_REFERENCIA if bosque_automatico_disponible else 'Pendiente de configuración'} | Vector institucional en Earth Engine | Fragmentación y red de parches; contexto |
                 """
             )
             st.markdown(
@@ -4737,8 +4704,8 @@ try:
                    alcanzar 25% del área** y el Corredor Biológico Mesoamericano aporta **0.5**.
                 8. El corredor por sí solo nunca genera una prioridad alta: sin señales de
                    cambio, el resultado integrado queda limitado a **preventiva**.
-                9. Cuando se aporta el recorte de **Bosque y otros usos 2021** de
-                   SINIA–MiAMBIENTE, cada parche de bosque es un nodo y se conecta con
+                9. El recorte institucional de **Bosque y otros usos 2021** de
+                   SINIA–MiAMBIENTE se carga automáticamente. Cada parche de bosque es un nodo y se conecta con
                    otros dentro del umbral elegido. El índice conector usa 40% grado,
                    30% intermediación, 20% área y 10% fuerza; sus categorías son relativas
                    al área evaluada y no deben confundirse con las de Almanaque Azul.
@@ -4819,7 +4786,7 @@ try:
                 - Los corredores publicados representan conectividad estructural a escala de paisaje;
                   no garantizan movimiento efectivo de una especie concreta.
                 - La cobertura SINIA–MiAMBIENTE representa bosque y otros usos en 2021; no indica por sí sola el año de una pérdida.
-                - La calidad del análisis de fragmentación depende de la escala, topología y clasificación del recorte aportado.
+                - La calidad del análisis de fragmentación depende de la escala, topología y clasificación del asset institucional configurado.
 
                 **Esta herramienta orienta revisiones. No es una certificación, una validación de
                 campo ni una determinación de cumplimiento EUDR.**
