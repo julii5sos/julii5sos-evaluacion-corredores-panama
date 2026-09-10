@@ -198,6 +198,18 @@ class IndicePrioridadTest(unittest.TestCase):
         self.assertTrue(estructura["requiere_focalizacion"])
         self.assertEqual(estructura["umbral_m"], 250.0)
 
+    def test_sin_bosque_identificado_no_se_confunde_con_un_parche(self):
+        estructura = evaluar_contexto_estructural(
+            self.contexto_fragmentacion(
+                parches=0,
+                componentes=0,
+                porcentaje_mayor=0.0,
+                porcentaje_bosque=0.0,
+            )
+        )
+        self.assertEqual(estructura["estado"], "Sin bosque identificado")
+        self.assertTrue(estructura["requiere_focalizacion"])
+
     def test_un_componente_se_interpreta_como_conectado_al_umbral(self):
         estructura = evaluar_contexto_estructural(
             self.contexto_fragmentacion(componentes=1, porcentaje_mayor=100.0)

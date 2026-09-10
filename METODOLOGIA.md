@@ -251,7 +251,7 @@ de parches de la cobertura 2021.
 
 ## Fragmentación del bosque de referencia 2021
 
-La cobertura utilizada corresponde a un recorte de la capa **Bosque y otros usos**, referencia 2021, publicada por SINIA–MiAMBIENTE. El ZIP debe contener un único conjunto `.shp`, `.shx`, `.dbf` y `.prj`. La persona usuaria selecciona el campo y los valores que representan bosque. Las geometrías se transforman a EPSG:8857, se recortan al área evaluada, se validan y se separan en parches poligonales.
+La cobertura utilizada corresponde a la capa **Bosque y otros usos**, referencia 2021, publicada por SINIA–MiAMBIENTE. La administración publica el shapefile nacional una sola vez como asset privado de Earth Engine. La aplicación filtra internamente el campo `Categoria` por el valor `Bosques y Otras Tierras Boscosas` y recorta el resultado al área evaluada; la persona usuaria no carga archivos ni selecciona campos de clase. Las geometrías se transforman a EPSG:8857, se validan y se separan en parches poligonales.
 
 Esta capa representa la cobertura clasificada para 2021. Se utiliza para describir la fragmentación y conectividad estructural del bosque de ese año; por sí sola no permite determinar cuándo ocurrió un cambio ni debe interpretarse como una serie anual de deforestación.
 
@@ -268,6 +268,18 @@ Las métricas de clase son:
 ## Red de conectividad estructural
 
 Cada parche es un nodo. Dos nodos se conectan cuando la distancia mínima entre sus polígonos es menor o igual al umbral seleccionado. Para una distancia `d` y umbral `u`, la fuerza de la arista es `exp(-d/u)` y el costo mínimo utilizado es 1 m.
+
+El mapa representa estas aristas con líneas azules esquemáticas entre los parches y
+muestra en cada línea la distancia mínima realmente calculada entre sus polígonos.
+Un parche con grado cero se considera aislado al umbral elegido. Para ayudar a
+planificar la inspección, la aplicación puede dibujar una línea discontinua desde
+cada parche aislado hacia el parche más cercano dentro del área analizada. Esa línea
+es una **brecha potencial para revisión**: no es un corredor confirmado, una ruta de
+menor costo ni evidencia de movimiento de fauna.
+
+Además de nodos, aristas, componentes y densidad de red, el resultado informa el
+número y porcentaje de parches aislados, el número de parches conectados, la distancia
+media y máxima de las conexiones y el número de brechas potenciales representadas.
 
 El índice conector por parche reproduce los pesos de los ejercicios R:
 

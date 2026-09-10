@@ -15,4 +15,4 @@ El raster continuo de conectividad de 6 km no se redistribuye en este repositori
 
 ## Cobertura bosque/no bosque
 
-El repositorio no incluye el shapefile nacional de bosque/no bosque aportado por la usuaria. Se carga como ZIP desde la interfaz y se procesa temporalmente durante la sesión. Debe contener un único conjunto `.shp`, `.shx`, `.dbf` y `.prj` con el mismo nombre.
+La cobertura utilizada corresponde a la capa **Bosque y otros usos**, referencia 2021, publicada por SINIA–MiAMBIENTE. El repositorio no incluye el shapefile nacional `CBOTB_2021_25k`: la administración lo publica una sola vez como asset privado de Earth Engine. La aplicación selecciona automáticamente `Categoria = Bosques y Otras Tierras Boscosas` y recorta esos polígonos al área evaluada.
