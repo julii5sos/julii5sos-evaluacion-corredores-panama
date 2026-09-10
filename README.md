@@ -34,7 +34,7 @@ conectores, separaciones y componentes aislados.
 ## Flujo de uso
 
 1. Seleccione una finca, dibuje un polígono o use toda la cuenca configurada.
-2. La aplicación recorta automáticamente la cobertura institucional de bosque 2021 al área elegida.
+2. La aplicación conserva el área elegida para el mapa y las hectáreas, pero revisa también un entorno exterior igual a la distancia de conectividad para evitar falsos aislamientos.
 3. Si lo necesita, ajuste la distancia máxima entre parches y el área mínima de parche.
 4. Elija **Diagnóstico territorial integrado** o cualquiera de las vistas satelitales.
 5. Ejecute el análisis y revise sus cuatro lecturas: urgencia por cambios, valor del
@@ -100,7 +100,7 @@ Esta tarea corresponde a la administración, no a las personas que consultan la 
 4. Verifique que la cuenta de servicio de Streamlit pueda leer el asset.
 5. Copie la ruta completa en el secreto `EE_ASSET_BOSQUE_2021` y reinicie la aplicación.
 
-Desde ese momento, cada área seleccionada usa la misma fuente: la aplicación filtra internamente `Categoria = Bosques y Otras Tierras Boscosas`, recorta el resultado al área activa y calcula los parches sin mostrar un cargador ni un selector de clases.
+Desde ese momento, cada área seleccionada usa la misma fuente: la aplicación filtra internamente `Categoria = Bosques y Otras Tierras Boscosas`, conserva el recorte del área activa para el mapa y las hectáreas, y usa un buffer exterior igual al umbral únicamente para calcular la conectividad. No muestra un cargador ni un selector de clases.
 
 ## Estructura principal
 
@@ -120,4 +120,4 @@ python -m unittest discover -v
 
 ## Rendimiento y límites prácticos
 
-El asset se recorta primero en Earth Engine y el resultado del área activa se procesa en memoria. Para áreas con miles de fragmentos, aumente el área mínima de parche. A partir de 400 nodos, la intermediación se aproxima con una muestra reproducible para evitar bloquear la aplicación.
+El asset se recorta primero en Earth Engine usando el área activa más su buffer de contexto. El resultado se procesa en memoria, pero solo las porciones interiores se publican en el mapa y en las métricas de superficie. Para áreas con miles de fragmentos, aumente el área mínima de parche. A partir de 400 nodos, la intermediación se aproxima con una muestra reproducible para evitar bloquear la aplicación.

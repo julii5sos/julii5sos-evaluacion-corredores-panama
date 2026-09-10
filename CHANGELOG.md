@@ -4,7 +4,17 @@ Este historial documenta la evolución de la aplicación UX. Las versiones sigue
 el formato `MAJOR.MINOR.PATCH`: una versión principal, mejoras compatibles y
 correcciones compatibles, respectivamente.
 
-## [0.7.0] - 2026-09-10 — versión actual
+## [0.7.1] - 2026-09-10 — versión actual
+
+### Contexto exterior sin ampliar el mapa ni las hectáreas
+
+- Evalúa la conectividad con un entorno exterior igual a la distancia seleccionada.
+- Mantiene las geometrías visibles y las hectáreas reportadas dentro del polígono original.
+- Evita clasificar como separado un fragmento que continúa o se conecta con bosque exterior.
+- Indica en cada fragmento si existe continuidad o una conexión fuera del área.
+- La capa opcional resalta los fragmentos realmente separados y muestra su distancia al vecino.
+
+## [0.7.0] - 2026-09-10
 
 ### Lectura guiada y mapa sin ruido visual
 

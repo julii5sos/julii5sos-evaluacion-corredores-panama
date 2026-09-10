@@ -149,6 +149,7 @@ class BosqueConectividadTests(unittest.TestCase):
         self.assertFalse(
             visibilidad["Relaciones cercanas entre fragmentos · opcional"]
         )
+        self.assertFalse(visibilidad["Fragmentos separados · resaltar"])
         self.assertFalse(visibilidad["Separaciones potenciales · revisar"])
 
         capas_activadas = agregar_resultados_fragmentacion(
@@ -158,6 +159,22 @@ class BosqueConectividadTests(unittest.TestCase):
             mostrar_brechas=True,
         )
         self.assertTrue(all(capa.show for capa in capas_activadas))
+
+        capas_solo_separados = agregar_resultados_fragmentacion(
+            folium.Map(),
+            resultado,
+            mostrar_parches=False,
+            mostrar_brechas=True,
+        )
+        visibilidad_separados = {
+            capa.layer_name: capa.show for capa in capas_solo_separados
+        }
+        self.assertFalse(
+            visibilidad_separados["Bosque 2021 · fragmentos e importancia"]
+        )
+        self.assertTrue(
+            visibilidad_separados["Fragmentos separados · resaltar"]
+        )
 
     def test_asset_sin_bosque_devuelve_ceros(self):
         resultado = analizar_fragmentacion_geojson(
@@ -169,6 +186,64 @@ class BosqueConectividadTests(unittest.TestCase):
         self.assertEqual(resultado["metricas_red"]["numero_nodos"], 0)
         self.assertEqual(resultado["conexiones_geojson"]["features"], [])
         self.assertEqual(resultado["conexiones_potenciales_geojson"]["features"], [])
+
+    def test_resultado_considera_bosque_exterior_sin_dibujarlo(self):
+        def poligono(oeste, sur, este, norte):
+            return {
+                "type": "Feature",
+                "properties": {},
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [[
+                        [oeste, sur],
+                        [oeste, norte],
+                        [este, norte],
+                        [este, sur],
+                        [oeste, sur],
+                    ]],
+                },
+            }
+
+        bosque = {
+            "type": "FeatureCollection",
+            "features": [
+                poligono(-80.0000, 8.0000, -79.9990, 8.0010),
+                poligono(-79.9970, 8.0000, -79.9960, 8.0010),
+            ],
+        }
+        area = {
+            "type": "Polygon",
+            "coordinates": [[
+                [-80.0002, 7.9998],
+                [-80.0002, 8.0012],
+                [-79.9988, 8.0012],
+                [-79.9988, 7.9998],
+                [-80.0002, 7.9998],
+            ]],
+        }
+
+        resultado = analizar_fragmentacion_geojson(
+            bosque_geojson=bosque,
+            aoi_geojson=area,
+            umbral_m=500,
+            incluir_contexto_exterior=True,
+        )
+
+        self.assertTrue(resultado["considera_contexto_exterior"])
+        self.assertEqual(resultado["metricas_red"]["numero_nodos"], 1)
+        self.assertEqual(resultado["metricas_red"]["numero_parches_contexto"], 2)
+        self.assertEqual(resultado["metricas_red"]["numero_parches_aislados"], 0)
+        self.assertEqual(
+            resultado["metricas_red"]["numero_conexiones_fuera_area"], 1
+        )
+        self.assertEqual(len(resultado["parches_geojson"]["features"]), 1)
+        self.assertEqual(resultado["conexiones_geojson"]["features"], [])
+        self.assertEqual(
+            resultado["parches_geojson"]["features"][0]["properties"][
+                "continua_fuera_area"
+            ],
+            "Sí",
+        )
 
 
 if __name__ == "__main__":

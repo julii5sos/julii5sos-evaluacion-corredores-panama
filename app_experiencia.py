@@ -674,8 +674,8 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-0.7.0-LECTURA-GUIADA"
-METHODOLOGY_VERSION = "MT-2026.9-RED-CONECTIVIDAD"
+APP_VERSION = "UX-0.7.1-CONTEXTO-EXTERIOR"
+METHODOLOGY_VERSION = "MT-2026.10-CONTEXTO-EXTERIOR"
 PROYECTO_EE = secreto_opcional("EE_PROJECT", "ee-julissaguevaravega")
 FUENTE_BOSQUE_NOMBRE = "Bosque y otros usos"
 FUENTE_BOSQUE_ORGANIZACION = "SINIA–MiAMBIENTE"
@@ -867,8 +867,13 @@ LEYENDAS = {
     ],
     "Separaciones potenciales": [
         (
+            "#f6c7b8",
+            "Fragmento separado",
+            "No tiene otro fragmento dentro de la distancia elegida, incluso al considerar el entorno exterior",
+        ),
+        (
             "#7c2d12",
-            "Separación para revisar",
+            "Distancia al vecino más próximo",
             "Línea discontinua desde un fragmento separado hacia su vecino más próximo; no confirma un corredor",
         ),
     ],
@@ -1732,22 +1737,24 @@ def analizar_bosque_asset_cache(
 ):
     aoi_geojson = json.loads(aoi_geojson_serializado)
     aoi_ee = ee.Geometry(aoi_geojson)
-    bosque_en_area = (
+    contexto_ee = aoi_ee.buffer(float(umbral_m))
+    bosque_en_contexto = (
         ee.FeatureCollection(asset_id)
         .filter(ee.Filter.eq(campo_clase, valor_bosque))
-        .filterBounds(aoi_ee)
+        .filterBounds(contexto_ee)
     )
-    if int(bosque_en_area.size().getInfo()) == 0:
+    if int(bosque_en_contexto.size().getInfo()) == 0:
         geometria_bosque = {"type": "FeatureCollection", "features": []}
     else:
         geometria_bosque = (
-            bosque_en_area.geometry(1).intersection(aoi_ee, 1).getInfo()
+            bosque_en_contexto.geometry(1).intersection(contexto_ee, 1).getInfo()
         )
     return analizar_fragmentacion_geojson(
         bosque_geojson=geometria_bosque,
         aoi_geojson=aoi_geojson,
         umbral_m=umbral_m,
         area_min_ha=area_min_ha,
+        incluir_contexto_exterior=True,
     )
 
 
@@ -3402,6 +3409,9 @@ def mostrar_resultados_fragmentacion(resultados):
     numero_parches = int(clase["numero_parches"])
     numero_conectados = int(red.get("numero_parches_conectados", 0))
     numero_aislados = int(red.get("numero_parches_aislados", 0))
+    numero_continuidad_exterior = int(
+        red.get("numero_parches_continuidad_exterior", 0)
+    )
 
     col_bosque, col_fragmentos, col_separados, col_mayor = st.columns(4)
     col_bosque.metric("Bosque identificado", f"{clase['area_total_bosque_ha']:,.2f} ha")
@@ -3413,7 +3423,10 @@ def mostrar_resultados_fragmentacion(resultados):
     col_separados.metric(
         "Fragmentos separados",
         f"{numero_aislados:,}",
-        help=f"No tienen otro fragmento a {red['umbral_m']:.0f} m o menos.",
+        help=(
+            f"No tienen otro fragmento a {red['umbral_m']:.0f} m o menos, "
+            "considerando también el bosque del entorno exterior."
+        ),
     )
     col_mayor.metric(
         "Área ocupada por el fragmento mayor",
@@ -3436,6 +3449,8 @@ def mostrar_resultados_fragmentacion(resultados):
             f"Se identificaron {numero_parches:,} fragmentos de bosque. Con la distancia "
             f"de referencia de {red['umbral_m']:.0f} m, {numero_conectados:,} están cerca "
             f"de al menos otro fragmento y {numero_aislados:,} aparecen separados. "
+            f"En {numero_continuidad_exterior:,} fragmentos se detectó continuidad o una "
+            "conexión con bosque exterior. "
             "Esta es una relación espacial; no demuestra por sí sola el movimiento de fauna."
         )
 
@@ -3453,7 +3468,11 @@ def mostrar_resultados_fragmentacion(resultados):
             f"""
             - **Fragmento de bosque:** superficie continua de bosque dentro del área elegida.
             - **Fragmentos cercanos:** sus bordes están separados por {red['umbral_m']:.0f} m o menos.
-            - **Fragmento separado:** no tiene otro fragmento dentro de esa distancia.
+            - **Fragmento separado:** no tiene otro fragmento dentro de esa distancia,
+              ni dentro ni en el entorno exterior evaluado.
+            - **Contexto exterior:** se revisa un borde de {red['umbral_m']:.0f} m alrededor
+              del polígono para evitar falsos aislamientos. Ese bosque participa en el cálculo,
+              pero no se dibuja ni se suma a las hectáreas reportadas.
 
             Las líneas son una ayuda de lectura geométrica. No son caminos de animales ni
             corredores ecológicos confirmados.
@@ -3474,6 +3493,7 @@ def mostrar_resultados_fragmentacion(resultados):
             [
                 {"Métrica": "Fragmentos cercanos a otro", "Valor": f"{numero_conectados:,}"},
                 {"Métrica": "Fragmentos separados", "Valor": f"{numero_aislados:,}"},
+                {"Métrica": "Fragmentos con continuidad o conexión exterior", "Valor": f"{numero_continuidad_exterior:,}"},
                 {"Métrica": "Grupos de fragmentos", "Valor": f"{red['numero_componentes']:,}"},
                 {"Métrica": "Relaciones de cercanía calculadas", "Valor": f"{red['numero_aristas']:,}"},
                 {"Métrica": "Separación media", "Valor": f"{red.get('distancia_media_conexiones_m', 0):,.1f} m"},
@@ -4023,11 +4043,12 @@ try:
             ),
         )
         mostrar_brechas_bosque = st.sidebar.checkbox(
-            "Separaciones potenciales para revisar",
+            "Fragmentos separados y distancia al vecino",
             value=False,
             help=(
-                "Capa técnica opcional. Señala desde un fragmento separado hacia su vecino "
-                "más próximo; no representa un corredor confirmado."
+                "Resalta los fragmentos sin otro bosque dentro de la distancia elegida y, "
+                "cuando existe un vecino, dibuja una línea discontinua hacia él. El cálculo "
+                "también considera el bosque exterior, aunque no lo muestra."
             ),
         )
 
@@ -4825,6 +4846,26 @@ try:
             ),
         )
 
+    fragmentacion_actual = st.session_state.get("resultados_analisis", {}).get(
+        "fragmentacion"
+    )
+    if (
+        mostrar_brechas_bosque
+        and analisis_actual
+        and fragmentacion_actual
+        and int(
+            fragmentacion_actual.get("metricas_red", {}).get(
+                "numero_parches_aislados", 0
+            )
+        )
+        == 0
+    ):
+        mapa_resultados_contenedor.info(
+            f"No se encontraron fragmentos separados con la distancia de "
+            f"{umbral_conectividad_m:,.0f} m. El cálculo también revisó el bosque "
+            "del entorno exterior, aunque ese contexto no se dibuja en el mapa."
+        )
+
     with mapa_resultados_contenedor.expander(
         "Leyenda y significado de los colores",
         expanded=False,
@@ -4853,7 +4894,7 @@ try:
         if capas_fragmentacion_mapa and mostrar_brechas_bosque:
             leyendas_activas.append(
                 (
-                    "Separaciones potenciales",
+                    "Fragmentos separados y distancia al vecino",
                     LEYENDAS["Separaciones potenciales"],
                 )
             )
