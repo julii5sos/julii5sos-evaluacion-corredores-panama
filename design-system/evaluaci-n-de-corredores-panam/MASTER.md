@@ -42,12 +42,15 @@ Los colores originales de Almanaque Azul (`#345a01`, `#a1d303`, `#e0c504`) solo 
 - Botón secundario: superficie blanca, borde `#00544d` y texto del mismo color.
 - Resultados: métricas en cuadrícula adaptable; tablas con encabezados explícitos.
 - Mapas: grupos independientes para capas temáticas, corredores externos, parches calculados y referencias.
+- Los controles de capas y las leyendas se mantienen fuera del mapa para no cubrir la evidencia espacial.
 - Alertas metodológicas: borde izquierdo de 4–5 px y texto que explique qué participa o no en el índice.
 
 ## Reglas de interacción
 
 - La cobertura institucional se configura una sola vez mediante un asset privado; la interfaz pública no solicita shapefiles.
 - La conectividad se presenta con parches, conexiones y brechas potenciales en capas independientes. Las brechas inician apagadas para reducir el ruido visual.
+- La lectura principal usa «fragmentos cercanos o separados»; nodo, arista, componente y densidad quedan reservados para el detalle técnico opcional.
+- Los fragmentos se muestran por defecto; las líneas de proximidad y separación requieren activación explícita.
 - Los errores aparecen junto al archivo o campo que los produce.
 - La aplicación nunca presenta `Alta/Media/Baja` de parches como si fueran las categorías de Almanaque Azul.
 - Los enlaces de fuente permanecen visibles en resultados, metodología y atribuciones.
@@ -58,6 +61,8 @@ Los colores originales de Almanaque Azul (`#345a01`, `#a1d303`, `#e0c504`) solo 
 - [x] `prefers-reduced-motion` respetado.
 - [x] Sin desbordamiento horizontal a 375, 768 y 1440 px.
 - [x] Leyendas con texto además de color.
+- [x] Leyendas y controles temáticos fuera del mapa interactivo.
+- [x] Red técnica apagada por defecto y explicación para personas sin experiencia GIS.
 - [x] Carga sin secretos produce un mensaje amigable, no un traceback público.
 - [ ] Verificar el flujo completo con secretos válidos de Earth Engine en el entorno de despliegue.
 - [x] Verificar el shapefile nacional real y confirmar el campo/valor de bosque.

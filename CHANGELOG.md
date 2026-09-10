@@ -4,7 +4,19 @@ Este historial documenta la evolución de la aplicación UX. Las versiones sigue
 el formato `MAJOR.MINOR.PATCH`: una versión principal, mejoras compatibles y
 correcciones compatibles, respectivamente.
 
-## [0.6.1] - 2026-09-09 — versión actual
+## [0.7.0] - 2026-09-10 — versión actual
+
+### Lectura guiada y mapa sin ruido visual
+
+- Sustituye los términos principales de red por explicaciones sobre fragmentos cercanos o separados.
+- Presenta primero cuatro indicadores comprensibles y una lectura rápida en lenguaje cotidiano.
+- Conserva métricas, tablas y descargas técnicas dentro de una sección opcional cerrada.
+- Traslada la activación de capas satelitales, bosque, relaciones y corredores al panel lateral.
+- Elimina los controles flotantes superpuestos que cubrían el mapa y mantiene la leyenda fuera del área cartográfica.
+- Muestra los fragmentos de bosque con menor opacidad y deja apagadas por defecto las relaciones y separaciones potenciales.
+- Simplifica los textos emergentes para que indiquen área, valor relativo y condición de separación.
+
+## [0.6.1] - 2026-09-09
 
 ### Red de conectividad visible y descargable
 
