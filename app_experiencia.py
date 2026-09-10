@@ -13,7 +13,7 @@ import folium
 import requests
 import streamlit as st
 from streamlit.errors import StreamlitSecretNotFoundError
-from folium.plugins import Draw, Fullscreen, GroupedLayerControl, SideBySideLayers
+from folium.plugins import Draw, Fullscreen, SideBySideLayers
 from google.oauth2 import service_account
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER
@@ -579,6 +579,23 @@ st.markdown(
         background: #ffffff;
         margin-bottom: .45rem;
     }
+    .lectura-bosque {
+        margin: .6rem 0 1rem;
+        padding: .9rem 1rem;
+        border: 1px solid var(--institucional-borde);
+        border-left: 5px solid var(--institucional-verde);
+        border-radius: .3rem;
+        background: #ffffff;
+        color: var(--institucional-tinta);
+        line-height: 1.55;
+    }
+    .lectura-bosque b {
+        display: block;
+        margin-bottom: .2rem;
+        color: var(--institucional-verde);
+        font-size: 1.02rem;
+    }
+    .lectura-bosque p {margin: 0; color: var(--institucional-suave);}
     .comparador-anios {
         display: flex;
         justify-content: space-between;
@@ -657,7 +674,7 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-0.6.1-RED-CONECTIVIDAD"
+APP_VERSION = "UX-0.7.0-LECTURA-GUIADA"
 METHODOLOGY_VERSION = "MT-2026.9-RED-CONECTIVIDAD"
 PROYECTO_EE = secreto_opcional("EE_PROJECT", "ee-julissaguevaravega")
 FUENTE_BOSQUE_NOMBRE = "Bosque y otros usos"
@@ -800,8 +817,6 @@ PERFILES_VISUALIZACION = {
         "comparador": "Sin comparador",
         "capas": [
             "Sectores para revisión",
-            "Pérdida Hansen post-2020",
-            "Estado forestal JRC",
         ],
     },
     "Comparar estado forestal entre dos años (JRC TMF)": {
@@ -827,16 +842,34 @@ PERFILES_VISUALIZACION = {
 LEYENDAS = {
     "Corredores Almanaque Azul": leyenda_corredores(),
     "Importancia de parches": [
-        ("#b42318", "Alta", "Cuartil superior del índice conector calculado"),
-        ("#f79009", "Media", "Entre la mediana y el cuartil superior"),
-        ("#157f3b", "Baja", "Por debajo de la mediana del área analizada"),
+        (
+            "#a63f35",
+            "Valor alto para mantener unido el bosque",
+            "Fragmento ubicado en el grupo superior del cálculo; conviene conservarlo y revisarlo con atención",
+        ),
+        (
+            "#d58a24",
+            "Valor intermedio",
+            "Fragmento con una contribución intermedia dentro del área analizada",
+        ),
+        (
+            "#4f875f",
+            "Valor menor",
+            "Fragmento con menor contribución relativa dentro de esta área; no significa que carezca de valor ecológico",
+        ),
     ],
-    "Red de conectividad": [
-        ("#1d4ed8", "Conexión calculada", "Los parches están dentro del umbral elegido"),
+    "Relaciones cercanas": [
+        (
+            "#2f6f68",
+            "Fragmentos cercanos",
+            "La separación entre sus bordes no supera la distancia elegida",
+        ),
+    ],
+    "Separaciones potenciales": [
         (
             "#7c2d12",
-            "Brecha potencial",
-            "Línea discontinua desde un parche aislado a su vecino más cercano; requiere revisión",
+            "Separación para revisar",
+            "Línea discontinua desde un fragmento separado hacia su vecino más próximo; no confirma un corredor",
         ),
     ],
     "Sectores para revisión": [
@@ -3358,10 +3391,11 @@ def mostrar_resultados_corredores(resultados):
 
 
 def mostrar_resultados_fragmentacion(resultados):
-    st.subheader(f"Fragmentación y conectividad del bosque de {ANO_BOSQUE_REFERENCIA}")
+    st.subheader(f"Cómo está distribuido el bosque en {ANO_BOSQUE_REFERENCIA}")
     st.caption(
         f"Fuente de cobertura: {resultados.get('fuente_cobertura', FUENTE_BOSQUE_CORTA)}. "
-        "Es un corte de cobertura; no representa una serie anual de deforestación."
+        "Esta fotografía de cobertura permite observar áreas continuas de bosque; "
+        "no representa una serie anual de deforestación."
     )
     clase = resultados["metricas_clase"]
     red = resultados["metricas_red"]
@@ -3369,67 +3403,101 @@ def mostrar_resultados_fragmentacion(resultados):
     numero_conectados = int(red.get("numero_parches_conectados", 0))
     numero_aislados = int(red.get("numero_parches_aislados", 0))
 
-    col_bosque, col_parches, col_conexiones, col_aislados = st.columns(4)
-    col_bosque.metric("Bosque en el área", f"{clase['area_total_bosque_ha']:,.2f} ha")
-    col_parches.metric("Parches", f"{numero_parches:,}")
-    col_conexiones.metric("Conexiones calculadas", f"{red['numero_aristas']:,}")
-    col_aislados.metric(
-        "Parches aislados",
+    col_bosque, col_fragmentos, col_separados, col_mayor = st.columns(4)
+    col_bosque.metric("Bosque identificado", f"{clase['area_total_bosque_ha']:,.2f} ha")
+    col_fragmentos.metric(
+        "Fragmentos de bosque",
+        f"{numero_parches:,}",
+        help="Cada fragmento es una superficie continua de bosque dentro del área.",
+    )
+    col_separados.metric(
+        "Fragmentos separados",
         f"{numero_aislados:,}",
-        help=f"Parches sin otro parche a {red['umbral_m']:.0f} m o menos.",
+        help=f"No tienen otro fragmento a {red['umbral_m']:.0f} m o menos.",
+    )
+    col_mayor.metric(
+        "Área ocupada por el fragmento mayor",
+        f"{clase['indice_parche_mayor_pct']:.1f}%",
+        help="Porcentaje del área total que corresponde al fragmento de bosque más grande.",
     )
 
     if numero_parches == 0:
-        st.info(
+        lectura_bosque = (
             "La cobertura institucional de 2021 no identifica parches de bosque "
             "dentro del área seleccionada."
         )
     elif numero_parches == 1:
-        st.info(
-            "La cobertura del área forma un solo parche. No se dibujan conexiones "
-            "porque no existe un segundo parche dentro del recorte."
+        lectura_bosque = (
+            "El bosque identificado forma un solo fragmento continuo dentro del área. "
+            "Por eso no es necesario dibujar relaciones con otros fragmentos."
         )
     else:
-        st.info(
-            f"Con un umbral de {red['umbral_m']:.0f} m, {numero_conectados} de "
-            f"{numero_parches} parches tienen al menos una conexión y {numero_aislados} "
-            f"quedan aislados. El componente mayor reúne "
-            f"{red['porcentaje_nodos_componente_mayor']:.1f}% de los parches."
+        lectura_bosque = (
+            f"Se identificaron {numero_parches:,} fragmentos de bosque. Con la distancia "
+            f"de referencia de {red['umbral_m']:.0f} m, {numero_conectados:,} están cerca "
+            f"de al menos otro fragmento y {numero_aislados:,} aparecen separados. "
+            "Esta es una relación espacial; no demuestra por sí sola el movimiento de fauna."
         )
 
-    red_tab, paisaje_tab, conectores_tab, descarga_tab = st.tabs(
-        ["Conectividad de la red", "Métricas del paisaje", "Parches conectores", "Descargar"]
+    st.markdown(
+        f"""
+        <div class="lectura-bosque" role="status">
+          <b>Lectura rápida del bosque</b>
+          <p>{html_lib.escape(lectura_bosque)}</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    with st.expander("Entender esta lectura", expanded=False):
+        st.markdown(
+            f"""
+            - **Fragmento de bosque:** superficie continua de bosque dentro del área elegida.
+            - **Fragmentos cercanos:** sus bordes están separados por {red['umbral_m']:.0f} m o menos.
+            - **Fragmento separado:** no tiene otro fragmento dentro de esa distancia.
+
+            Las líneas son una ayuda de lectura geométrica. No son caminos de animales ni
+            corredores ecológicos confirmados.
+            """
+        )
+
+    detalle_tecnico = st.expander("Ver detalle técnico y descargas", expanded=False)
+    red_tab, paisaje_tab, conectores_tab, descarga_tab = detalle_tecnico.tabs(
+        [
+            "Cercanía entre fragmentos",
+            "Estructura del bosque",
+            "Fragmentos relevantes",
+            "Descargas",
+        ]
     )
     with red_tab:
         st.dataframe(
             [
-                {"Métrica": "Parches conectados", "Valor": f"{numero_conectados:,}"},
-                {"Métrica": "Parches aislados", "Valor": f"{numero_aislados:,}"},
-                {"Métrica": "Componentes de red", "Valor": f"{red['numero_componentes']:,}"},
-                {"Métrica": "Conexiones dentro del umbral", "Valor": f"{red['numero_aristas']:,}"},
-                {"Métrica": "Distancia media de conexiones", "Valor": f"{red.get('distancia_media_conexiones_m', 0):,.1f} m"},
-                {"Métrica": "Distancia máxima de conexiones", "Valor": f"{red.get('distancia_maxima_conexiones_m', 0):,.1f} m"},
-                {"Métrica": "Brechas potenciales para revisar", "Valor": f"{red.get('numero_brechas_potenciales', 0):,}"},
+                {"Métrica": "Fragmentos cercanos a otro", "Valor": f"{numero_conectados:,}"},
+                {"Métrica": "Fragmentos separados", "Valor": f"{numero_aislados:,}"},
+                {"Métrica": "Grupos de fragmentos", "Valor": f"{red['numero_componentes']:,}"},
+                {"Métrica": "Relaciones de cercanía calculadas", "Valor": f"{red['numero_aristas']:,}"},
+                {"Métrica": "Separación media", "Valor": f"{red.get('distancia_media_conexiones_m', 0):,.1f} m"},
+                {"Métrica": "Separación máxima", "Valor": f"{red.get('distancia_maxima_conexiones_m', 0):,.1f} m"},
+                {"Métrica": "Separaciones potenciales para revisar", "Valor": f"{red.get('numero_brechas_potenciales', 0):,}"},
                 {"Métrica": "Densidad de la red", "Valor": f"{red['densidad_red']:.6f}"},
-                {"Métrica": "Umbral de conexión", "Valor": f"{red['umbral_m']:.0f} m"},
+                {"Métrica": "Distancia usada para considerar cercanía", "Valor": f"{red['umbral_m']:.0f} m"},
             ],
             hide_index=True,
             use_container_width=True,
         )
         st.caption(
-            "En el mapa, las líneas azules son conexiones dentro del umbral. Las líneas "
-            "discontinuas muestran el vecino más cercano de un parche aislado y se presentan "
-            "solo como brechas potenciales para revisión, no como corredores confirmados."
+            "Estas relaciones son cálculos geométricos. Puede mostrarlas desde «Capas "
+            "disponibles en el mapa»; comienzan apagadas y no representan corredores confirmados."
         )
     with paisaje_tab:
         st.dataframe(
             [
                 {"Métrica": "Bosque en el paisaje", "Valor": f"{clase['porcentaje_paisaje_bosque']:.2f}%"},
-                {"Métrica": "Densidad de parches", "Valor": f"{clase['densidad_parches_por_100ha']:.3f} por 100 ha"},
+                {"Métrica": "Densidad de fragmentos", "Valor": f"{clase['densidad_parches_por_100ha']:.3f} por 100 ha"},
                 {"Métrica": "Densidad de borde", "Valor": f"{clase['densidad_borde_m_ha']:.2f} m/ha"},
-                {"Métrica": "Área media de parche", "Valor": f"{clase['area_media_parche_ha']:.2f} ha"},
-                {"Métrica": "Área mediana de parche", "Valor": f"{clase['area_mediana_parche_ha']:.2f} ha"},
-                {"Métrica": "Índice del parche mayor", "Valor": f"{clase['indice_parche_mayor_pct']:.2f}%"},
+                {"Métrica": "Área media por fragmento", "Valor": f"{clase['area_media_parche_ha']:.2f} ha"},
+                {"Métrica": "Área mediana por fragmento", "Valor": f"{clase['area_mediana_parche_ha']:.2f} ha"},
+                {"Métrica": "Área ocupada por el fragmento mayor", "Valor": f"{clase['indice_parche_mayor_pct']:.2f}%"},
             ],
             hide_index=True,
             use_container_width=True,
@@ -3441,11 +3509,13 @@ def mostrar_resultados_fragmentacion(resultados):
                 hide_index=True,
                 use_container_width=True,
                 column_config={
-                    "patch_id": "Parche",
+                    "patch_id": "Fragmento",
                     "area_ha": st.column_config.NumberColumn("Área (ha)", format="%.2f"),
-                    "indice_conector": st.column_config.NumberColumn("Índice conector", format="%.3f"),
-                    "prioridad_conectividad": "Importancia",
-                    "esta_aislado": "Aislado",
+                    "indice_conector": st.column_config.NumberColumn("Puntaje técnico", format="%.3f"),
+                    "prioridad_conectividad": "Valor para mantener unido el bosque",
+                    "grado": "Fragmentos cercanos",
+                    "componente": "Grupo",
+                    "esta_aislado": "Separado",
                     "distancia_vecino_mas_cercano_m": st.column_config.NumberColumn(
                         "Vecino más cercano (m)", format="%.1f"
                     ),
@@ -3476,24 +3546,23 @@ def mostrar_resultados_fragmentacion(resultados):
         }
         col_descarga_parches, col_descarga_red = st.columns(2)
         col_descarga_parches.download_button(
-            "Descargar parches y métricas (GeoJSON)",
+            "Descargar fragmentos y métricas (GeoJSON)",
             data=json.dumps(resultados["parches_geojson"], ensure_ascii=False),
             file_name=f"parches_bosque_{ANO_BOSQUE_REFERENCIA}.geojson",
             mime="application/geo+json",
             use_container_width=True,
         )
         col_descarga_red.download_button(
-            "Descargar conexiones (GeoJSON)",
+            "Descargar relaciones de proximidad (GeoJSON)",
             data=json.dumps(red_geojson, ensure_ascii=False),
             file_name=f"red_conectividad_bosque_{ANO_BOSQUE_REFERENCIA}.geojson",
             mime="application/geo+json",
             use_container_width=True,
         )
-    st.caption(
-        "La importancia Alta/Media/Baja se calcula dentro del área analizada mediante los "
-        "cuantiles del índice conector; no corresponde a las categorías de Almanaque Azul "
-        "y no añade puntos. Sí orienta la focalización de la visita hacia conectores y "
-        "componentes aislados."
+    detalle_tecnico.caption(
+        "El valor alto, medio o bajo se calcula comparando los fragmentos dentro del área "
+        "analizada. No corresponde a las categorías de Almanaque Azul y no modifica por sí "
+        "solo el puntaje de prioridad; ayuda a orientar la revisión espacial."
     )
 
 
@@ -3505,7 +3574,7 @@ st.markdown(
     """
     <div class="cabecera-app">
       <h1>EVALUACIÓN TERRITORIAL Y CORREDORES</h1>
-      <div class="subtitulo-app">Bosque, fragmentación y conectividad ecológica en Panamá</div>
+      <div class="subtitulo-app">Cambios del bosque, corredores y áreas para revisión en Panamá</div>
       <p>Integra evidencia satelital, los corredores interpretados por Almanaque Azul y
       el recorte institucional de Bosque y otros usos 2021 de SINIA–MiAMBIENTE para
       definir la urgencia, el valor estratégico y el lugar donde conviene revisar.</p>
@@ -3534,7 +3603,7 @@ st.markdown(
         <article class="resumen-paso" role="listitem">
           <span class="resumen-paso-numero" aria-hidden="true">2</span>
           <h3>La aplicación busca señales</h3>
-          <p>Revisa cambios del bosque, corredores publicados y la red de parches calculada automáticamente.</p>
+          <p>Revisa cambios, corredores publicados y si el bosque está continuo o dividido.</p>
         </article>
         <article class="resumen-paso" role="listitem">
           <span class="resumen-paso-numero" aria-hidden="true">3</span>
@@ -3561,10 +3630,10 @@ with st.expander("Ver qué información revisa la aplicación", expanded=False):
         - **Altura del dosel (GEDI):** aporta información sobre la estructura vertical de la vegetación.
         - **Vigor vegetal (NDVI de Sentinel-2):** permite observar qué tan activa o densa parece la vegetación; se usa como apoyo visual y no aumenta la prioridad.
         - **Corredores de Almanaque Azul:** muestra categorías originales alta, mediana y media-baja, incluidos los tramos mesoamericanos oeste, San Lorenzo y este.
-        - **Bosque y otros usos 2021:** el recorte institucional de SINIA–MiAMBIENTE se carga automáticamente y permite calcular fragmentación, componentes de red y parches importantes como conectores.
+        - **Bosque y otros usos 2021:** la cobertura institucional de SINIA–MiAMBIENTE se carga automáticamente para mostrar cuánto bosque hay, cómo está dividido y cuáles fragmentos ayudan a mantenerlo unido.
 
         Los tres componentes se conectan en una recomendación operativa. Los corredores
-        aportan valor estratégico y la red de parches orienta el lugar de la revisión;
+        aportan valor estratégico y la distribución del bosque orienta el lugar de la revisión;
         ninguno se confunde con evidencia satelital de pérdida.
         La configuración se mantiene igual entre análisis para que los resultados puedan compararse.
         Al finalizar podrá descargar el informe PDF y el registro metodológico JSON con las fuentes,
@@ -3751,7 +3820,7 @@ try:
         f"Corredores públicos listos: {catalogo_corredores['corredores_poligonos']} "
         f"polígonos y {catalogo_corredores['puntos_criticos']} puntos críticos."
     )
-    with st.sidebar.expander("Cobertura de bosque y opciones de red", expanded=False):
+    with st.sidebar.expander("Cobertura de bosque 2021", expanded=False):
         if bosque_automatico_disponible:
             st.success(
                 "Cobertura lista. La aplicación la recortará automáticamente al área elegida."
@@ -3766,18 +3835,31 @@ try:
             f"«{VALOR_COBERTURA_BOSQUE_2021}»; la persona usuaria no necesita cargar "
             "archivos ni seleccionar clases."
         )
+
+    with st.sidebar.expander("Ajustes avanzados de conectividad", expanded=False):
+        st.caption(
+            "Para un análisis rápido conserve los valores recomendados. Estos ajustes "
+            "solo cambian cómo se agrupan y relacionan los fragmentos de bosque."
+        )
         umbral_conectividad_m = st.select_slider(
-            "Distancia máxima entre parches",
+            "Distancia para considerar cercanos dos fragmentos",
             options=[100, 250, 500, 1000, 1500, 3000, 6000],
             value=500,
             format_func=lambda valor: f"{valor:,} m",
+            help=(
+                "Dos fragmentos se consideran cercanos cuando la separación entre sus "
+                "bordes no supera esta distancia. El valor recomendado es 500 m."
+            ),
         )
         area_min_parche_ha = st.number_input(
-            "Área mínima de parche (ha)",
+            "Tamaño mínimo del fragmento (ha)",
             min_value=0.0,
             value=0.0,
             step=0.1,
-            help="Permite excluir fragmentos demasiado pequeños del análisis estructural.",
+            help=(
+                "Deje 0 para conservar todos los fragmentos. Aumente el valor únicamente "
+                "si desea excluir áreas muy pequeñas del análisis técnico."
+            ),
         )
 
     st.sidebar.markdown("---")
@@ -3840,6 +3922,11 @@ try:
     anio_tmf_capa = ANO_TMF_MAX
     anio_esri_capa = ANO_ESRI_MAX
     anio_ndvi_capa = ANO_NDVI_MAX
+    mostrar_corredores_mapa = False
+    mostrar_puntos_criticos_mapa = False
+    mostrar_fragmentos_bosque = False
+    mostrar_conexiones_bosque = False
+    mostrar_brechas_bosque = False
 
     if modo_mapa == "Comparar años":
         capas_activas = []
@@ -3897,14 +3984,18 @@ try:
     else:
         modo_comparador = "Sin comparador"
         st.sidebar.markdown("**Capas disponibles en el mapa**")
+        st.sidebar.caption(
+            "Active solo la información que desea consultar. Para una lectura clara, "
+            "comience con una o dos capas."
+        )
         capas_seleccionadas = st.sidebar.multiselect(
-            "Seleccione una o varias capas:",
+            "Cambios observados por satélite",
             opciones_capas,
             default=capas_activas,
             format_func=lambda valor: nombres_capas[valor],
             help=(
-                "Las capas seleccionadas permanecen en el control del mapa. Puede "
-                "encenderlas o apagarlas sin volver a agregarlas."
+                "Cada opción seleccionada se dibuja en el mapa. Puede volver aquí para "
+                "encenderla o apagarla."
             ),
         )
         orden_guardado = st.session_state.get("orden_capas_personalizado", [])
@@ -3916,6 +4007,41 @@ try:
         )
         st.session_state["orden_capas_personalizado"] = orden_capas_mapa
         capas_activas = list(orden_capas_mapa)
+
+        st.sidebar.caption("Resultado de bosque y conectividad")
+        mostrar_fragmentos_bosque = st.sidebar.checkbox(
+            "Fragmentos de bosque 2021",
+            value=True,
+            help="Muestra las áreas continuas de bosque identificadas dentro del área.",
+        )
+        mostrar_conexiones_bosque = st.sidebar.checkbox(
+            "Relaciones cercanas entre fragmentos",
+            value=False,
+            help=(
+                "Capa técnica opcional. Dibuja líneas entre fragmentos separados por una "
+                "distancia menor o igual al valor configurado."
+            ),
+        )
+        mostrar_brechas_bosque = st.sidebar.checkbox(
+            "Separaciones potenciales para revisar",
+            value=False,
+            help=(
+                "Capa técnica opcional. Señala desde un fragmento separado hacia su vecino "
+                "más próximo; no representa un corredor confirmado."
+            ),
+        )
+
+        st.sidebar.caption("Contexto territorial")
+        mostrar_corredores_mapa = st.sidebar.checkbox(
+            "Corredores estratégicos",
+            value=objetivo == "Diagnóstico territorial integrado",
+            help="Muestra los corredores interpretados y publicados por Almanaque Azul.",
+        )
+        mostrar_puntos_criticos_mapa = st.sidebar.checkbox(
+            "Puntos críticos publicados",
+            value=False,
+            help="Muestra los puntos críticos interpretados por Almanaque Azul.",
+        )
 
         if any(
             nombre in capas_activas
@@ -3949,9 +4075,9 @@ try:
             )
 
         if orden_capas_mapa:
-            with st.sidebar.expander("Orden y capa inicial", expanded=False):
+            with st.sidebar.expander("Orden de capas (opcional)", expanded=False):
                 st.caption(
-                    "La primera capa queda arriba. Las demás continúan disponibles en el mapa."
+                    "Todas las capas seleccionadas serán visibles. La primera se dibuja encima."
                 )
                 for posicion, nombre in enumerate(orden_capas_mapa, start=1):
                     st.caption(f"{posicion}. {nombres_capas[nombre]}")
@@ -3991,15 +4117,7 @@ try:
                     st.session_state["orden_capas_personalizado"] = orden_capas_mapa
                     st.rerun()
 
-                clave_capa_inicial = "capa_visible_inicial_personalizada"
-                if st.session_state.get(clave_capa_inicial) not in orden_capas_mapa:
-                    st.session_state[clave_capa_inicial] = orden_capas_mapa[0]
-                capa_visible_inicial = st.selectbox(
-                    "Capa visible al abrir:",
-                    orden_capas_mapa,
-                    format_func=lambda valor: nombres_capas[valor],
-                    key=clave_capa_inicial,
-                )
+            capa_visible_inicial = orden_capas_mapa[0]
         else:
             capa_visible_inicial = None
             st.sidebar.warning("Seleccione al menos una capa temática.")
@@ -4032,6 +4150,11 @@ try:
         anio_ndvi_capa,
         tuple(orden_capas_mapa),
         capa_visible_inicial,
+        mostrar_fragmentos_bosque,
+        mostrar_conexiones_bosque,
+        mostrar_brechas_bosque,
+        mostrar_corredores_mapa,
+        mostrar_puntos_criticos_mapa,
     )
     analisis_actual = (
         st.session_state.get("firma_analisis") == firma_analisis_actual
@@ -4487,7 +4610,7 @@ try:
             nombre,
             mostrar=(
                 modo_comparador == "Sin comparador"
-                and clave == capa_visible_inicial
+                and clave in capas_activas
             ),
             z_index=prioridades_capas.get(clave, 400),
         )
@@ -4617,7 +4740,8 @@ try:
 
     capas_corredores_mapa = agregar_capas_corredores(
         mapa,
-        mostrar=objetivo == "Diagnóstico territorial integrado",
+        mostrar=mostrar_corredores_mapa,
+        mostrar_puntos_criticos=mostrar_puntos_criticos_mapa,
     )
     capas_fragmentacion_mapa = []
     if st.session_state.get("firma_analisis") == firma_analisis_actual:
@@ -4626,6 +4750,9 @@ try:
             capas_fragmentacion_mapa = agregar_resultados_fragmentacion(
                 mapa,
                 resultados_mapa["fragmentacion"],
+                mostrar_parches=mostrar_fragmentos_bosque,
+                mostrar_conexiones=mostrar_conexiones_bosque,
+                mostrar_brechas=mostrar_brechas_bosque,
             )
 
     cuenca = ee.FeatureCollection(ASSET_CUENCA)
@@ -4652,47 +4779,6 @@ try:
             etiqueta_final,
         )
     mapa.fit_bounds(limites_area)
-    if capas_tematicas_mapa:
-        capas_por_clave = dict(capas_tematicas_mapa)
-        capas_control = [
-            capas_por_clave[nombre]
-            for nombre in orden_capas_mapa
-            if nombre in capas_por_clave
-        ]
-        GroupedLayerControl(
-            groups={
-                "Capas temáticas · puede combinar varias": capas_control
-            },
-            exclusive_groups=False,
-            collapsed=False,
-        ).add_to(mapa)
-    GroupedLayerControl(
-        groups={
-            "Corredores ecológicos · fuente externa": capas_corredores_mapa,
-        },
-        exclusive_groups=False,
-        collapsed=True,
-    ).add_to(mapa)
-    if capas_fragmentacion_mapa:
-        GroupedLayerControl(
-            groups={
-                f"Conectividad calculada · bosque {ANO_BOSQUE_REFERENCIA}": (
-                    capas_fragmentacion_mapa
-                ),
-            },
-            exclusive_groups=False,
-            collapsed=True,
-        ).add_to(mapa)
-    GroupedLayerControl(
-        groups={
-            "Referencias · se mantienen visibles": [
-                capa_limite_cuenca,
-                capa_area_seleccionada,
-            ]
-        },
-        exclusive_groups=False,
-        collapsed=True,
-    ).add_to(mapa)
 
     mapa_resultados_contenedor.markdown("#### Mapa interactivo del área evaluada")
     if etiqueta_inicial and etiqueta_final:
@@ -4712,14 +4798,10 @@ try:
         )
     else:
         mapa_resultados_contenedor.caption(
-            "Use «Capas temáticas» dentro del mapa para encender o apagar una o varias capas. "
-            "Su orden se controla en el panel lateral; los límites permanecen arriba y se "
-            "administran por separado en «Referencias». Los corredores se controlan en el "
-            "grupo «Corredores ecológicos»: no modifican el índice satelital, pero sí "
-            "aportan al valor estratégico. La red de parches 2021 se controla en "
-            "«Conectividad calculada»: puede activar por separado los parches, las conexiones "
-            "azules dentro del umbral y las brechas potenciales discontinuas. Estas últimas "
-            "inician apagadas para mantener el mapa legible."
+            "Elija las capas desde «Capas disponibles en el mapa», en el panel lateral. "
+            "Los fragmentos de bosque pueden mostrarse como resultado principal; las líneas "
+            "de proximidad y las separaciones potenciales son opcionales y comienzan apagadas "
+            "para mantener una lectura limpia."
         )
     with mapa_resultados_contenedor:
         st_folium(
@@ -4736,21 +4818,44 @@ try:
                 f"{capa_visible_inicial}-"
                 f"{catalogo_corredores['version_publicada']}-{huella_bosque}-"
                 f"{umbral_conectividad_m}-{area_min_parche_ha}-"
+                f"{mostrar_fragmentos_bosque}-{mostrar_conexiones_bosque}-"
+                f"{mostrar_brechas_bosque}-{mostrar_corredores_mapa}-"
+                f"{mostrar_puntos_criticos_mapa}-"
                 f"{hash(geometria_dibujada_json or '')}"
             ),
         )
 
-    with mapa_resultados_contenedor.expander("Ver leyendas de colores", expanded=True):
+    with mapa_resultados_contenedor.expander(
+        "Leyenda y significado de los colores",
+        expanded=False,
+    ):
+        st.caption(
+            "La leyenda se mantiene fuera del mapa para no cubrir la información espacial. "
+            "Solo incluye las capas activadas en el panel lateral."
+        )
         columnas_leyenda = st.columns(2)
-        leyendas_activas = [
-            ("Corredores · Almanaque Azul", LEYENDAS["Corredores Almanaque Azul"])
-        ]
-        if capas_fragmentacion_mapa:
+        leyendas_activas = []
+        if mostrar_corredores_mapa or mostrar_puntos_criticos_mapa:
             leyendas_activas.append(
-                ("Importancia calculada de parches", LEYENDAS["Importancia de parches"])
+                ("Corredores · Almanaque Azul", LEYENDAS["Corredores Almanaque Azul"])
             )
+        if capas_fragmentacion_mapa and mostrar_fragmentos_bosque:
             leyendas_activas.append(
-                ("Red de conectividad", LEYENDAS["Red de conectividad"])
+                (
+                    "Valor de los fragmentos para mantener unido el bosque",
+                    LEYENDAS["Importancia de parches"],
+                )
+            )
+        if capas_fragmentacion_mapa and mostrar_conexiones_bosque:
+            leyendas_activas.append(
+                ("Relaciones cercanas", LEYENDAS["Relaciones cercanas"])
+            )
+        if capas_fragmentacion_mapa and mostrar_brechas_bosque:
+            leyendas_activas.append(
+                (
+                    "Separaciones potenciales",
+                    LEYENDAS["Separaciones potenciales"],
+                )
             )
         if modo_comparador in ("JRC TMF", "ESRI LULC", "NDVI Sentinel-2"):
             leyendas_activas.append((modo_comparador, LEYENDAS[modo_comparador]))

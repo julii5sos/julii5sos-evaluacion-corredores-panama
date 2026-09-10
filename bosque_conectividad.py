@@ -783,51 +783,55 @@ def analizar_fragmentacion_geojson(
     )
 
 
-def agregar_resultados_fragmentacion(mapa, resultados: dict[str, Any]):
+def agregar_resultados_fragmentacion(
+    mapa,
+    resultados: dict[str, Any],
+    *,
+    mostrar_parches: bool = True,
+    mostrar_conexiones: bool = False,
+    mostrar_brechas: bool = False,
+):
+    """Agrega una lectura cartográfica progresiva de la estructura del bosque.
+
+    Los fragmentos son el resultado principal. Las relaciones de proximidad y las
+    separaciones potenciales son evidencia técnica opcional y comienzan apagadas.
+    """
     import folium
 
     if not resultados["parches_geojson"].get("features"):
         return []
 
-    colores = {"Alta": "#b42318", "Media": "#f79009", "Baja": "#157f3b"}
+    colores = {"Alta": "#a63f35", "Media": "#d58a24", "Baja": "#4f875f"}
     capas = []
 
     grupo_parches = folium.FeatureGroup(
-        name="Parches · importancia como conectores",
+        name="Bosque 2021 · fragmentos e importancia",
         overlay=True,
         control=False,
-        show=True,
+        show=mostrar_parches,
     )
     folium.GeoJson(
         resultados["parches_geojson"],
         style_function=lambda feature: {
             "color": "#0b3b36",
-            "weight": 1.2,
+            "weight": 1.0,
             "fillColor": colores[
                 feature["properties"]["prioridad_conectividad"]
             ],
-            "fillOpacity": 0.62,
+            "fillOpacity": 0.48,
         },
         tooltip=folium.GeoJsonTooltip(
             fields=[
                 "patch_id",
                 "area_ha",
                 "prioridad_conectividad",
-                "indice_conector",
-                "grado",
-                "componente",
                 "esta_aislado",
-                "distancia_vecino_mas_cercano_m",
             ],
             aliases=[
-                "Parche",
+                "Fragmento de bosque",
                 "Área (ha)",
-                "Importancia",
-                "Índice conector",
-                "Conexiones",
-                "Componente",
-                "Aislado al umbral",
-                "Vecino más cercano (m)",
+                "Valor para mantener unido el bosque",
+                "Separado según la distancia elegida",
             ],
             localize=True,
             sticky=False,
@@ -843,17 +847,17 @@ def agregar_resultados_fragmentacion(mapa, resultados: dict[str, Any]):
 
     if resultados.get("conexiones_geojson", {}).get("features"):
         grupo_conexiones = folium.FeatureGroup(
-            name="Conexiones · dentro del umbral",
+            name="Relaciones cercanas entre fragmentos · opcional",
             overlay=True,
             control=False,
-            show=True,
+            show=mostrar_conexiones,
         )
         folium.GeoJson(
             resultados["conexiones_geojson"],
             style_function=lambda _: {
-                "color": "#1d4ed8",
-                "weight": 2.6,
-                "opacity": 0.86,
+                "color": "#2f6f68",
+                "weight": 1.4,
+                "opacity": 0.58,
             },
             tooltip=folium.GeoJsonTooltip(
                 fields=[
@@ -862,7 +866,12 @@ def agregar_resultados_fragmentacion(mapa, resultados: dict[str, Any]):
                     "distancia_m",
                     "umbral_m",
                 ],
-                aliases=["Parche origen", "Parche destino", "Separación (m)", "Umbral (m)"],
+                aliases=[
+                    "Fragmento de origen",
+                    "Fragmento de destino",
+                    "Separación (m)",
+                    "Distancia de referencia (m)",
+                ],
                 localize=True,
                 sticky=False,
             ),
@@ -872,17 +881,17 @@ def agregar_resultados_fragmentacion(mapa, resultados: dict[str, Any]):
 
     if resultados.get("conexiones_potenciales_geojson", {}).get("features"):
         grupo_brechas = folium.FeatureGroup(
-            name="Brechas potenciales · revisar en campo",
+            name="Separaciones potenciales · revisar",
             overlay=True,
             control=False,
-            show=False,
+            show=mostrar_brechas,
         )
         folium.GeoJson(
             resultados["conexiones_potenciales_geojson"],
             style_function=lambda _: {
                 "color": "#7c2d12",
-                "weight": 2.6,
-                "opacity": 0.9,
+                "weight": 2.0,
+                "opacity": 0.78,
                 "dashArray": "8 7",
             },
             tooltip=folium.GeoJsonTooltip(
@@ -893,10 +902,10 @@ def agregar_resultados_fragmentacion(mapa, resultados: dict[str, Any]):
                     "umbral_m",
                 ],
                 aliases=[
-                    "Parche aislado",
+                    "Fragmento separado",
                     "Vecino más cercano",
                     "Separación (m)",
-                    "Umbral usado (m)",
+                    "Distancia de referencia (m)",
                 ],
                 localize=True,
                 sticky=False,

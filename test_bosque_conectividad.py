@@ -6,6 +6,7 @@ import shapefile
 from pyproj import CRS
 
 from bosque_conectividad import (
+    agregar_resultados_fragmentacion,
     analizar_fragmentacion_conectividad,
     analizar_fragmentacion_geojson,
     inspeccionar_shapefile,
@@ -139,6 +140,24 @@ class BosqueConectividadTests(unittest.TestCase):
                 for feature in resultado["parches_geojson"]["features"]
             )
         )
+
+        import folium
+
+        capas = agregar_resultados_fragmentacion(folium.Map(), resultado)
+        visibilidad = {capa.layer_name: capa.show for capa in capas}
+        self.assertTrue(visibilidad["Bosque 2021 · fragmentos e importancia"])
+        self.assertFalse(
+            visibilidad["Relaciones cercanas entre fragmentos · opcional"]
+        )
+        self.assertFalse(visibilidad["Separaciones potenciales · revisar"])
+
+        capas_activadas = agregar_resultados_fragmentacion(
+            folium.Map(),
+            resultado,
+            mostrar_conexiones=True,
+            mostrar_brechas=True,
+        )
+        self.assertTrue(all(capa.show for capa in capas_activadas))
 
     def test_asset_sin_bosque_devuelve_ceros(self):
         resultado = analizar_fragmentacion_geojson(

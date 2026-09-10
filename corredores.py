@@ -58,8 +58,12 @@ def _es_mesoamericano(feature: dict[str, Any]) -> bool:
     ).lower()
 
 
-def agregar_capas_corredores(mapa, mostrar: bool = False):
-    """Agrega capas Folium y devuelve los grupos para GroupedLayerControl."""
+def agregar_capas_corredores(
+    mapa,
+    mostrar: bool = False,
+    mostrar_puntos_criticos: bool = False,
+):
+    """Agrega los corredores con una visibilidad decidida fuera del mapa."""
 
     import folium
 
@@ -115,7 +119,7 @@ def agregar_capas_corredores(mapa, mostrar: bool = False):
         name="Corredor Biológico Mesoamericano · tramos de Panamá",
         overlay=True,
         control=False,
-        show=True,
+        show=mostrar,
     )
     folium.GeoJson(
         _feature_collection(filter(_es_mesoamericano, datos["features"])),
@@ -140,7 +144,7 @@ def agregar_capas_corredores(mapa, mostrar: bool = False):
         name="Puntos críticos de conectividad · Almanaque Azul",
         overlay=True,
         control=False,
-        show=False,
+        show=mostrar_puntos_criticos,
     )
     for feature in cargar_puntos_criticos()["features"]:
         propiedades = feature.get("properties") or {}
