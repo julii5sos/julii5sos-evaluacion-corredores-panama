@@ -51,6 +51,7 @@ Los colores originales de Almanaque Azul (`#345a01`, `#a1d303`, `#e0c504`) solo 
 - La conectividad se presenta con parches, conexiones y brechas potenciales en capas independientes. Las brechas inician apagadas para reducir el ruido visual.
 - La lectura principal usa «fragmentos cercanos o separados»; nodo, arista, componente y densidad quedan reservados para el detalle técnico opcional.
 - Los fragmentos se muestran por defecto; las líneas de proximidad y separación requieren activación explícita.
+- El contexto forestal exterior participa en la conectividad, pero nunca amplía la superficie reportada ni el mapa del área elegida; la interfaz lo explica de forma visible.
 - Los errores aparecen junto al archivo o campo que los produce.
 - La aplicación nunca presenta `Alta/Media/Baja` de parches como si fueran las categorías de Almanaque Azul.
 - Los enlaces de fuente permanecen visibles en resultados, metodología y atribuciones.

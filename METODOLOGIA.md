@@ -251,7 +251,9 @@ de parches de la cobertura 2021.
 
 ## Fragmentación del bosque de referencia 2021
 
-La cobertura utilizada corresponde a la capa **Bosque y otros usos**, referencia 2021, publicada por SINIA–MiAMBIENTE. La administración publica el shapefile nacional una sola vez como asset privado de Earth Engine. La aplicación filtra internamente el campo `Categoria` por el valor `Bosques y Otras Tierras Boscosas` y recorta el resultado al área evaluada; la persona usuaria no carga archivos ni selecciona campos de clase. Las geometrías se transforman a EPSG:8857, se validan y se separan en parches poligonales.
+La cobertura utilizada corresponde a la capa **Bosque y otros usos**, referencia 2021, publicada por SINIA–MiAMBIENTE. La administración publica el shapefile nacional una sola vez como asset privado de Earth Engine. La aplicación filtra internamente el campo `Categoria` por el valor `Bosques y Otras Tierras Boscosas`; la persona usuaria no carga archivos ni selecciona campos de clase. Para la conectividad se obtiene el área evaluada más un buffer exterior igual al umbral elegido. Las geometrías se transforman a EPSG:8857, se validan y se separan en parches poligonales.
+
+El bosque del buffer exterior participa únicamente en la construcción de la red. Las hectáreas, la cantidad de fragmentos y las geometrías entregadas o dibujadas se limitan al polígono original. De esta manera, un fragmento que continúa o se conecta con bosque inmediatamente fuera del límite no se clasifica erróneamente como aislado, sin incorporar superficie exterior al resultado del predio.
 
 Esta capa representa la cobertura clasificada para 2021. Se utiliza para describir la fragmentación y conectividad estructural del bosque de ese año; por sí sola no permite determinar cuándo ocurrió un cambio ni debe interpretarse como una serie anual de deforestación.
 
@@ -269,11 +271,12 @@ Las métricas de clase son:
 
 Cada parche es un nodo. Dos nodos se conectan cuando la distancia mínima entre sus polígonos es menor o igual al umbral seleccionado. Para una distancia `d` y umbral `u`, la fuerza de la arista es `exp(-d/u)` y el costo mínimo utilizado es 1 m.
 
-El mapa representa estas aristas con líneas azules esquemáticas entre los parches y
+El mapa puede representar las relaciones internas con líneas discretas entre los parches y
 muestra en cada línea la distancia mínima realmente calculada entre sus polígonos.
-Un parche con grado cero se considera aislado al umbral elegido. Para ayudar a
+Las relaciones con bosque exterior participan en las métricas, pero no se dibujan fuera del polígono.
+Un parche con grado cero, después de considerar ese contexto, se considera aislado al umbral elegido. Para ayudar a
 planificar la inspección, la aplicación puede dibujar una línea discontinua desde
-cada parche aislado hacia el parche más cercano dentro del área analizada. Esa línea
+cada parche aislado hacia el parche más cercano disponible. La geometría visible se corta en el límite del área. Esa línea
 es una **brecha potencial para revisión**: no es un corredor confirmado, una ruta de
 menor costo ni evidencia de movimiento de fauna.
 

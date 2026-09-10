@@ -199,6 +199,8 @@ def _resultado_sin_parches(
     campo_clase: str | None,
     valores_bosque: Iterable[Any],
     origen_datos: str,
+    area_objetivo_m=None,
+    distancia_contexto_m: float = 0.0,
 ) -> dict[str, Any]:
     """Devuelve un resultado valido cuando el recorte no contiene bosque."""
 
@@ -218,7 +220,11 @@ def _resultado_sin_parches(
         "metricas_red": {
             "umbral_m": float(umbral_m),
             "numero_nodos": 0,
+            "numero_parches_contexto": 0,
             "numero_aristas": 0,
+            "numero_aristas_contexto": 0,
+            "numero_conexiones_fuera_area": 0,
+            "numero_parches_continuidad_exterior": 0,
             "numero_parches_conectados": 0,
             "numero_parches_aislados": 0,
             "porcentaje_parches_aislados": 0.0,
@@ -245,6 +251,8 @@ def _resultado_sin_parches(
         "valores_bosque": sorted(str(valor) for valor in valores_bosque),
         "area_min_ha": float(area_min_ha),
         "area_paisaje_ha": round(float(area_paisaje_ha), 4),
+        "considera_contexto_exterior": area_objetivo_m is not None,
+        "distancia_contexto_m": float(distancia_contexto_m),
         "origen_datos": origen_datos,
         "metodo": (
             "Parches de bosque como nodos; aristas por distancia; indice conector "
@@ -266,9 +274,11 @@ def _calcular_metricas_parches(
     campo_clase: str | None,
     valores_bosque: Iterable[Any],
     origen_datos: str,
+    area_objetivo_m=None,
+    distancia_contexto_m: float = 0.0,
 ) -> dict[str, Any]:
     if not parches:
-        return _resultado_sin_parches(
+        resultado = _resultado_sin_parches(
             area_paisaje_ha=area_paisaje_ha,
             umbral_m=umbral_m,
             area_min_ha=area_min_ha,
@@ -276,6 +286,9 @@ def _calcular_metricas_parches(
             valores_bosque=valores_bosque,
             origen_datos=origen_datos,
         )
+        resultado["considera_contexto_exterior"] = area_objetivo_m is not None
+        resultado["distancia_contexto_m"] = float(distancia_contexto_m)
+        return resultado
 
     nx = deps["nx"]
     grafo = nx.Graph()
@@ -320,11 +333,51 @@ def _calcular_metricas_parches(
         for nodo in componente
     }
 
-    areas = {indice: parche.area / 10_000 for indice, parche in enumerate(parches)}
+    geometrias_visibles = {}
+    continuidad_exterior = {}
+    for indice, parche in enumerate(parches):
+        if area_objetivo_m is None:
+            geometrias_visibles[indice] = parche
+            continuidad_exterior[indice] = False
+            continue
+        recorte = deps["make_valid"](parche.intersection(area_objetivo_m))
+        partes = _partes_poligonales(recorte, deps)
+        if not partes:
+            continue
+        geometria_visible = deps["unary_union"](partes)
+        if geometria_visible.is_empty or geometria_visible.area <= 0:
+            continue
+        geometrias_visibles[indice] = geometria_visible
+        continuidad_exterior[indice] = parche.area - geometria_visible.area > 0.01
+
+    indices_objetivo = list(geometrias_visibles)
+    conjunto_objetivo = set(indices_objetivo)
+    if not indices_objetivo:
+        resultado = _resultado_sin_parches(
+            area_paisaje_ha=area_paisaje_ha,
+            umbral_m=umbral_m,
+            area_min_ha=area_min_ha,
+            campo_clase=campo_clase,
+            valores_bosque=valores_bosque,
+            origen_datos=origen_datos,
+        )
+        resultado["metricas_red"]["numero_parches_contexto"] = len(parches)
+        resultado["metricas_red"]["numero_aristas_contexto"] = grafo.number_of_edges()
+        resultado["considera_contexto_exterior"] = area_objetivo_m is not None
+        resultado["distancia_contexto_m"] = float(distancia_contexto_m)
+        return resultado
+
+    areas_contexto = {
+        indice: parche.area / 10_000 for indice, parche in enumerate(parches)
+    }
+    areas_objetivo = {
+        indice: geometrias_visibles[indice].area / 10_000
+        for indice in indices_objetivo
+    }
     grado_01 = _escala01({i: float(v) for i, v in grados.items()})
     fuerza_01 = _escala01({i: float(v) for i, v in fuerza.items()})
     intermediacion_01 = _escala01(intermediacion)
-    area_01 = _escala01(areas)
+    area_01 = _escala01(areas_contexto)
     indices = {
         i: 0.40 * grado_01[i]
         + 0.30 * intermediacion_01[i]
@@ -332,17 +385,24 @@ def _calcular_metricas_parches(
         + 0.10 * fuerza_01[i]
         for i in range(len(parches))
     }
-    q75 = _percentil(list(indices.values()), 0.75)
-    q50 = _percentil(list(indices.values()), 0.50)
+    indices_area = [indices[indice] for indice in indices_objetivo]
+    q75 = _percentil(indices_area, 0.75)
+    q50 = _percentil(indices_area, 0.50)
 
     features = []
     nodos = []
-    for i, parche in enumerate(parches):
+    for i in indices_objetivo:
+        parche = parches[i]
+        parche_visible = geometrias_visibles[i]
         prioridad = "Alta" if indices[i] >= q75 else "Media" if indices[i] >= q50 else "Baja"
         indice_vecino, distancia_vecino = vecinos_mas_cercanos[i]
+        conexiones_externas = sum(
+            1 for vecino in grafo.neighbors(i) if vecino not in conjunto_objetivo
+        )
         propiedades = {
             "patch_id": i + 1,
-            "area_ha": round(areas[i], 4),
+            "area_ha": round(areas_objetivo[i], 4),
+            "area_contexto_ha": round(areas_contexto[i], 4),
             "grado": int(grados[i]),
             "grado_ponderado": round(float(fuerza[i]), 6),
             "intermediacion": round(float(intermediacion[i]), 6),
@@ -351,6 +411,13 @@ def _calcular_metricas_parches(
             "indice_conector": round(indices[i], 6),
             "prioridad_conectividad": prioridad,
             "esta_aislado": int(grados[i]) == 0,
+            "condicion_cercania": (
+                "Separado" if int(grados[i]) == 0 else "Conectado"
+            ),
+            "continua_fuera_area": (
+                "Sí" if continuidad_exterior[i] or conexiones_externas else "No"
+            ),
+            "conexiones_fuera_area": conexiones_externas,
             "distancia_vecino_mas_cercano_m": (
                 round(distancia_vecino, 1) if distancia_vecino is not None else None
             ),
@@ -359,7 +426,7 @@ def _calcular_metricas_parches(
             ),
         }
         nodos.append(propiedades)
-        geometria_wgs = deps["transform"](area_a_wgs.transform, parche)
+        geometria_wgs = deps["transform"](area_a_wgs.transform, parche_visible)
         features.append(
             {
                 "type": "Feature",
@@ -372,10 +439,21 @@ def _calcular_metricas_parches(
     distancias_conexiones = []
     for origen, destino, atributos in grafo.edges(data=True):
         distancia = float(atributos["distancia_m"])
+        if origen not in conjunto_objetivo and destino not in conjunto_objetivo:
+            continue
         distancias_conexiones.append(distancia)
+        if origen not in conjunto_objetivo or destino not in conjunto_objetivo:
+            continue
+        linea_m = _linea_entre_parches(
+            geometrias_visibles[origen], geometrias_visibles[destino], deps
+        )
+        if area_objetivo_m is not None:
+            linea_m = linea_m.intersection(area_objetivo_m)
+        if linea_m.is_empty:
+            continue
         linea_wgs = deps["transform"](
             area_a_wgs.transform,
-            _linea_entre_parches(parches[origen], parches[destino], deps),
+            linea_m,
         )
         conexiones.append(
             {
@@ -391,7 +469,11 @@ def _calcular_metricas_parches(
             }
         )
 
-    aislados = [indice for indice, grado in grados.items() if int(grado) == 0]
+    aislados = [
+        indice
+        for indice in indices_objetivo
+        if int(grados[indice]) == 0
+    ]
     conexiones_potenciales = []
     pares_potenciales = set()
     for origen in aislados:
@@ -402,10 +484,15 @@ def _calcular_metricas_parches(
         if par in pares_potenciales:
             continue
         pares_potenciales.add(par)
-        linea_wgs = deps["transform"](
-            area_a_wgs.transform,
-            _linea_entre_parches(parches[origen], parches[destino], deps),
+        destino_geometria = geometrias_visibles.get(destino, parches[destino])
+        linea_m = _linea_entre_parches(
+            geometrias_visibles[origen], destino_geometria, deps
         )
+        if area_objetivo_m is not None:
+            linea_m = linea_m.intersection(area_objetivo_m)
+        if linea_m.is_empty:
+            continue
+        linea_wgs = deps["transform"](area_a_wgs.transform, linea_m)
         conexiones_potenciales.append(
             {
                 "type": "Feature",
@@ -420,21 +507,38 @@ def _calcular_metricas_parches(
             }
         )
 
-    total_bosque_ha = sum(areas.values())
-    perimetro_total_m = sum(parche.length for parche in parches)
-    valores_area = list(areas.values())
-    mayor_componente = max((len(componente) for componente in componentes), default=0)
+    total_bosque_ha = sum(areas_objetivo.values())
+    perimetro_total_m = sum(
+        geometria.length for geometria in geometrias_visibles.values()
+    )
+    valores_area = list(areas_objetivo.values())
+    tamanos_componentes_objetivo = defaultdict(int)
+    for indice in indices_objetivo:
+        tamanos_componentes_objetivo[componente_por_nodo[indice]] += 1
+    mayor_componente = max(tamanos_componentes_objetivo.values(), default=0)
+    subgrafo_objetivo = grafo.subgraph(indices_objetivo)
+    numero_conexiones_externas = sum(
+        1
+        for origen, destino in grafo.edges()
+        if (origen in conjunto_objetivo) != (destino in conjunto_objetivo)
+    )
+    numero_continuidad_exterior = sum(
+        1
+        for indice in indices_objetivo
+        if continuidad_exterior[indice]
+        or any(vecino not in conjunto_objetivo for vecino in grafo.neighbors(indice))
+    )
     distancias_brechas = [
         float(feature["properties"]["distancia_m"])
         for feature in conexiones_potenciales
     ]
     metricas_clase = {
-        "numero_parches": len(parches),
+        "numero_parches": len(indices_objetivo),
         "area_total_bosque_ha": round(total_bosque_ha, 4),
         "porcentaje_paisaje_bosque": round(total_bosque_ha / area_paisaje_ha * 100, 4)
         if area_paisaje_ha
         else 0.0,
-        "densidad_parches_por_100ha": round(len(parches) / area_paisaje_ha * 100, 4)
+        "densidad_parches_por_100ha": round(len(indices_objetivo) / area_paisaje_ha * 100, 4)
         if area_paisaje_ha
         else 0.0,
         "densidad_borde_m_ha": round(perimetro_total_m / area_paisaje_ha, 4)
@@ -449,26 +553,30 @@ def _calcular_metricas_parches(
         "indice_forma_medio": round(
             mean(
                 parche.length / (2 * math.sqrt(math.pi * parche.area))
-                for parche in parches
+                for parche in geometrias_visibles.values()
             ),
             4,
         ),
     }
     metricas_red = {
         "umbral_m": float(umbral_m),
-        "numero_nodos": grafo.number_of_nodes(),
-        "numero_aristas": grafo.number_of_edges(),
-        "numero_parches_conectados": grafo.number_of_nodes() - len(aislados),
+        "numero_nodos": len(indices_objetivo),
+        "numero_aristas": subgrafo_objetivo.number_of_edges(),
+        "numero_parches_conectados": len(indices_objetivo) - len(aislados),
         "numero_parches_aislados": len(aislados),
         "porcentaje_parches_aislados": round(
-            len(aislados) / grafo.number_of_nodes() * 100, 4
+            len(aislados) / len(indices_objetivo) * 100, 4
         ),
-        "numero_componentes": len(componentes),
+        "numero_componentes": len(tamanos_componentes_objetivo),
         "tamano_componente_mayor": mayor_componente,
         "porcentaje_nodos_componente_mayor": round(
-            mayor_componente / grafo.number_of_nodes() * 100, 4
+            mayor_componente / len(indices_objetivo) * 100, 4
         ),
-        "densidad_red": round(nx.density(grafo), 8),
+        "densidad_red": round(nx.density(subgrafo_objetivo), 8),
+        "numero_parches_contexto": grafo.number_of_nodes(),
+        "numero_aristas_contexto": grafo.number_of_edges(),
+        "numero_conexiones_fuera_area": numero_conexiones_externas,
+        "numero_parches_continuidad_exterior": numero_continuidad_exterior,
         "distancia_media_conexiones_m": round(mean(distancias_conexiones), 2)
         if distancias_conexiones
         else 0.0,
@@ -479,7 +587,7 @@ def _calcular_metricas_parches(
         "distancia_media_brechas_potenciales_m": round(mean(distancias_brechas), 2)
         if distancias_brechas
         else 0.0,
-        "red_totalmente_conectada": nx.is_connected(grafo),
+        "red_totalmente_conectada": len(tamanos_componentes_objetivo) == 1,
         "intermediacion_aproximada": intermediacion_aproximada,
     }
     nodos.sort(key=lambda item: item["indice_conector"], reverse=True)
@@ -502,10 +610,14 @@ def _calcular_metricas_parches(
         "area_min_ha": float(area_min_ha),
         "area_paisaje_ha": round(float(area_paisaje_ha), 4),
         "origen_datos": origen_datos,
+        "considera_contexto_exterior": area_objetivo_m is not None,
+        "distancia_contexto_m": float(distancia_contexto_m),
         "metodo": (
             "Parches de bosque como nodos; aristas por distancia; indice conector "
             "40% grado, 30% intermediacion, 20% area y 10% fuerza de conexion; "
-            "brechas potenciales desde parches aislados hacia su vecino mas cercano."
+            "brechas potenciales desde parches aislados hacia su vecino mas cercano; "
+            "la conectividad puede considerar bosque exterior mientras las superficies "
+            "y geometrias publicadas permanecen dentro del area objetivo."
         ),
         "participa_indice_prioridad": False,
     }
@@ -727,11 +839,14 @@ def analizar_fragmentacion_geojson(
     aoi_geojson: dict[str, Any],
     umbral_m: float = 500,
     area_min_ha: float = 0,
+    incluir_contexto_exterior: bool = False,
 ) -> dict[str, Any]:
     """Analiza una cobertura preclasificada como bosque recibida desde Earth Engine.
 
     Todas las geometrias del asset representan bosque; por eso el usuario final no
-    debe cargar archivos ni escoger un campo de clase.
+    debe cargar archivos ni escoger un campo de clase. Cuando se activa el contexto
+    exterior, la red considera un buffer igual al umbral de cercania, pero las
+    superficies y geometrias devueltas permanecen dentro del area objetivo.
     """
 
     deps = _dependencias()
@@ -750,6 +865,9 @@ def analizar_fragmentacion_geojson(
         aoi = deps["make_valid"](aoi)
     aoi_m = deps["transform"](wgs_a_area.transform, aoi)
     area_paisaje_ha = aoi_m.area / 10_000
+    limite_analisis_m = (
+        aoi_m.buffer(float(umbral_m)) if incluir_contexto_exterior else aoi_m
+    )
 
     parches = []
     for geometria_geojson in _geometrias_desde_geojson(bosque_geojson):
@@ -762,9 +880,9 @@ def analizar_fragmentacion_geojson(
         if not geometria.is_valid:
             geometria = deps["make_valid"](geometria)
         geometria_m = deps["transform"](wgs_a_area.transform, geometria)
-        if not geometria_m.intersects(aoi_m):
+        if not geometria_m.intersects(limite_analisis_m):
             continue
-        recorte = deps["make_valid"](geometria_m.intersection(aoi_m))
+        recorte = deps["make_valid"](geometria_m.intersection(limite_analisis_m))
         for parte in _partes_poligonales(recorte, deps):
             area_ha = parte.area / 10_000
             if area_ha >= area_min_ha and area_ha > 0:
@@ -780,6 +898,8 @@ def analizar_fragmentacion_geojson(
         campo_clase=None,
         valores_bosque=("bosque preclasificado",),
         origen_datos="asset_institucional_earth_engine",
+        area_objetivo_m=aoi_m if incluir_contexto_exterior else None,
+        distancia_contexto_m=float(umbral_m) if incluir_contexto_exterior else 0.0,
     )
 
 
@@ -825,13 +945,19 @@ def agregar_resultados_fragmentacion(
                 "patch_id",
                 "area_ha",
                 "prioridad_conectividad",
-                "esta_aislado",
+                "condicion_cercania",
+                "grado",
+                "distancia_vecino_mas_cercano_m",
+                "continua_fuera_area",
             ],
             aliases=[
                 "Fragmento de bosque",
-                "Área (ha)",
-                "Valor para mantener unido el bosque",
-                "Separado según la distancia elegida",
+                "Área dentro del polígono (ha)",
+                "Importancia relativa dentro del área",
+                "Condición de cercanía",
+                "Fragmentos cercanos",
+                "Vecino más próximo (m)",
+                "Tiene continuidad o conexión exterior",
             ],
             localize=True,
             sticky=False,
@@ -844,6 +970,50 @@ def agregar_resultados_fragmentacion(
     ).add_to(grupo_parches)
     grupo_parches.add_to(mapa)
     capas.append(grupo_parches)
+
+    fragmentos_separados = {
+        "type": "FeatureCollection",
+        "features": [
+            feature
+            for feature in resultados["parches_geojson"]["features"]
+            if feature.get("properties", {}).get("esta_aislado")
+        ],
+    }
+    if fragmentos_separados["features"]:
+        grupo_separados = folium.FeatureGroup(
+            name="Fragmentos separados · resaltar",
+            overlay=True,
+            control=False,
+            show=mostrar_brechas,
+        )
+        folium.GeoJson(
+            fragmentos_separados,
+            style_function=lambda _: {
+                "color": "#7c2d12",
+                "weight": 3.2,
+                "dashArray": "7 5",
+                "fillColor": "#f6c7b8",
+                "fillOpacity": 0.56,
+            },
+            tooltip=folium.GeoJsonTooltip(
+                fields=[
+                    "patch_id",
+                    "area_ha",
+                    "distancia_vecino_mas_cercano_m",
+                    "continua_fuera_area",
+                ],
+                aliases=[
+                    "Fragmento separado",
+                    "Área dentro del polígono (ha)",
+                    "Vecino más próximo (m)",
+                    "Tiene continuidad o conexión exterior",
+                ],
+                localize=True,
+                sticky=False,
+            ),
+        ).add_to(grupo_separados)
+        grupo_separados.add_to(mapa)
+        capas.append(grupo_separados)
 
     if resultados.get("conexiones_geojson", {}).get("features"):
         grupo_conexiones = folium.FeatureGroup(
