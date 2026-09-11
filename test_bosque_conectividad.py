@@ -147,7 +147,7 @@ class BosqueConectividadTests(unittest.TestCase):
         visibilidad = {capa.layer_name: capa.show for capa in capas}
         self.assertTrue(visibilidad["Bosque 2021 · fragmentos e importancia"])
         self.assertFalse(
-            visibilidad["Relaciones cercanas entre fragmentos · opcional"]
+            visibilidad["Estructura esencial entre fragmentos · opcional"]
         )
         self.assertFalse(visibilidad["Fragmentos separados · resaltar"])
         self.assertFalse(visibilidad["Separaciones potenciales · revisar"])
@@ -243,6 +243,124 @@ class BosqueConectividadTests(unittest.TestCase):
                 "continua_fuera_area"
             ],
             "Sí",
+        )
+
+    def test_mapa_resume_la_red_completa_con_una_estructura_minima(self):
+        def poligono(oeste, este):
+            return {
+                "type": "Feature",
+                "properties": {},
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [[
+                        [oeste, 8.0000],
+                        [oeste, 8.0005],
+                        [este, 8.0005],
+                        [este, 8.0000],
+                        [oeste, 8.0000],
+                    ]],
+                },
+            }
+
+        bosque = {
+            "type": "FeatureCollection",
+            "features": [
+                poligono(-80.0000, -79.9995),
+                poligono(-79.9988, -79.9983),
+                poligono(-79.9976, -79.9971),
+            ],
+        }
+        resultado = analizar_fragmentacion_geojson(
+            bosque_geojson=bosque,
+            aoi_geojson=self.aoi_sintetico(),
+            umbral_m=500,
+        )
+
+        self.assertEqual(resultado["metricas_red"]["numero_aristas"], 3)
+        self.assertEqual(resultado["metricas_red"]["numero_relaciones_mostradas"], 2)
+        self.assertEqual(len(resultado["conexiones_geojson"]["features"]), 2)
+        for feature in resultado["conexiones_geojson"]["features"]:
+            self.assertEqual(feature["properties"]["tipo"], "Enlace esencial dentro del umbral")
+            self.assertLessEqual(feature["properties"]["distancia_m"], 500)
+            coordenadas = feature["geometry"]["coordinates"]
+            self.assertLess(abs(coordenadas[1][0] - coordenadas[0][0]), 0.001)
+
+    def test_ruta_estructural_potencial_puede_usar_bosque_exterior(self):
+        def poligono(oeste, este, propiedades=None):
+            return {
+                "type": "Feature",
+                "properties": propiedades or {},
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [[
+                        [oeste, 8.0000],
+                        [oeste, 8.0005],
+                        [este, 8.0005],
+                        [este, 8.0000],
+                        [oeste, 8.0000],
+                    ]],
+                },
+            }
+
+        bosque = {
+            "type": "FeatureCollection",
+            "features": [
+                poligono(-80.0000, -79.9995),
+                poligono(-79.9988, -79.9983),
+                poligono(-79.9976, -79.9971),
+            ],
+        }
+        area = {
+            "type": "Polygon",
+            "coordinates": [[
+                [-80.0002, 7.9998],
+                [-80.0002, 8.0007],
+                [-79.9993, 8.0007],
+                [-79.9993, 7.9998],
+                [-80.0002, 7.9998],
+            ]],
+        }
+        corredores = {
+            "type": "FeatureCollection",
+            "features": [
+                poligono(
+                    -79.9964,
+                    -79.9958,
+                    {
+                        "nombre": "Corredor de prueba",
+                        "cat": "alta",
+                        "categoria_etiqueta": "Alta",
+                    },
+                )
+            ],
+        }
+        resultado = analizar_fragmentacion_geojson(
+            bosque_geojson=bosque,
+            aoi_geojson=area,
+            umbral_m=150,
+            incluir_contexto_exterior=True,
+            corredores_geojson=corredores,
+            radio_busqueda_corredor_m=1000,
+        )
+
+        conexion = resultado["conexion_corredor"]
+        self.assertTrue(conexion["conecta"])
+        self.assertEqual(conexion["corredor_nombre"], "Corredor de prueba")
+        self.assertEqual(conexion["categoria_etiqueta"], "Alta")
+        self.assertEqual(conexion["numero_fragmentos_ruta"], 3)
+        self.assertTrue(conexion["cruza_fuera_area"])
+        self.assertLessEqual(conexion["mayor_separacion_m"], 150)
+        self.assertEqual(len(resultado["parches_geojson"]["features"]), 1)
+        self.assertGreaterEqual(len(resultado["ruta_corredor_geojson"]["features"]), 1)
+
+        import folium
+
+        capas = agregar_resultados_fragmentacion(
+            folium.Map(), resultado, mostrar_ruta_corredor=True
+        )
+        visibilidad = {capa.layer_name: capa.show for capa in capas}
+        self.assertTrue(
+            visibilidad["Conexión estructural potencial hacia corredor"]
         )
 
 

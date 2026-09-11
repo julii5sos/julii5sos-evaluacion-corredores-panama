@@ -32,7 +32,7 @@ def _dependencias():
             mapping,
             shape,
         )
-        from shapely.ops import transform, unary_union
+        from shapely.ops import nearest_points, transform, unary_union
         from shapely.strtree import STRtree
         from shapely.validation import make_valid
     except ImportError as exc:  # pragma: no cover - mensaje operativo
@@ -52,6 +52,7 @@ def _dependencias():
         "shape": shape,
         "transform": transform,
         "unary_union": unary_union,
+        "nearest_points": nearest_points,
         "STRtree": STRtree,
         "make_valid": make_valid,
     }
@@ -184,11 +185,181 @@ def _vecinos_mas_cercanos(parches: list[Any], arbol) -> dict[int, tuple[int | No
 
 
 def _linea_entre_parches(parche_origen, parche_destino, deps):
-    """Crea una línea esquemática entre puntos interiores de dos parches."""
+    """Crea el segmento más corto entre los bordes de dos geometrías."""
 
-    origen = parche_origen.representative_point()
-    destino = parche_destino.representative_point()
+    origen, destino = deps["nearest_points"](parche_origen, parche_destino)
     return deps["LineString"]([(origen.x, origen.y), (destino.x, destino.y)])
+
+
+def _conexion_hacia_corredor(
+    *,
+    grafo,
+    parches,
+    arbol,
+    indices_objetivo,
+    corredores_contexto,
+    umbral_m,
+    deps,
+    area_a_wgs,
+    radio_busqueda_m,
+):
+    """Selecciona una ruta estructural reproducible hacia un corredor publicado."""
+
+    vacio = {"type": "FeatureCollection", "features": []}
+    resumen_vacio = {
+        "evaluada": bool(corredores_contexto),
+        "conecta": False,
+        "tipo": "Sin conexión estructural al umbral",
+        "corredor_nombre": None,
+        "categoria": None,
+        "categoria_etiqueta": None,
+        "distancia_acumulada_m": None,
+        "mayor_separacion_m": None,
+        "numero_fragmentos_ruta": 0,
+        "cruza_fuera_area": False,
+        "radio_busqueda_m": float(radio_busqueda_m),
+        "umbral_m": float(umbral_m),
+        "participa_puntaje": False,
+        "limitacion": (
+            "Es una conexión estructural potencial basada en cobertura 2021 y "
+            "distancias entre bordes; no demuestra movimiento de fauna ni "
+            "conectividad funcional para una especie."
+        ),
+    }
+    if not corredores_contexto or not indices_objetivo or not parches:
+        return resumen_vacio, vacio
+
+    prioridad_categoria = {"alta": 0, "mediana": 1, "mediabaja": 2}
+    candidatos_ruta = []
+    nx = deps["nx"]
+    for indice_corredor, corredor in enumerate(corredores_contexto):
+        geometria = corredor["geometria"]
+        propiedades = corredor.get("propiedades") or {}
+        indices_ancla = [
+            int(indice)
+            for indice in arbol.query(
+                geometria.buffer(float(umbral_m)), predicate="intersects"
+            )
+            if parches[int(indice)].distance(geometria) <= float(umbral_m)
+        ]
+        if not indices_ancla:
+            continue
+
+        fuente_virtual = ("corredor", indice_corredor)
+        grafo.add_node(fuente_virtual)
+        for indice_ancla in indices_ancla:
+            separacion_final = float(parches[indice_ancla].distance(geometria))
+            grafo.add_edge(
+                fuente_virtual,
+                indice_ancla,
+                costo=max(1.0, separacion_final),
+                distancia_m=separacion_final,
+            )
+        try:
+            distancias, rutas = nx.single_source_dijkstra(
+                grafo, fuente_virtual, weight="costo"
+            )
+        finally:
+            grafo.remove_node(fuente_virtual)
+        destinos = [indice for indice in indices_objetivo if indice in distancias]
+        if not destinos:
+            continue
+        destino = min(destinos, key=lambda indice: distancias[indice])
+        ruta = list(reversed(rutas[destino][1:]))
+        categoria = str(propiedades.get("cat") or "").lower()
+        candidatos_ruta.append(
+            (
+                prioridad_categoria.get(categoria, 99),
+                float(distancias[destino]),
+                str(propiedades.get("nombre") or ""),
+                indice_corredor,
+                corredor,
+                ruta,
+            )
+        )
+
+    if not candidatos_ruta:
+        return resumen_vacio, vacio
+
+    _, distancia_total, _, _, corredor, ruta = min(candidatos_ruta)
+    geometria_corredor = corredor["geometria"]
+    propiedades_corredor = corredor.get("propiedades") or {}
+    conjunto_objetivo = set(indices_objetivo)
+    tramos = []
+    separaciones = []
+    pares = list(zip(ruta, ruta[1:]))
+    for orden, (origen, destino) in enumerate(pares, start=1):
+        linea_m = _linea_entre_parches(parches[origen], parches[destino], deps)
+        separacion = float(parches[origen].distance(parches[destino]))
+        separaciones.append(separacion)
+        if linea_m.is_empty or linea_m.length <= 0:
+            continue
+        linea_wgs = deps["transform"](area_a_wgs.transform, linea_m)
+        tramos.append(
+            {
+                "type": "Feature",
+                "properties": {
+                    "orden": orden,
+                    "tipo_tramo": "Entre fragmentos",
+                    "distancia_m": round(separacion, 1),
+                },
+                "geometry": deps["mapping"](linea_wgs),
+            }
+        )
+
+    ancla = ruta[-1]
+    linea_final = _linea_entre_parches(parches[ancla], geometria_corredor, deps)
+    separacion_final = float(parches[ancla].distance(geometria_corredor))
+    separaciones.append(separacion_final)
+    if not linea_final.is_empty and linea_final.length > 0:
+        tramos.append(
+            {
+                "type": "Feature",
+                "properties": {
+                    "orden": len(pares) + 1,
+                    "tipo_tramo": "Llegada al corredor de referencia",
+                    "distancia_m": round(separacion_final, 1),
+                },
+                "geometry": deps["mapping"](
+                    deps["transform"](area_a_wgs.transform, linea_final)
+                ),
+            }
+        )
+    distancia_separaciones = sum(separaciones)
+
+    nombre = str(propiedades_corredor.get("nombre") or "Corredor de referencia")
+    categoria = str(propiedades_corredor.get("cat") or "").lower() or None
+    etiqueta = str(
+        propiedades_corredor.get("categoria_etiqueta")
+        or {"alta": "Alta", "mediana": "Mediana", "mediabaja": "Media-baja"}.get(
+            categoria, "No indicada"
+        )
+    )
+    es_directa = len(ruta) == 1 and separacion_final <= 0.01
+    propiedades_comunes = {
+        "corredor": nombre,
+        "categoria_corredor": etiqueta,
+        "tipo_conexion": "Directa" if es_directa else "Estructural potencial",
+        "umbral_m": float(umbral_m),
+        "distancia_acumulada_m": round(float(distancia_separaciones), 1),
+    }
+    for feature in tramos:
+        feature["properties"].update(propiedades_comunes)
+
+    resumen = {
+        **resumen_vacio,
+        "evaluada": True,
+        "conecta": True,
+        "tipo": propiedades_comunes["tipo_conexion"],
+        "corredor_nombre": nombre,
+        "categoria": categoria,
+        "categoria_etiqueta": etiqueta,
+        "distancia_acumulada_m": round(float(distancia_separaciones), 1),
+        "mayor_separacion_m": round(max(separaciones, default=0.0), 1),
+        "numero_fragmentos_ruta": len(ruta),
+        "cruza_fuera_area": any(indice not in conjunto_objetivo for indice in ruta),
+    }
+    return resumen, {"type": "FeatureCollection", "features": tramos}
 
 
 def _resultado_sin_parches(
@@ -246,6 +417,13 @@ def _resultado_sin_parches(
             "type": "FeatureCollection",
             "features": [],
         },
+        "ruta_corredor_geojson": {"type": "FeatureCollection", "features": []},
+        "conexion_corredor": {
+            "evaluada": False,
+            "conecta": False,
+            "tipo": "No evaluada",
+            "participa_puntaje": False,
+        },
         "hay_parches_aislados": False,
         "campo_clase": campo_clase,
         "valores_bosque": sorted(str(valor) for valor in valores_bosque),
@@ -276,6 +454,8 @@ def _calcular_metricas_parches(
     origen_datos: str,
     area_objetivo_m=None,
     distancia_contexto_m: float = 0.0,
+    corredores_contexto: list[dict[str, Any]] | None = None,
+    radio_busqueda_corredor_m: float = 0.0,
 ) -> dict[str, Any]:
     if not parches:
         resultado = _resultado_sin_parches(
@@ -442,8 +622,15 @@ def _calcular_metricas_parches(
         if origen not in conjunto_objetivo and destino not in conjunto_objetivo:
             continue
         distancias_conexiones.append(distancia)
-        if origen not in conjunto_objetivo or destino not in conjunto_objetivo:
-            continue
+
+    # Las métricas y el índice conservan la red completa. La visualización usa
+    # solo la estructura mínima de cada componente para eliminar líneas repetidas.
+    subgrafo_objetivo = grafo.subgraph(indices_objetivo)
+    estructura_visible = nx.minimum_spanning_tree(
+        subgrafo_objetivo, weight="distancia_m"
+    )
+    for origen, destino, atributos in estructura_visible.edges(data=True):
+        distancia = float(atributos["distancia_m"])
         linea_m = _linea_entre_parches(
             geometrias_visibles[origen], geometrias_visibles[destino], deps
         )
@@ -459,7 +646,7 @@ def _calcular_metricas_parches(
             {
                 "type": "Feature",
                 "properties": {
-                    "tipo": "Conexion dentro del umbral",
+                    "tipo": "Enlace esencial dentro del umbral",
                     "patch_id_origen": origen + 1,
                     "patch_id_destino": destino + 1,
                     "distancia_m": round(distancia, 1),
@@ -516,7 +703,17 @@ def _calcular_metricas_parches(
     for indice in indices_objetivo:
         tamanos_componentes_objetivo[componente_por_nodo[indice]] += 1
     mayor_componente = max(tamanos_componentes_objetivo.values(), default=0)
-    subgrafo_objetivo = grafo.subgraph(indices_objetivo)
+    conexion_corredor, ruta_corredor_geojson = _conexion_hacia_corredor(
+        grafo=grafo,
+        parches=parches,
+        arbol=arbol,
+        indices_objetivo=indices_objetivo,
+        corredores_contexto=corredores_contexto or [],
+        umbral_m=umbral_m,
+        deps=deps,
+        area_a_wgs=area_a_wgs,
+        radio_busqueda_m=radio_busqueda_corredor_m,
+    )
     numero_conexiones_externas = sum(
         1
         for origen, destino in grafo.edges()
@@ -562,6 +759,7 @@ def _calcular_metricas_parches(
         "umbral_m": float(umbral_m),
         "numero_nodos": len(indices_objetivo),
         "numero_aristas": subgrafo_objetivo.number_of_edges(),
+        "numero_relaciones_mostradas": len(conexiones),
         "numero_parches_conectados": len(indices_objetivo) - len(aislados),
         "numero_parches_aislados": len(aislados),
         "porcentaje_parches_aislados": round(
@@ -604,6 +802,8 @@ def _calcular_metricas_parches(
             "type": "FeatureCollection",
             "features": conexiones_potenciales,
         },
+        "ruta_corredor_geojson": ruta_corredor_geojson,
+        "conexion_corredor": conexion_corredor,
         "hay_parches_aislados": bool(aislados),
         "campo_clase": campo_clase,
         "valores_bosque": sorted(str(valor) for valor in valores_bosque),
@@ -616,8 +816,10 @@ def _calcular_metricas_parches(
             "Parches de bosque como nodos; aristas por distancia; indice conector "
             "40% grado, 30% intermediacion, 20% area y 10% fuerza de conexion; "
             "brechas potenciales desde parches aislados hacia su vecino mas cercano; "
+            "las metricas usan la red completa y el mapa muestra su estructura minima; "
             "la conectividad puede considerar bosque exterior mientras las superficies "
-            "y geometrias publicadas permanecen dentro del area objetivo."
+            "y geometrias publicadas permanecen dentro del area objetivo; la ruta hacia "
+            "un corredor es estructural potencial y no conectividad funcional."
         ),
         "participa_indice_prioridad": False,
     }
@@ -840,13 +1042,16 @@ def analizar_fragmentacion_geojson(
     umbral_m: float = 500,
     area_min_ha: float = 0,
     incluir_contexto_exterior: bool = False,
+    corredores_geojson: dict[str, Any] | None = None,
+    radio_busqueda_corredor_m: float = 0.0,
 ) -> dict[str, Any]:
     """Analiza una cobertura preclasificada como bosque recibida desde Earth Engine.
 
     Todas las geometrias del asset representan bosque; por eso el usuario final no
     debe cargar archivos ni escoger un campo de clase. Cuando se activa el contexto
-    exterior, la red considera un buffer igual al umbral de cercania, pero las
-    superficies y geometrias devueltas permanecen dentro del area objetivo.
+    exterior, la red considera un buffer de contexto, pero las superficies y
+    geometrias devueltas permanecen dentro del area objetivo. Un radio mayor
+    puede usarse solo para buscar una cadena estructural hacia un corredor.
     """
 
     deps = _dependencias()
@@ -865,9 +1070,32 @@ def analizar_fragmentacion_geojson(
         aoi = deps["make_valid"](aoi)
     aoi_m = deps["transform"](wgs_a_area.transform, aoi)
     area_paisaje_ha = aoi_m.area / 10_000
-    limite_analisis_m = (
-        aoi_m.buffer(float(umbral_m)) if incluir_contexto_exterior else aoi_m
+    distancia_contexto_m = (
+        max(float(umbral_m), float(radio_busqueda_corredor_m or 0.0))
+        if incluir_contexto_exterior
+        else 0.0
     )
+    limite_analisis_m = (
+        aoi_m.buffer(distancia_contexto_m) if incluir_contexto_exterior else aoi_m
+    )
+
+    corredores_contexto = []
+    if corredores_geojson:
+        for feature in corredores_geojson.get("features", []):
+            geometria_geojson = feature.get("geometry")
+            if not geometria_geojson:
+                continue
+            geometria = deps["shape"](geometria_geojson)
+            if not geometria.is_valid:
+                geometria = deps["make_valid"](geometria)
+            geometria_m = deps["transform"](wgs_a_area.transform, geometria)
+            if geometria_m.intersects(limite_analisis_m):
+                corredores_contexto.append(
+                    {
+                        "geometria": geometria_m,
+                        "propiedades": feature.get("properties") or {},
+                    }
+                )
 
     parches = []
     for geometria_geojson in _geometrias_desde_geojson(bosque_geojson):
@@ -899,7 +1127,9 @@ def analizar_fragmentacion_geojson(
         valores_bosque=("bosque preclasificado",),
         origen_datos="asset_institucional_earth_engine",
         area_objetivo_m=aoi_m if incluir_contexto_exterior else None,
-        distancia_contexto_m=float(umbral_m) if incluir_contexto_exterior else 0.0,
+        distancia_contexto_m=distancia_contexto_m,
+        corredores_contexto=corredores_contexto,
+        radio_busqueda_corredor_m=float(radio_busqueda_corredor_m or 0.0),
     )
 
 
@@ -910,6 +1140,7 @@ def agregar_resultados_fragmentacion(
     mostrar_parches: bool = True,
     mostrar_conexiones: bool = False,
     mostrar_brechas: bool = False,
+    mostrar_ruta_corredor: bool = False,
 ):
     """Agrega una lectura cartográfica progresiva de la estructura del bosque.
 
@@ -1017,7 +1248,7 @@ def agregar_resultados_fragmentacion(
 
     if resultados.get("conexiones_geojson", {}).get("features"):
         grupo_conexiones = folium.FeatureGroup(
-            name="Relaciones cercanas entre fragmentos · opcional",
+            name="Estructura esencial entre fragmentos · opcional",
             overlay=True,
             control=False,
             show=mostrar_conexiones,
@@ -1025,9 +1256,18 @@ def agregar_resultados_fragmentacion(
         folium.GeoJson(
             resultados["conexiones_geojson"],
             style_function=lambda _: {
-                "color": "#2f6f68",
-                "weight": 1.4,
-                "opacity": 0.58,
+                "color": "#ffffff",
+                "weight": 5.0,
+                "opacity": 0.88,
+            },
+            interactive=False,
+        ).add_to(grupo_conexiones)
+        folium.GeoJson(
+            resultados["conexiones_geojson"],
+            style_function=lambda _: {
+                "color": "#00544d",
+                "weight": 2.4,
+                "opacity": 0.96,
             },
             tooltip=folium.GeoJsonTooltip(
                 fields=[
@@ -1048,6 +1288,54 @@ def agregar_resultados_fragmentacion(
         ).add_to(grupo_conexiones)
         grupo_conexiones.add_to(mapa)
         capas.append(grupo_conexiones)
+
+    if resultados.get("ruta_corredor_geojson", {}).get("features"):
+        grupo_ruta = folium.FeatureGroup(
+            name="Conexión estructural potencial hacia corredor",
+            overlay=True,
+            control=False,
+            show=mostrar_ruta_corredor,
+        )
+        folium.GeoJson(
+            resultados["ruta_corredor_geojson"],
+            style_function=lambda _: {
+                "color": "#ffffff",
+                "weight": 8.0,
+                "opacity": 0.94,
+            },
+            interactive=False,
+        ).add_to(grupo_ruta)
+        folium.GeoJson(
+            resultados["ruta_corredor_geojson"],
+            style_function=lambda _: {
+                "color": "#d97904",
+                "weight": 4.2,
+                "opacity": 1.0,
+                "dashArray": "12 7",
+            },
+            tooltip=folium.GeoJsonTooltip(
+                fields=[
+                    "corredor",
+                    "categoria_corredor",
+                    "tipo_tramo",
+                    "distancia_m",
+                    "distancia_acumulada_m",
+                    "umbral_m",
+                ],
+                aliases=[
+                    "Corredor de referencia",
+                    "Categoría publicada",
+                    "Tramo",
+                    "Separación de este tramo (m)",
+                    "Separación acumulada (m)",
+                    "Máximo permitido por salto (m)",
+                ],
+                localize=True,
+                sticky=False,
+            ),
+        ).add_to(grupo_ruta)
+        grupo_ruta.add_to(mapa)
+        capas.append(grupo_ruta)
 
     if resultados.get("conexiones_potenciales_geojson", {}).get("features"):
         grupo_brechas = folium.FeatureGroup(

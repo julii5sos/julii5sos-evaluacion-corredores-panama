@@ -4,7 +4,18 @@ Este historial documenta la evolución de la aplicación UX. Las versiones sigue
 el formato `MAJOR.MINOR.PATCH`: una versión principal, mejoras compatibles y
 correcciones compatibles, respectivamente.
 
-## [0.7.1] - 2026-09-10 — versión actual
+## [0.8.0] - 2026-09-10 — versión actual
+
+### Red legible y conexión potencial hacia un corredor
+
+- Mantiene todas las relaciones entre fragmentos para las métricas, pero muestra en el mapa solo la estructura mínima necesaria de cada grupo.
+- Sustituye las líneas radiales entre puntos interiores por segmentos entre los bordes más próximos de los fragmentos.
+- Añade un halo blanco y un trazo institucional oscuro para que los enlaces sigan siendo visibles sobre la imagen satelital.
+- Busca en un entorno de 5 km una cadena estructural hacia un corredor publicado, exigiendo que cada salto respete la distancia seleccionada.
+- Prefiere corredores de categoría original alta, luego mediana y media-baja, y muestra una sola ruta naranja para evitar ruido visual.
+- Usa la ruta para orientar la revisión, sin añadir puntos ni presentarla como movimiento de fauna o conectividad funcional confirmada.
+
+## [0.7.1] - 2026-09-10
 
 ### Contexto exterior sin ampliar el mapa ni las hectáreas
 

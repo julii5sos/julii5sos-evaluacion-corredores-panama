@@ -18,7 +18,9 @@ La aplicación orienta revisiones territoriales. No es una certificación, no de
 - Lectura automática del recorte vectorial de **Bosque y otros usos 2021** desde un asset privado de Earth Engine.
 - Métricas de fragmentación equivalentes a las utilizadas en los ejercicios R: número y densidad de parches, área total/media/mediana, borde, forma y parche mayor.
 - Red de parches conectados por una distancia configurable e índice conector compuesto por grado (40%), intermediación (30%), área (20%) y fuerza de conexión (10%).
-- Mapa de conexiones dentro del umbral y de brechas potenciales desde parches aislados hacia su vecino más cercano; ambas capas se pueden consultar y descargar como GeoJSON.
+- Red completa para las métricas y una estructura mínima legible en el mapa, trazada entre los bordes más próximos de los fragmentos.
+- Ruta estructural potencial hacia un corredor publicado cuando existe una cadena de bosque en la que cada salto cumple la distancia seleccionada; la búsqueda se limita a un entorno de 5 km.
+- Brechas potenciales desde parches aislados hacia su vecino más cercano; las capas se pueden consultar y descargar como GeoJSON.
 - Resultados de corredores y fragmentación en la interfaz, el PDF y el registro metodológico JSON.
 - Diagnóstico de visita que combina la urgencia por cambios con el valor estratégico
   del corredor y usa la estructura del bosque 2021 para indicar dónde focalizarla.
@@ -34,14 +36,15 @@ conectores, separaciones y componentes aislados.
 ## Flujo de uso
 
 1. Seleccione una finca, dibuje un polígono o use toda la cuenca configurada.
-2. La aplicación conserva el área elegida para el mapa y las hectáreas, pero revisa también un entorno exterior igual a la distancia de conectividad para evitar falsos aislamientos.
+2. La aplicación conserva el área elegida para las hectáreas, pero revisa también un entorno exterior de hasta 5 km para evitar falsos aislamientos y buscar una cadena estructural hacia un corredor publicado.
 3. Si lo necesita, ajuste la distancia máxima entre parches y el área mínima de parche.
 4. Elija **Diagnóstico territorial integrado** o cualquiera de las vistas satelitales.
 5. Ejecute el análisis y revise sus cuatro lecturas: urgencia por cambios, valor del
    corredor, condición estructural 2021 y prioridad integrada de visita.
-6. Use el grupo **Conectividad calculada** del mapa para encender o apagar los parches,
-   las conexiones dentro del umbral y las brechas potenciales. Las brechas son una
-   orientación para revisar en campo, no corredores confirmados.
+6. Use **Capas disponibles en el mapa** para encender o apagar los fragmentos, la
+   estructura esencial, la ruta potencial hacia un corredor y las separaciones. La
+   ruta naranja es una orientación estructural para revisar, no un corredor nuevo ni
+   evidencia de movimiento de fauna.
 7. Descargue el PDF, el registro metodológico y los GeoJSON de parches y conexiones
    para conservar el diagnóstico.
 
@@ -100,7 +103,7 @@ Esta tarea corresponde a la administración, no a las personas que consultan la 
 4. Verifique que la cuenta de servicio de Streamlit pueda leer el asset.
 5. Copie la ruta completa en el secreto `EE_ASSET_BOSQUE_2021` y reinicie la aplicación.
 
-Desde ese momento, cada área seleccionada usa la misma fuente: la aplicación filtra internamente `Categoria = Bosques y Otras Tierras Boscosas`, conserva el recorte del área activa para el mapa y las hectáreas, y usa un buffer exterior igual al umbral únicamente para calcular la conectividad. No muestra un cargador ni un selector de clases.
+Desde ese momento, cada área seleccionada usa la misma fuente: la aplicación filtra internamente `Categoria = Bosques y Otras Tierras Boscosas`, conserva el recorte del área activa para las hectáreas y usa hasta 5 km de contexto exterior para calcular la red y buscar una conexión estructural potencial hacia un corredor. No muestra un cargador ni un selector de clases.
 
 ## Estructura principal
 
