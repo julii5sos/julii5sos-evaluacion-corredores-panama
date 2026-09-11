@@ -4,7 +4,18 @@ Este historial documenta la evolución de la aplicación UX. Las versiones sigue
 el formato `MAJOR.MINOR.PATCH`: una versión principal, mejoras compatibles y
 correcciones compatibles, respectivamente.
 
-## [0.8.1] - 2026-09-10 — versión actual
+## [0.9.0] - 2026-09-11 — versión actual
+
+### Divulgación progresiva orientada a decisiones
+
+- Conserva todos los cálculos, métricas, gráficos, tablas y descargas del diagnóstico.
+- Reduce la información visible antes de ejecutar a tres elementos: área, superficie y vista elegida.
+- Presenta después del análisis una conclusión ejecutiva, cuatro indicadores clave y el mapa antes del detalle técnico.
+- Agrupa la configuración, los períodos, las fuentes y el contenido esperado en una explicación opcional cerrada.
+- Permite abrir por separado los detalles de cambios satelitales, corredores ecológicos y bosque y conectividad.
+- Simplifica el recorrido principal a configurar, analizar y revisar para personas sin experiencia previa en GIS.
+
+## [0.8.1] - 2026-09-10
 
 ### Bosque completo como contexto visual opcional
 
