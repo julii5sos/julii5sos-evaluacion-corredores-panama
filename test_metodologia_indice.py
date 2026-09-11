@@ -19,9 +19,14 @@ from metodologia_indice import (
 class IndicePrioridadTest(unittest.TestCase):
     @staticmethod
     def contexto_fragmentacion(
-        *, parches=100, componentes=8, porcentaje_mayor=60.0, porcentaje_bosque=45.0
+        *,
+        parches=100,
+        componentes=8,
+        porcentaje_mayor=60.0,
+        porcentaje_bosque=45.0,
+        conexion_corredor=None,
     ):
-        return {
+        contexto = {
             "metricas_clase": {
                 "numero_parches": parches,
                 "porcentaje_paisaje_bosque": porcentaje_bosque,
@@ -32,6 +37,9 @@ class IndicePrioridadTest(unittest.TestCase):
                 "umbral_m": 250.0,
             },
         }
+        if conexion_corredor is not None:
+            contexto["conexion_corredor"] = conexion_corredor
+        return contexto
 
     def calcular(self, tmf=False, hansen=False, esri=False, gedi=False):
         return calcular_indice_prioridad(
@@ -242,6 +250,33 @@ class IndicePrioridadTest(unittest.TestCase):
         self.assertIn("parches conectores", integrado["foco_visita"])
         self.assertTrue(integrado["diagnostico_completo"])
         self.assertFalse(REGLAS_CONTEXTO_ESTRUCTURAL["participa_puntaje"])
+
+    def test_conexion_potencial_al_corredor_orienta_sin_sumar_puntos(self):
+        contexto = self.contexto_fragmentacion(
+            conexion_corredor={
+                "conecta": True,
+                "corredor_nombre": "Corredor de prueba",
+                "categoria_etiqueta": "Alta",
+                "distancia_acumulada_m": 420.0,
+            }
+        )
+        resultado = calcular_prioridad_visita(
+            puntaje_cambios=1.5,
+            contexto_corredores={
+                "intersecta": False,
+                "porcentaje_aoi_en_corredores": 0.0,
+                "intersecta_mesoamericano": False,
+            },
+            contexto_fragmentacion=contexto,
+        )
+
+        self.assertEqual(resultado["aporte_corredor"], 0.0)
+        self.assertEqual(resultado["puntaje_integrado"], 1.5)
+        self.assertTrue(
+            resultado["contexto_estructural"]["conexion_potencial_corredor"]
+        )
+        self.assertIn("conexión potencial", resultado["combinacion_territorial"])
+        self.assertIn("Corredor de prueba", resultado["foco_visita"])
 
     def evaluar(self, **cambios):
         valores = {

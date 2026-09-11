@@ -292,6 +292,9 @@ def evaluar_contexto_estructural(contexto_fragmentacion):
             "porcentaje_componente_mayor": 0.0,
             "porcentaje_bosque": 0.0,
             "umbral_m": None,
+            "conexion_potencial_corredor": False,
+            "corredor_referencia": None,
+            "categoria_corredor": None,
             "interpretacion": (
                 "La administración debe configurar el asset de Bosque y otros usos "
                 "2021 para incorporar fragmentación y conectividad al diagnóstico."
@@ -316,6 +319,8 @@ def evaluar_contexto_estructural(contexto_fragmentacion):
             float(metricas_clase.get("porcentaje_paisaje_bosque") or 0.0),
         ),
     )
+    conexion_corredor = contexto.get("conexion_corredor") or {}
+    conexion_potencial_corredor = bool(conexion_corredor.get("conecta"))
 
     if numero_parches == 0:
         estado = "Sin bosque identificado"
@@ -367,6 +372,12 @@ def evaluar_contexto_estructural(contexto_fragmentacion):
         "porcentaje_componente_mayor": round(porcentaje_mayor, 4),
         "porcentaje_bosque": round(porcentaje_bosque, 4),
         "umbral_m": float(metricas_red.get("umbral_m") or 0.0),
+        "conexion_potencial_corredor": conexion_potencial_corredor,
+        "corredor_referencia": conexion_corredor.get("corredor_nombre"),
+        "categoria_corredor": conexion_corredor.get("categoria_etiqueta"),
+        "distancia_ruta_corredor_m": conexion_corredor.get(
+            "distancia_acumulada_m"
+        ),
         "interpretacion": interpretacion,
         "participa_puntaje": False,
         "limitacion": REGLAS_CONTEXTO_ESTRUCTURAL["limitacion"],
@@ -447,6 +458,9 @@ def calcular_prioridad_visita(
     red_requiere_focalizacion = bool(
         estructura["disponible"] and estructura["requiere_focalizacion"]
     )
+    conexion_potencial_corredor = bool(
+        estructura.get("conexion_potencial_corredor")
+    )
 
     if hay_cambio and intersecta and red_requiere_focalizacion:
         combinacion_territorial = "Cambios + corredor + estructura"
@@ -460,10 +474,24 @@ def calcular_prioridad_visita(
             "Ubique primero las señales recientes que se encuentran dentro del corredor."
         )
     elif hay_cambio and red_requiere_focalizacion:
-        combinacion_territorial = "Cambios + estructura"
+        if conexion_potencial_corredor:
+            combinacion_territorial = "Cambios + conexión potencial + estructura"
+            foco_visita = (
+                "Contraste las señales recientes con la cadena estructural potencial "
+                f"hacia {estructura.get('corredor_referencia') or 'el corredor de referencia'}; "
+                "revise especialmente sus separaciones sin asumir tránsito de fauna."
+            )
+        else:
+            combinacion_territorial = "Cambios + estructura"
+            foco_visita = (
+                "Contraste las señales recientes con los parches conectores y los "
+                "componentes aislados de la red."
+            )
+    elif hay_cambio and conexion_potencial_corredor:
+        combinacion_territorial = "Cambios + conexión potencial"
         foco_visita = (
-            "Contraste las señales recientes con los parches conectores y los "
-            "componentes aislados de la red."
+            "Revise si las señales recientes afectan la cadena estructural potencial "
+            f"hacia {estructura.get('corredor_referencia') or 'el corredor de referencia'}."
         )
     elif hay_cambio:
         combinacion_territorial = "Cambios recientes"
@@ -482,10 +510,24 @@ def calcular_prioridad_visita(
             "Mantenga seguimiento preventivo del área incluida en el corredor."
         )
     elif red_requiere_focalizacion:
-        combinacion_territorial = "Estructura preventiva"
+        if conexion_potencial_corredor:
+            combinacion_territorial = "Conexión potencial preventiva"
+            foco_visita = (
+                "Revise preventivamente la cadena estructural potencial hacia "
+                f"{estructura.get('corredor_referencia') or 'el corredor de referencia'}, "
+                "sin interpretarla como conectividad funcional confirmada."
+            )
+        else:
+            combinacion_territorial = "Estructura preventiva"
+            foco_visita = (
+                "Mantenga seguimiento de los conectores y componentes aislados sin "
+                "interpretarlos como cambio reciente."
+            )
+    elif conexion_potencial_corredor:
+        combinacion_territorial = "Conexión potencial preventiva"
         foco_visita = (
-            "Mantenga seguimiento de los conectores y componentes aislados sin "
-            "interpretarlos como cambio reciente."
+            "Mantenga seguimiento preventivo de la cadena estructural potencial hacia "
+            f"{estructura.get('corredor_referencia') or 'el corredor de referencia'}."
         )
     else:
         combinacion_territorial = "Monitoreo ordinario"
@@ -498,6 +540,12 @@ def calcular_prioridad_visita(
         f"valor del corredor: {valor_corredor}; condición estructural: "
         f"{estructura['estado']}."
     )
+    if conexion_potencial_corredor and not intersecta:
+        lectura_integrada += (
+            " Aunque el área no intersecta un corredor publicado, la cobertura 2021 "
+            "muestra una conexión estructural potencial hacia "
+            f"{estructura.get('corredor_referencia') or 'un corredor de referencia'}."
+        )
 
     return {
         "puntaje_cambios": puntaje_cambios,

@@ -41,6 +41,7 @@ from corredores import (
     agregar_capas_corredores,
     analizar_interseccion_corredores,
     cargar_catalogo as cargar_catalogo_corredores,
+    cargar_corredores,
     leyenda_corredores,
 )
 from metodologia_indice import (
@@ -674,8 +675,8 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-0.7.1-CONTEXTO-EXTERIOR"
-METHODOLOGY_VERSION = "MT-2026.10-CONTEXTO-EXTERIOR"
+APP_VERSION = "UX-0.8.0-RUTA-CORREDOR"
+METHODOLOGY_VERSION = "MT-2026.11-RUTA-CORREDOR"
 PROYECTO_EE = secreto_opcional("EE_PROJECT", "ee-julissaguevaravega")
 FUENTE_BOSQUE_NOMBRE = "Bosque y otros usos"
 FUENTE_BOSQUE_ORGANIZACION = "SINIA–MiAMBIENTE"
@@ -686,6 +687,7 @@ FUENTE_BOSQUE_CORTA = (
 )
 CAMPO_COBERTURA_BOSQUE_2021 = "Categoria"
 VALOR_COBERTURA_BOSQUE_2021 = "Bosques y Otras Tierras Boscosas"
+RADIO_BUSQUEDA_CORREDOR_M = 5_000
 
 ASSET_CUENCA = (
     "projects/ee-julissaguevaravega/assets/"
@@ -858,11 +860,18 @@ LEYENDAS = {
             "Fragmento con menor contribución relativa dentro de esta área; no significa que carezca de valor ecológico",
         ),
     ],
-    "Relaciones cercanas": [
+    "Estructura esencial": [
         (
-            "#2f6f68",
-            "Fragmentos cercanos",
-            "La separación entre sus bordes no supera la distancia elegida",
+            "#00544d",
+            "Enlaces estructurales esenciales",
+            "Cada grupo se muestra con el mínimo de líneas necesario; el cálculo sí conserva todas las relaciones",
+        ),
+    ],
+    "Ruta potencial al corredor": [
+        (
+            "#d97904",
+            "Conexión estructural potencial",
+            "Cadena de fragmentos cuyos saltos no superan la distancia elegida hasta un corredor publicado",
         ),
     ],
     "Separaciones potenciales": [
@@ -1184,6 +1193,9 @@ def construir_registro_metodologico(
             registro["resultados_resumen"]["fragmentacion_conectividad"] = {
                 "metricas_clase": resultados["fragmentacion"]["metricas_clase"],
                 "metricas_red": resultados["fragmentacion"]["metricas_red"],
+                "conexion_corredor": resultados["fragmentacion"].get(
+                    "conexion_corredor"
+                ),
                 "top_conectores": resultados["fragmentacion"]["top_conectores"],
                 "campo_clase": resultados["fragmentacion"]["campo_clase"],
                 "valores_bosque": resultados["fragmentacion"]["valores_bosque"],
@@ -1400,6 +1412,36 @@ def obtener_limites(objeto):
     coordenadas = objeto.geometry().bounds(1).coordinates().getInfo()[0]
     longitudes = [punto[0] for punto in coordenadas]
     latitudes = [punto[1] for punto in coordenadas]
+    return [
+        [min(latitudes), min(longitudes)],
+        [max(latitudes), max(longitudes)],
+    ]
+
+
+def obtener_limites_geojson(contenido):
+    """Obtiene límites Leaflet de un GeoJSON sin depender de librerías GIS."""
+
+    puntos = []
+
+    def recorrer(valor):
+        if not isinstance(valor, (list, tuple)):
+            return
+        if (
+            len(valor) >= 2
+            and isinstance(valor[0], (int, float))
+            and isinstance(valor[1], (int, float))
+        ):
+            puntos.append((float(valor[1]), float(valor[0])))
+            return
+        for elemento in valor:
+            recorrer(elemento)
+
+    for feature in (contenido or {}).get("features", []):
+        recorrer((feature.get("geometry") or {}).get("coordinates", []))
+    if not puntos:
+        return None
+    latitudes = [punto[0] for punto in puntos]
+    longitudes = [punto[1] for punto in puntos]
     return [
         [min(latitudes), min(longitudes)],
         [max(latitudes), max(longitudes)],
@@ -1737,7 +1779,9 @@ def analizar_bosque_asset_cache(
 ):
     aoi_geojson = json.loads(aoi_geojson_serializado)
     aoi_ee = ee.Geometry(aoi_geojson)
-    contexto_ee = aoi_ee.buffer(float(umbral_m))
+    contexto_ee = aoi_ee.buffer(
+        max(float(umbral_m), float(RADIO_BUSQUEDA_CORREDOR_M))
+    )
     bosque_en_contexto = (
         ee.FeatureCollection(asset_id)
         .filter(ee.Filter.eq(campo_clase, valor_bosque))
@@ -1755,6 +1799,8 @@ def analizar_bosque_asset_cache(
         umbral_m=umbral_m,
         area_min_ha=area_min_ha,
         incluir_contexto_exterior=True,
+        corredores_geojson=cargar_corredores(),
+        radio_busqueda_corredor_m=RADIO_BUSQUEDA_CORREDOR_M,
     )
 
 
@@ -2606,6 +2652,16 @@ def generar_pdf(
     if contexto_fragmentacion:
         clase_fragmentacion = contexto_fragmentacion["metricas_clase"]
         red_fragmentacion = contexto_fragmentacion["metricas_red"]
+        conexion_corredor = contexto_fragmentacion.get("conexion_corredor") or {}
+        lectura_ruta = (
+            f" Se identificó una conexión estructural potencial hacia "
+            f"{conexion_corredor.get('corredor_nombre')} (categoría "
+            f"{str(conexion_corredor.get('categoria_etiqueta')).lower()}), mediante "
+            f"{conexion_corredor.get('numero_fragmentos_ruta', 0)} fragmentos y con "
+            f"un salto máximo de {conexion_corredor.get('mayor_separacion_m', 0):.1f} m."
+            if conexion_corredor.get("conecta")
+            else " No se identificó una cadena estructural completa hacia un corredor publicado dentro del radio evaluado."
+        )
         secciones.insert(
             5,
             (
@@ -2617,7 +2673,7 @@ def generar_pdf(
                 f"contiene {red_fragmentacion['numero_componentes']} componentes y "
                 f"{red_fragmentacion['numero_aristas']} conexiones; "
                 f"{red_fragmentacion.get('numero_parches_aislados', 0)} parches no tienen "
-                "otro parche dentro del umbral. La importancia "
+                f"otro parche dentro del umbral.{lectura_ruta} La importancia "
                 "Alta/Media/Baja de los parches es relativa al área evaluada, no equivale "
                 "a las categorías de Almanaque Azul. Esta red se conecta con la decisión "
                 "para focalizar la visita en parches conectores y componentes aislados, "
@@ -3412,6 +3468,7 @@ def mostrar_resultados_fragmentacion(resultados):
     numero_continuidad_exterior = int(
         red.get("numero_parches_continuidad_exterior", 0)
     )
+    conexion_corredor = resultados.get("conexion_corredor") or {}
 
     col_bosque, col_fragmentos, col_separados, col_mayor = st.columns(4)
     col_bosque.metric("Bosque identificado", f"{clase['area_total_bosque_ha']:,.2f} ha")
@@ -3463,6 +3520,27 @@ def mostrar_resultados_fragmentacion(resultados):
         """,
         unsafe_allow_html=True,
     )
+
+    if conexion_corredor.get("conecta"):
+        recorrido_exterior = (
+            " La cadena continúa por bosque exterior al polígono."
+            if conexion_corredor.get("cruza_fuera_area")
+            else ""
+        )
+        st.success(
+            f"Conexión estructural potencial hacia «{conexion_corredor['corredor_nombre']}» "
+            f"(categoría {str(conexion_corredor['categoria_etiqueta']).lower()}). "
+            f"La ruta enlaza {conexion_corredor['numero_fragmentos_ruta']:,} fragmentos; "
+            f"su mayor separación es {conexion_corredor['mayor_separacion_m']:,.1f} m "
+            f"y no supera el umbral de {red['umbral_m']:,.0f} m.{recorrido_exterior} "
+            "Es una posibilidad estructural, no evidencia de movimiento de fauna."
+        )
+    elif conexion_corredor.get("evaluada"):
+        st.info(
+            f"No se encontró una cadena continua de fragmentos hacia un corredor publicado "
+            f"dentro de {conexion_corredor.get('radio_busqueda_m', 0) / 1000:,.0f} km, "
+            f"exigiendo que cada salto fuera de {red['umbral_m']:,.0f} m o menos."
+        )
     with st.expander("Entender esta lectura", expanded=False):
         st.markdown(
             f"""
@@ -3470,12 +3548,14 @@ def mostrar_resultados_fragmentacion(resultados):
             - **Fragmentos cercanos:** sus bordes están separados por {red['umbral_m']:.0f} m o menos.
             - **Fragmento separado:** no tiene otro fragmento dentro de esa distancia,
               ni dentro ni en el entorno exterior evaluado.
-            - **Contexto exterior:** se revisa un borde de {red['umbral_m']:.0f} m alrededor
-              del polígono para evitar falsos aislamientos. Ese bosque participa en el cálculo,
-              pero no se dibuja ni se suma a las hectáreas reportadas.
+            - **Contexto exterior:** se revisa hasta {resultados.get('distancia_contexto_m', red['umbral_m']) / 1000:.1f} km
+              alrededor del polígono para buscar la conexión con un corredor. Un fragmento
+              solo se enlaza con otro si sus bordes están a {red['umbral_m']:.0f} m o menos.
+              El bosque exterior participa en la red, pero no se suma a las hectáreas reportadas.
 
-            Las líneas son una ayuda de lectura geométrica. No son caminos de animales ni
-            corredores ecológicos confirmados.
+            La red completa se usa en las métricas. Para no llenar el mapa, la capa de estructura
+            esencial dibuja únicamente los enlaces mínimos que mantienen unido cada grupo.
+            Las líneas no son caminos de animales ni corredores ecológicos confirmados.
             """
         )
 
@@ -3496,6 +3576,7 @@ def mostrar_resultados_fragmentacion(resultados):
                 {"Métrica": "Fragmentos con continuidad o conexión exterior", "Valor": f"{numero_continuidad_exterior:,}"},
                 {"Métrica": "Grupos de fragmentos", "Valor": f"{red['numero_componentes']:,}"},
                 {"Métrica": "Relaciones de cercanía calculadas", "Valor": f"{red['numero_aristas']:,}"},
+                {"Métrica": "Enlaces esenciales mostrados en el mapa", "Valor": f"{red.get('numero_relaciones_mostradas', 0):,}"},
                 {"Métrica": "Separación media", "Valor": f"{red.get('distancia_media_conexiones_m', 0):,.1f} m"},
                 {"Métrica": "Separación máxima", "Valor": f"{red.get('distancia_maxima_conexiones_m', 0):,.1f} m"},
                 {"Métrica": "Separaciones potenciales para revisar", "Valor": f"{red.get('numero_brechas_potenciales', 0):,}"},
@@ -3506,9 +3587,28 @@ def mostrar_resultados_fragmentacion(resultados):
             use_container_width=True,
         )
         st.caption(
-            "Estas relaciones son cálculos geométricos. Puede mostrarlas desde «Capas "
-            "disponibles en el mapa»; comienzan apagadas y no representan corredores confirmados."
+            "La tabla cuenta todas las relaciones utilizadas en el cálculo. El mapa dibuja "
+            "solo una estructura mínima sin enlaces redundantes; no representa rutas confirmadas."
         )
+        if conexion_corredor.get("evaluada"):
+            st.dataframe(
+                [
+                    {
+                        "Conexión hacia corredor": conexion_corredor.get("tipo"),
+                        "Corredor de referencia": conexion_corredor.get("corredor_nombre") or "No alcanzado",
+                        "Categoría publicada": conexion_corredor.get("categoria_etiqueta") or "—",
+                        "Fragmentos en la cadena": conexion_corredor.get("numero_fragmentos_ruta", 0),
+                        "Mayor salto": (
+                            f"{conexion_corredor['mayor_separacion_m']:,.1f} m"
+                            if conexion_corredor.get("mayor_separacion_m") is not None
+                            else "—"
+                        ),
+                        "Usa bosque exterior": "Sí" if conexion_corredor.get("cruza_fuera_area") else "No",
+                    }
+                ],
+                hide_index=True,
+                use_container_width=True,
+            )
     with paisaje_tab:
         st.dataframe(
             [
@@ -3562,6 +3662,7 @@ def mostrar_resultados_fragmentacion(resultados):
             "features": (
                 resultados.get("conexiones_geojson", {}).get("features", [])
                 + resultados.get("conexiones_potenciales_geojson", {}).get("features", [])
+                + resultados.get("ruta_corredor_geojson", {}).get("features", [])
             ),
         }
         col_descarga_parches, col_descarga_red = st.columns(2)
@@ -3573,7 +3674,7 @@ def mostrar_resultados_fragmentacion(resultados):
             use_container_width=True,
         )
         col_descarga_red.download_button(
-            "Descargar relaciones de proximidad (GeoJSON)",
+            "Descargar estructura y ruta potencial (GeoJSON)",
             data=json.dumps(red_geojson, ensure_ascii=False),
             file_name=f"red_conectividad_bosque_{ANO_BOSQUE_REFERENCIA}.geojson",
             mime="application/geo+json",
@@ -3947,6 +4048,7 @@ try:
     mostrar_fragmentos_bosque = False
     mostrar_conexiones_bosque = False
     mostrar_brechas_bosque = False
+    mostrar_ruta_corredor = False
 
     if modo_mapa == "Comparar años":
         capas_activas = []
@@ -4035,11 +4137,11 @@ try:
             help="Muestra las áreas continuas de bosque identificadas dentro del área.",
         )
         mostrar_conexiones_bosque = st.sidebar.checkbox(
-            "Relaciones cercanas entre fragmentos",
+            "Estructura esencial entre fragmentos",
             value=False,
             help=(
-                "Capa técnica opcional. Dibuja líneas entre fragmentos separados por una "
-                "distancia menor o igual al valor configurado."
+                "Muestra solo los enlaces indispensables de cada grupo. Todas las "
+                "relaciones dentro de la distancia elegida siguen usándose en el cálculo."
             ),
         )
         mostrar_brechas_bosque = st.sidebar.checkbox(
@@ -4049,6 +4151,14 @@ try:
                 "Resalta los fragmentos sin otro bosque dentro de la distancia elegida y, "
                 "cuando existe un vecino, dibuja una línea discontinua hacia él. El cálculo "
                 "también considera el bosque exterior, aunque no lo muestra."
+            ),
+        )
+        mostrar_ruta_corredor = st.sidebar.checkbox(
+            "Conexión potencial hacia un corredor",
+            value=True,
+            help=(
+                "Resalta una sola cadena posible de bosque hacia el corredor publicado "
+                "de mayor categoría alcanzable. Cada salto debe respetar la distancia elegida."
             ),
         )
 
@@ -4174,6 +4284,7 @@ try:
         mostrar_fragmentos_bosque,
         mostrar_conexiones_bosque,
         mostrar_brechas_bosque,
+        mostrar_ruta_corredor,
         mostrar_corredores_mapa,
         mostrar_puntos_criticos_mapa,
     )
@@ -4774,6 +4885,7 @@ try:
                 mostrar_parches=mostrar_fragmentos_bosque,
                 mostrar_conexiones=mostrar_conexiones_bosque,
                 mostrar_brechas=mostrar_brechas_bosque,
+                mostrar_ruta_corredor=mostrar_ruta_corredor,
             )
 
     cuenca = ee.FeatureCollection(ASSET_CUENCA)
@@ -4799,7 +4911,26 @@ try:
             etiqueta_inicial,
             etiqueta_final,
         )
-    mapa.fit_bounds(limites_area)
+    limites_mapa = limites_area
+    if mostrar_ruta_corredor and analisis_actual:
+        ruta_actual = (
+            st.session_state.get("resultados_analisis", {})
+            .get("fragmentacion", {})
+            .get("ruta_corredor_geojson", {})
+        )
+        limites_ruta = obtener_limites_geojson(ruta_actual)
+        if limites_ruta:
+            limites_mapa = [
+                [
+                    min(limites_area[0][0], limites_ruta[0][0]),
+                    min(limites_area[0][1], limites_ruta[0][1]),
+                ],
+                [
+                    max(limites_area[1][0], limites_ruta[1][0]),
+                    max(limites_area[1][1], limites_ruta[1][1]),
+                ],
+            ]
+    mapa.fit_bounds(limites_mapa)
 
     mapa_resultados_contenedor.markdown("#### Mapa interactivo del área evaluada")
     if etiqueta_inicial and etiqueta_final:
@@ -4820,9 +4951,8 @@ try:
     else:
         mapa_resultados_contenedor.caption(
             "Elija las capas desde «Capas disponibles en el mapa», en el panel lateral. "
-            "Los fragmentos de bosque pueden mostrarse como resultado principal; las líneas "
-            "de proximidad y las separaciones potenciales son opcionales y comienzan apagadas "
-            "para mantener una lectura limpia."
+            "La estructura esencial evita líneas redundantes y la ruta naranja, cuando existe, "
+            "muestra una conexión estructural potencial hacia un corredor de referencia."
         )
     with mapa_resultados_contenedor:
         st_folium(
@@ -4840,7 +4970,8 @@ try:
                 f"{catalogo_corredores['version_publicada']}-{huella_bosque}-"
                 f"{umbral_conectividad_m}-{area_min_parche_ha}-"
                 f"{mostrar_fragmentos_bosque}-{mostrar_conexiones_bosque}-"
-                f"{mostrar_brechas_bosque}-{mostrar_corredores_mapa}-"
+                f"{mostrar_brechas_bosque}-{mostrar_ruta_corredor}-"
+                f"{mostrar_corredores_mapa}-"
                 f"{mostrar_puntos_criticos_mapa}-"
                 f"{hash(geometria_dibujada_json or '')}"
             ),
@@ -4864,6 +4995,20 @@ try:
             f"No se encontraron fragmentos separados con la distancia de "
             f"{umbral_conectividad_m:,.0f} m. El cálculo también revisó el bosque "
             "del entorno exterior, aunque ese contexto no se dibuja en el mapa."
+        )
+    if (
+        mostrar_ruta_corredor
+        and analisis_actual
+        and fragmentacion_actual
+        and not (
+            fragmentacion_actual.get("ruta_corredor_geojson", {}).get("features")
+        )
+        and not fragmentacion_actual.get("conexion_corredor", {}).get("conecta")
+    ):
+        mapa_resultados_contenedor.info(
+            f"No hay una ruta estructural visible hacia los corredores publicados dentro "
+            f"de {RADIO_BUSQUEDA_CORREDOR_M / 1000:,.0f} km con saltos máximos de "
+            f"{umbral_conectividad_m:,.0f} m."
         )
 
     with mapa_resultados_contenedor.expander(
@@ -4889,7 +5034,14 @@ try:
             )
         if capas_fragmentacion_mapa and mostrar_conexiones_bosque:
             leyendas_activas.append(
-                ("Relaciones cercanas", LEYENDAS["Relaciones cercanas"])
+                ("Estructura esencial", LEYENDAS["Estructura esencial"])
+            )
+        if capas_fragmentacion_mapa and mostrar_ruta_corredor:
+            leyendas_activas.append(
+                (
+                    "Conexión potencial hacia corredor",
+                    LEYENDAS["Ruta potencial al corredor"],
+                )
             )
         if capas_fragmentacion_mapa and mostrar_brechas_bosque:
             leyendas_activas.append(

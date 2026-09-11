@@ -48,9 +48,10 @@ Los colores originales de Almanaque Azul (`#345a01`, `#a1d303`, `#e0c504`) solo 
 ## Reglas de interacción
 
 - La cobertura institucional se configura una sola vez mediante un asset privado; la interfaz pública no solicita shapefiles.
-- La conectividad se presenta con parches, conexiones y brechas potenciales en capas independientes. Las brechas inician apagadas para reducir el ruido visual.
+- La conectividad se presenta con parches, estructura esencial, ruta potencial al corredor y separaciones en capas independientes.
 - La lectura principal usa «fragmentos cercanos o separados»; nodo, arista, componente y densidad quedan reservados para el detalle técnico opcional.
-- Los fragmentos se muestran por defecto; las líneas de proximidad y separación requieren activación explícita.
+- Los fragmentos se muestran por defecto. La red completa nunca se dibuja: la capa técnica usa el árbol mínimo de cada grupo, con trazo verde oscuro y halo blanco.
+- La ruta potencial al corredor usa una única línea naranja discontinua con halo blanco; no compite con las categorías originales de Almanaque Azul.
 - El contexto forestal exterior participa en la conectividad, pero nunca amplía la superficie reportada ni el mapa del área elegida; la interfaz lo explica de forma visible.
 - Los errores aparecen junto al archivo o campo que los produce.
 - La aplicación nunca presenta `Alta/Media/Baja` de parches como si fueran las categorías de Almanaque Azul.
@@ -68,3 +69,5 @@ Los colores originales de Almanaque Azul (`#345a01`, `#a1d303`, `#e0c504`) solo 
 - [ ] Verificar el flujo completo con secretos válidos de Earth Engine en el entorno de despliegue.
 - [x] Verificar el shapefile nacional real y confirmar el campo/valor de bosque.
 - [x] Ofrecer una tabla alternativa a la red cartográfica para no depender solo del mapa o del color.
+- [x] Eliminar enlaces redundantes y asegurar contraste de las líneas sobre imagen satelital.
+- [x] Explicar que la ruta al corredor es estructural potencial, no conectividad funcional.

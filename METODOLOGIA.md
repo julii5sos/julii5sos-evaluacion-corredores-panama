@@ -251,9 +251,9 @@ de parches de la cobertura 2021.
 
 ## Fragmentación del bosque de referencia 2021
 
-La cobertura utilizada corresponde a la capa **Bosque y otros usos**, referencia 2021, publicada por SINIA–MiAMBIENTE. La administración publica el shapefile nacional una sola vez como asset privado de Earth Engine. La aplicación filtra internamente el campo `Categoria` por el valor `Bosques y Otras Tierras Boscosas`; la persona usuaria no carga archivos ni selecciona campos de clase. Para la conectividad se obtiene el área evaluada más un buffer exterior igual al umbral elegido. Las geometrías se transforman a EPSG:8857, se validan y se separan en parches poligonales.
+La cobertura utilizada corresponde a la capa **Bosque y otros usos**, referencia 2021, publicada por SINIA–MiAMBIENTE. La administración publica el shapefile nacional una sola vez como asset privado de Earth Engine. La aplicación filtra internamente el campo `Categoria` por el valor `Bosques y Otras Tierras Boscosas`; la persona usuaria no carga archivos ni selecciona campos de clase. Para la conectividad se obtiene el área evaluada más un contexto exterior de hasta 5 km. Las geometrías se transforman a EPSG:8857, se validan y se separan en parches poligonales.
 
-El bosque del buffer exterior participa únicamente en la construcción de la red. Las hectáreas, la cantidad de fragmentos y las geometrías entregadas o dibujadas se limitan al polígono original. De esta manera, un fragmento que continúa o se conecta con bosque inmediatamente fuera del límite no se clasifica erróneamente como aislado, sin incorporar superficie exterior al resultado del predio.
+El bosque del contexto exterior participa únicamente en la construcción de la red. Las hectáreas, la cantidad de fragmentos y los polígonos de bosque entregados se limitan al área original. De esta manera, un fragmento que continúa o se conecta con bosque inmediatamente fuera del límite no se clasifica erróneamente como aislado, sin incorporar superficie exterior al resultado del predio. Solo la ruta potencial hacia un corredor puede extenderse visualmente fuera del límite para explicar la conexión encontrada.
 
 Esta capa representa la cobertura clasificada para 2021. Se utiliza para describir la fragmentación y conectividad estructural del bosque de ese año; por sí sola no permite determinar cuándo ocurrió un cambio ni debe interpretarse como una serie anual de deforestación.
 
@@ -271,9 +271,8 @@ Las métricas de clase son:
 
 Cada parche es un nodo. Dos nodos se conectan cuando la distancia mínima entre sus polígonos es menor o igual al umbral seleccionado. Para una distancia `d` y umbral `u`, la fuerza de la arista es `exp(-d/u)` y el costo mínimo utilizado es 1 m.
 
-El mapa puede representar las relaciones internas con líneas discretas entre los parches y
-muestra en cada línea la distancia mínima realmente calculada entre sus polígonos.
-Las relaciones con bosque exterior participan en las métricas, pero no se dibujan fuera del polígono.
+Las métricas y el índice se calculan con todas las relaciones válidas. Para evitar abanicos de líneas redundantes, el mapa representa únicamente el árbol de expansión mínimo de cada componente: el conjunto de enlaces más cortos que mantiene unido ese grupo. Cada segmento une los puntos de borde más próximos de dos fragmentos y muestra la distancia mínima realmente calculada entre sus polígonos. Un halo blanco y un trazo verde oscuro conservan el contraste sobre la imagen satelital.
+Las relaciones ordinarias con bosque exterior participan en las métricas, pero no se dibujan fuera del polígono. La única excepción visual es la ruta potencial destacada hacia un corredor, cuando existe.
 Un parche con grado cero, después de considerar ese contexto, se considera aislado al umbral elegido. Para ayudar a
 planificar la inspección, la aplicación puede dibujar una línea discontinua desde
 cada parche aislado hacia el parche más cercano disponible. La geometría visible se corta en el límite del área. Esa línea
@@ -310,3 +309,11 @@ estructural, no movimiento comprobado de fauna. Se conectan con el diagnóstico 
 orientar la visita hacia parches conectores y componentes aislados, pero no modifican
 el puntaje: asignarles peso requeriría calibración ecológica para el territorio y las
 especies objetivo.
+
+## Conexión estructural potencial hacia un corredor de referencia
+
+La aplicación examina los corredores publicados por Almanaque Azul que se encuentran dentro del contexto de 5 km. Para cada corredor identifica los fragmentos situados dentro del umbral elegido y busca, sobre la red completa, una cadena desde el área evaluada. La ruta solo se acepta cuando **cada salto** entre fragmentos y el salto final al corredor es menor o igual al umbral seleccionado.
+
+Cuando existe más de una alternativa, se conserva una sola para mantener legible el mapa. Primero se prefieren las categorías originales de Almanaque Azul en el orden alta, mediana y media-baja; dentro de la misma categoría se selecciona la menor suma de separaciones. La ruta se dibuja en naranja con halo blanco y puede incluir bosque exterior al polígono, aunque esa superficie exterior no se suma a las hectáreas del área.
+
+Esta salida responde a una pregunta limitada: si la geometría del bosque clasificado en 2021 permite encadenar fragmentos hasta un corredor de referencia usando el umbral indicado. No es una ruta de menor costo del paisaje, no incorpora resistencia de coberturas, topografía o requerimientos de especies, no crea un nuevo corredor oficial y no demuestra conectividad funcional ni movimiento de fauna. Por esa razón orienta el foco de revisión, pero no añade puntos al índice de prioridad.
