@@ -25,6 +25,9 @@ La aplicación orienta revisiones territoriales. No es una certificación, no de
 - Resultados de corredores y fragmentación en la interfaz, el PDF y el registro metodológico JSON.
 - Diagnóstico de visita que combina la urgencia por cambios con el valor estratégico
   del corredor y usa la estructura del bosque 2021 para indicar dónde focalizarla.
+- Experiencia con divulgación progresiva: muestra primero la acción, la conclusión y el
+  mapa; los cálculos, gráficos, tablas, fuentes y descargas permanecen disponibles como
+  detalles opcionales, sin eliminar información del análisis.
 
 El índice satelital de cambios no se altera. La prioridad de visita lo conserva
 como componente dominante y añade hasta 1.5 puntos de valor estratégico: hasta
@@ -36,20 +39,22 @@ conectores, separaciones y componentes aislados.
 
 ## Flujo de uso
 
-1. Seleccione una finca, dibuje un polígono o use toda la cuenca configurada.
-2. La aplicación conserva el área elegida para las hectáreas, pero revisa también un entorno exterior de hasta 5 km para evitar falsos aislamientos y buscar una cadena estructural hacia un corredor publicado.
-3. Si lo necesita, ajuste la distancia máxima entre parches y el área mínima de parche.
-4. Elija **Diagnóstico territorial integrado** o cualquiera de las vistas satelitales.
-5. Ejecute el análisis y revise sus cuatro lecturas: urgencia por cambios, valor del
-   corredor, condición estructural 2021 y prioridad integrada de visita.
-6. Use **Capas disponibles en el mapa** para encender o apagar por separado la
+1. Seleccione una finca, dibuje un polígono o use toda la cuenca configurada y elija la vista.
+2. Ejecute el análisis. La aplicación muestra primero la prioridad de visita, cuatro
+   indicadores clave y el mapa. La configuración y la metodología permanecen cerradas
+   hasta que la persona decida consultarlas.
+3. La aplicación conserva el área elegida para las hectáreas, pero revisa también un
+   entorno exterior de hasta 5 km para evitar falsos aislamientos y buscar una cadena
+   estructural hacia un corredor publicado.
+4. Use **Capas disponibles en el mapa** para encender o apagar por separado la
    cobertura completa de bosque del área y su entorno, los fragmentos evaluados,
    la estructura esencial, la ruta potencial hacia un corredor y las separaciones.
    La ruta naranja es una orientación estructural para revisar, no un corredor nuevo
    ni evidencia de movimiento de fauna. El bosque exterior que se muestre no se suma
    a las hectáreas informadas para el polígono.
-7. Descargue el PDF, el registro metodológico y los GeoJSON de parches y conexiones
-   para conservar el diagnóstico.
+5. Abra, solo si los necesita, los detalles de **Cambios satelitales**, **Corredores
+   ecológicos** o **Bosque y conectividad**. Allí se conservan las métricas, gráficos,
+   tablas y archivos descargables del análisis completo.
 
 ## Fuentes
 

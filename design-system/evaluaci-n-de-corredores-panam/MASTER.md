@@ -5,6 +5,8 @@ Este archivo adapta las recomendaciones de UI/UX al sistema institucional ya est
 ## Principios
 
 - Interfaz científica y guiada, con divulgación progresiva.
+- La ruta principal prioriza acción y decisión: configurar el área, ejecutar, leer la
+  conclusión y revisar el mapa. La explicación técnica aparece únicamente cuando se solicita.
 - Separar visualmente evidencia satelital, fuente cartográfica externa y cálculo propio.
 - No depender solo del color: toda clase lleva etiqueta y explicación.
 - Controles de al menos 44 px, foco visible y contraste WCAG AA.
@@ -41,6 +43,7 @@ Los colores originales de Almanaque Azul (`#345a01`, `#a1d303`, `#e0c504`) solo 
 - Botón primario: fondo `#00544d`, texto blanco y foco de 3 px.
 - Botón secundario: superficie blanca, borde `#00544d` y texto del mismo color.
 - Resultados: métricas en cuadrícula adaptable; tablas con encabezados explícitos.
+- Resumen ejecutivo: una conclusión de prioridad y cuatro indicadores clave antes del mapa.
 - Mapas: grupos independientes para capas temáticas, corredores externos, parches calculados y referencias.
 - Los controles de capas y las leyendas se mantienen fuera del mapa para no cubrir la evidencia espacial.
 - Alertas metodológicas: borde izquierdo de 4–5 px y texto que explique qué participa o no en el índice.
@@ -48,6 +51,9 @@ Los colores originales de Almanaque Azul (`#345a01`, `#a1d303`, `#e0c504`) solo 
 ## Reglas de interacción
 
 - La cobertura institucional se configura una sola vez mediante un asset privado; la interfaz pública no solicita shapefiles.
+- Antes de ejecutar solo se muestran área, superficie y vista; períodos, fuentes y entregables permanecen en un desplegable cerrado.
+- Después de ejecutar, los bloques completos de cambios, corredores y conectividad se activan por separado y comienzan cerrados.
+- Ninguna métrica, gráfico, tabla o descarga se elimina para reducir la densidad visual; solo cambia el momento en que se presenta.
 - La conectividad se presenta con parches, estructura esencial, ruta potencial al corredor y separaciones en capas independientes.
 - La lectura principal usa «fragmentos cercanos o separados»; nodo, arista, componente y densidad quedan reservados para el detalle técnico opcional.
 - Los fragmentos se muestran por defecto. La red completa nunca se dibuja: la capa técnica usa el árbol mínimo de cada grupo, con trazo verde oscuro y halo blanco.
@@ -71,3 +77,4 @@ Los colores originales de Almanaque Azul (`#345a01`, `#a1d303`, `#e0c504`) solo 
 - [x] Ofrecer una tabla alternativa a la red cartográfica para no depender solo del mapa o del color.
 - [x] Eliminar enlaces redundantes y asegurar contraste de las líneas sobre imagen satelital.
 - [x] Explicar que la ruta al corredor es estructural potencial, no conectividad funcional.
+- [x] Mostrar acción y resultado antes de los detalles, con todos los datos técnicos disponibles bajo demanda.
