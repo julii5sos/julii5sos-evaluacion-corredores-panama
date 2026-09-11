@@ -1,8 +1,8 @@
 # Metodología del índice operativo de prioridad
 
-**Versión del método:** MT-2026.7-DIAGNOSTICO-INTEGRADO
-
-**Versión de implementación auditada:** UX-0.5.0-DIAGNOSTICO-INTEGRADO
+Los identificadores técnicos de versión se conservan en el registro metodológico
+JSON descargable para asegurar la trazabilidad sin añadir códigos internos a la
+experiencia principal de la aplicación.
 
 ## Finalidad y alcance
 

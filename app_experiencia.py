@@ -670,7 +670,7 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-1.0.0-FICHA-EJECUTIVA"
+APP_VERSION = "UX-1.0.1-FICHA-EJECUTIVA"
 METHODOLOGY_VERSION = "MT-2026.11-RUTA-CORREDOR"
 PROYECTO_EE = secreto_opcional("EE_PROJECT", "ee-julissaguevaravega")
 FUENTE_BOSQUE_NOMBRE = "Bosque y otros usos"
@@ -2477,7 +2477,12 @@ def generar_pdf(
     identificacion = tabla_simple(
         [
             ["Área evaluada", nombre_area, "Superficie", f"{area:,.2f} ha"],
-            ["Fecha", date.today().strftime("%d/%m/%Y"), "Método", METHODOLOGY_VERSION],
+            [
+                "Fecha",
+                date.today().strftime("%d/%m/%Y"),
+                "Alcance",
+                "Preevaluación territorial",
+            ],
         ],
         [2.2 * cm, 6.2 * cm, 2.0 * cm, 6.6 * cm],
         fondo=superficie,
@@ -4396,7 +4401,6 @@ try:
     with st.expander("Ver configuración, períodos y contenido del resultado", expanded=False):
         st.markdown(
             f"""
-            - **Método:** `{METHODOLOGY_VERSION}`.
             - **Modo del mapa:** {html_lib.escape(modo_mapa)}.
             - **Corredores:** Almanaque Azul {catalogo_corredores['version_publicada']}.
             - **Bosque y otros usos {ANO_BOSQUE_REFERENCIA}:** {'disponible automáticamente' if bosque_automatico_disponible else 'pendiente de configuración'}.
@@ -5212,7 +5216,6 @@ try:
         periodo_ndvi_visual = f"hasta {ANO_NDVI_MAX}"
 
     with st.expander("Metodología y reproducibilidad", expanded=False):
-        st.markdown(f"**Metodología aplicada:** {METHODOLOGY_VERSION}")
         tab_fuentes, tab_reglas, tab_limites = st.tabs(
             ["Fuentes y períodos", "Reglas del análisis", "Alcance y limitaciones"]
         )

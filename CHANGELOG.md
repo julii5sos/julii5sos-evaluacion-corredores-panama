@@ -8,6 +8,8 @@ correcciones compatibles, respectivamente.
 
 ### Ficha ejecutiva con cartografía explicativa
 
+- Retira los códigos internos del método de la interfaz y de la ficha PDF; estos
+  permanecen únicamente en el registro metodológico JSON para trazabilidad.
 - Reorganiza el PDF con divulgación progresiva: conclusión y acción primero,
   evidencia espacial después y trazabilidad técnica al final.
 - Desglosa el puntaje fuente por fuente y distingue explícitamente el índice de
