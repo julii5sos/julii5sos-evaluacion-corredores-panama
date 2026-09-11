@@ -675,7 +675,7 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-0.8.0-RUTA-CORREDOR"
+APP_VERSION = "UX-0.8.1-BOSQUE-CONTEXTO"
 METHODOLOGY_VERSION = "MT-2026.11-RUTA-CORREDOR"
 PROYECTO_EE = secreto_opcional("EE_PROJECT", "ee-julissaguevaravega")
 FUENTE_BOSQUE_NOMBRE = "Bosque y otros usos"
@@ -843,6 +843,13 @@ PERFILES_VISUALIZACION = {
 
 LEYENDAS = {
     "Corredores Almanaque Azul": leyenda_corredores(),
+    "Bosque 2021 de contexto": [
+        (
+            "#2f6b45",
+            "Bosque 2021 dentro y alrededor del área",
+            "Cobertura institucional visible hasta 5 km fuera; solo el bosque dentro del polígono se suma a las hectáreas",
+        ),
+    ],
     "Importancia de parches": [
         (
             "#a63f35",
@@ -1700,6 +1707,23 @@ def capa_gee(
     )
     capa.add_to(mapa)
     return capa
+
+
+def imagen_bosque_contexto(geometria, distancia_m=RADIO_BUSQUEDA_CORREDOR_M):
+    """Pinta la cobertura institucional dentro del área y su entorno de consulta."""
+
+    limite_contexto = geometria.buffer(float(distancia_m))
+    bosque = (
+        ee.FeatureCollection(ASSET_BOSQUE_2021)
+        .filter(
+            ee.Filter.eq(
+                CAMPO_COBERTURA_BOSQUE_2021,
+                VALOR_COBERTURA_BOSQUE_2021,
+            )
+        )
+        .filterBounds(limite_contexto)
+    )
+    return ee.Image(0).byte().paint(bosque, 1).selfMask().clip(limite_contexto)
 
 
 def agregar_rotulos_comparador(mapa, limites, etiqueta_inicial, etiqueta_final):
@@ -3944,7 +3968,8 @@ try:
     with st.sidebar.expander("Cobertura de bosque 2021", expanded=False):
         if bosque_automatico_disponible:
             st.success(
-                "Cobertura lista. La aplicación la recortará automáticamente al área elegida."
+                "Cobertura lista. La aplicación consultará automáticamente el área "
+                "elegida y su entorno de conectividad."
             )
         else:
             st.warning(
@@ -4046,6 +4071,7 @@ try:
     mostrar_corredores_mapa = False
     mostrar_puntos_criticos_mapa = False
     mostrar_fragmentos_bosque = False
+    mostrar_bosque_contexto = False
     mostrar_conexiones_bosque = False
     mostrar_brechas_bosque = False
     mostrar_ruta_corredor = False
@@ -4131,10 +4157,24 @@ try:
         capas_activas = list(orden_capas_mapa)
 
         st.sidebar.caption("Resultado de bosque y conectividad")
+        mostrar_bosque_contexto = st.sidebar.checkbox(
+            "Cobertura completa de bosque 2021 · área + entorno",
+            value=False,
+            disabled=not bosque_automatico_disponible,
+            help=(
+                f"Muestra en verde el bosque dentro del área y hasta "
+                f"{RADIO_BUSQUEDA_CORREDOR_M / 1000:.0f} km alrededor. El bosque exterior "
+                "sirve como contexto visual y para la conectividad, pero no se suma a "
+                "las hectáreas del área evaluada."
+            ),
+        )
         mostrar_fragmentos_bosque = st.sidebar.checkbox(
-            "Fragmentos de bosque 2021",
+            "Fragmentos evaluados dentro del área",
             value=True,
-            help="Muestra las áreas continuas de bosque identificadas dentro del área.",
+            help=(
+                "Colorea únicamente los fragmentos dentro del polígono según su valor "
+                "relativo para mantener unido el bosque."
+            ),
         )
         mostrar_conexiones_bosque = st.sidebar.checkbox(
             "Estructura esencial entre fragmentos",
@@ -4282,6 +4322,7 @@ try:
         tuple(orden_capas_mapa),
         capa_visible_inicial,
         mostrar_fragmentos_bosque,
+        mostrar_bosque_contexto,
         mostrar_conexiones_bosque,
         mostrar_brechas_bosque,
         mostrar_ruta_corredor,
@@ -4870,6 +4911,23 @@ try:
             f"Vegetación NDVI {anio_ndvi_capa}",
         )
 
+    capa_bosque_contexto = None
+    if (
+        modo_mapa == "Explorar capas"
+        and mostrar_bosque_contexto
+        and bosque_automatico_disponible
+    ):
+        capa_bosque_contexto = capa_gee(
+            mapa,
+            imagen_bosque_contexto(geometria),
+            {"min": 1, "max": 1, "palette": ["2f6b45"]},
+            f"Bosque {ANO_BOSQUE_REFERENCIA} · área y entorno",
+            mostrar=True,
+            opacidad=0.44,
+            control=False,
+            z_index=310,
+        )
+
     capas_corredores_mapa = agregar_capas_corredores(
         mapa,
         mostrar=mostrar_corredores_mapa,
@@ -4912,6 +4970,11 @@ try:
             etiqueta_final,
         )
     limites_mapa = limites_area
+    if mostrar_bosque_contexto and bosque_automatico_disponible:
+        contexto_mapa = ee.FeatureCollection(
+            [ee.Feature(geometria.buffer(RADIO_BUSQUEDA_CORREDOR_M))]
+        )
+        limites_mapa = obtener_limites(contexto_mapa)
     if mostrar_ruta_corredor and analisis_actual:
         ruta_actual = (
             st.session_state.get("resultados_analisis", {})
@@ -4922,12 +4985,12 @@ try:
         if limites_ruta:
             limites_mapa = [
                 [
-                    min(limites_area[0][0], limites_ruta[0][0]),
-                    min(limites_area[0][1], limites_ruta[0][1]),
+                    min(limites_mapa[0][0], limites_ruta[0][0]),
+                    min(limites_mapa[0][1], limites_ruta[0][1]),
                 ],
                 [
-                    max(limites_area[1][0], limites_ruta[1][0]),
-                    max(limites_area[1][1], limites_ruta[1][1]),
+                    max(limites_mapa[1][0], limites_ruta[1][0]),
+                    max(limites_mapa[1][1], limites_ruta[1][1]),
                 ],
             ]
     mapa.fit_bounds(limites_mapa)
@@ -4970,6 +5033,7 @@ try:
                 f"{catalogo_corredores['version_publicada']}-{huella_bosque}-"
                 f"{umbral_conectividad_m}-{area_min_parche_ha}-"
                 f"{mostrar_fragmentos_bosque}-{mostrar_conexiones_bosque}-"
+                f"{mostrar_bosque_contexto}-"
                 f"{mostrar_brechas_bosque}-{mostrar_ruta_corredor}-"
                 f"{mostrar_corredores_mapa}-"
                 f"{mostrar_puntos_criticos_mapa}-"
@@ -4980,6 +5044,13 @@ try:
     fragmentacion_actual = st.session_state.get("resultados_analisis", {}).get(
         "fragmentacion"
     )
+    if mostrar_bosque_contexto and bosque_automatico_disponible:
+        mapa_resultados_contenedor.info(
+            f"Contexto forestal visible: el verde muestra la cobertura de bosque "
+            f"{ANO_BOSQUE_REFERENCIA} dentro del área y hasta "
+            f"{RADIO_BUSQUEDA_CORREDOR_M / 1000:,.0f} km alrededor. El bosque exterior "
+            "ayuda a interpretar la ruta naranja, pero no aumenta las hectáreas reportadas."
+        )
     if (
         mostrar_brechas_bosque
         and analisis_actual
@@ -4991,10 +5062,15 @@ try:
         )
         == 0
     ):
+        detalle_contexto = (
+            "La cobertura exterior está visible en verde."
+            if mostrar_bosque_contexto
+            else "Puede activar «Cobertura completa de bosque 2021 · área + entorno» para verla."
+        )
         mapa_resultados_contenedor.info(
             f"No se encontraron fragmentos separados con la distancia de "
             f"{umbral_conectividad_m:,.0f} m. El cálculo también revisó el bosque "
-            "del entorno exterior, aunque ese contexto no se dibuja en el mapa."
+            f"del entorno exterior. {detalle_contexto}"
         )
     if (
         mostrar_ruta_corredor
@@ -5021,6 +5097,10 @@ try:
         )
         columnas_leyenda = st.columns(2)
         leyendas_activas = []
+        if capa_bosque_contexto is not None:
+            leyendas_activas.append(
+                ("Cobertura completa de bosque 2021", LEYENDAS["Bosque 2021 de contexto"])
+            )
         if mostrar_corredores_mapa or mostrar_puntos_criticos_mapa:
             leyendas_activas.append(
                 ("Corredores · Almanaque Azul", LEYENDAS["Corredores Almanaque Azul"])

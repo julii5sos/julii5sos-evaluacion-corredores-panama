@@ -20,6 +20,7 @@ La aplicación orienta revisiones territoriales. No es una certificación, no de
 - Red de parches conectados por una distancia configurable e índice conector compuesto por grado (40%), intermediación (30%), área (20%) y fuerza de conexión (10%).
 - Red completa para las métricas y una estructura mínima legible en el mapa, trazada entre los bordes más próximos de los fragmentos.
 - Ruta estructural potencial hacia un corredor publicado cuando existe una cadena de bosque en la que cada salto cumple la distancia seleccionada; la búsqueda se limita a un entorno de 5 km.
+- Capa visual opcional de cobertura completa de bosque 2021 dentro del área y hasta 5 km alrededor, sin sumar el exterior a las hectáreas del resultado.
 - Brechas potenciales desde parches aislados hacia su vecino más cercano; las capas se pueden consultar y descargar como GeoJSON.
 - Resultados de corredores y fragmentación en la interfaz, el PDF y el registro metodológico JSON.
 - Diagnóstico de visita que combina la urgencia por cambios con el valor estratégico
@@ -41,10 +42,12 @@ conectores, separaciones y componentes aislados.
 4. Elija **Diagnóstico territorial integrado** o cualquiera de las vistas satelitales.
 5. Ejecute el análisis y revise sus cuatro lecturas: urgencia por cambios, valor del
    corredor, condición estructural 2021 y prioridad integrada de visita.
-6. Use **Capas disponibles en el mapa** para encender o apagar los fragmentos, la
-   estructura esencial, la ruta potencial hacia un corredor y las separaciones. La
-   ruta naranja es una orientación estructural para revisar, no un corredor nuevo ni
-   evidencia de movimiento de fauna.
+6. Use **Capas disponibles en el mapa** para encender o apagar por separado la
+   cobertura completa de bosque del área y su entorno, los fragmentos evaluados,
+   la estructura esencial, la ruta potencial hacia un corredor y las separaciones.
+   La ruta naranja es una orientación estructural para revisar, no un corredor nuevo
+   ni evidencia de movimiento de fauna. El bosque exterior que se muestre no se suma
+   a las hectáreas informadas para el polígono.
 7. Descargue el PDF, el registro metodológico y los GeoJSON de parches y conexiones
    para conservar el diagnóstico.
 

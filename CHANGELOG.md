@@ -4,7 +4,16 @@ Este historial documenta la evolución de la aplicación UX. Las versiones sigue
 el formato `MAJOR.MINOR.PATCH`: una versión principal, mejoras compatibles y
 correcciones compatibles, respectivamente.
 
-## [0.8.0] - 2026-09-10 — versión actual
+## [0.8.1] - 2026-09-10 — versión actual
+
+### Bosque completo como contexto visual opcional
+
+- Añade una capa apagada por defecto que muestra en verde la cobertura de bosque 2021 dentro del área y hasta 5 km alrededor.
+- Mantiene aparte los fragmentos analíticos coloreados, que siguen limitados al polígono evaluado.
+- Amplía temporalmente la vista del mapa al entorno cuando se activa la cobertura completa para poder interpretar la ruta naranja.
+- Explica junto al mapa y en la leyenda que el bosque exterior participa como contexto estructural, pero no aumenta las hectáreas reportadas.
+
+## [0.8.0] - 2026-09-10
 
 ### Red legible y conexión potencial hacia un corredor
 

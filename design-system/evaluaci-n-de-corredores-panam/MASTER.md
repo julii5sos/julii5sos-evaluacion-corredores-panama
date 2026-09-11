@@ -52,7 +52,7 @@ Los colores originales de Almanaque Azul (`#345a01`, `#a1d303`, `#e0c504`) solo 
 - La lectura principal usa «fragmentos cercanos o separados»; nodo, arista, componente y densidad quedan reservados para el detalle técnico opcional.
 - Los fragmentos se muestran por defecto. La red completa nunca se dibuja: la capa técnica usa el árbol mínimo de cada grupo, con trazo verde oscuro y halo blanco.
 - La ruta potencial al corredor usa una única línea naranja discontinua con halo blanco; no compite con las categorías originales de Almanaque Azul.
-- El contexto forestal exterior participa en la conectividad, pero nunca amplía la superficie reportada ni el mapa del área elegida; la interfaz lo explica de forma visible.
+- El contexto forestal exterior participa en la conectividad y puede mostrarse mediante una capa verde independiente, apagada por defecto. Al activarla, el mapa amplía la vista hasta 5 km para explicar la ruta al corredor, pero nunca amplía la superficie reportada.
 - Los errores aparecen junto al archivo o campo que los produce.
 - La aplicación nunca presenta `Alta/Media/Baja` de parches como si fueran las categorías de Almanaque Azul.
 - Los enlaces de fuente permanecen visibles en resultados, metodología y atribuciones.
