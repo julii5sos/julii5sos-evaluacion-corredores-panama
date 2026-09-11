@@ -227,7 +227,7 @@ def _conexion_hacia_corredor(
         ),
     }
     if not corredores_contexto or not indices_objetivo or not parches:
-        return resumen_vacio, vacio
+        return resumen_vacio, vacio, vacio
 
     prioridad_categoria = {"alta": 0, "mediana": 1, "mediabaja": 2}
     candidatos_ruta = []
@@ -279,7 +279,7 @@ def _conexion_hacia_corredor(
         )
 
     if not candidatos_ruta:
-        return resumen_vacio, vacio
+        return resumen_vacio, vacio, vacio
 
     _, distancia_total, _, _, corredor, ruta = min(candidatos_ruta)
     geometria_corredor = corredor["geometria"]
@@ -359,7 +359,35 @@ def _conexion_hacia_corredor(
         "numero_fragmentos_ruta": len(ruta),
         "cruza_fuera_area": any(indice not in conjunto_objetivo for indice in ruta),
     }
-    return resumen, {"type": "FeatureCollection", "features": tramos}
+    # Para la ficha se publica únicamente el tramo del corredor próximo a la
+    # cadena seleccionada. Dibujar el polígono nacional completo reduciría el
+    # área evaluada a un punto y haría ilegible el mapa explicativo.
+    entorno_ruta = deps["unary_union"]([parches[indice] for indice in ruta]).buffer(
+        max(float(umbral_m) * 2, 500.0)
+    )
+    corredor_mapa = deps["make_valid"](geometria_corredor.intersection(entorno_ruta))
+    if corredor_mapa.is_empty:
+        corredor_mapa = geometria_corredor
+    corredor_wgs = deps["transform"](area_a_wgs.transform, corredor_mapa)
+    corredor_referencia = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "properties": {
+                    "nombre": nombre,
+                    "categoria": categoria,
+                    "categoria_etiqueta": etiqueta,
+                },
+                "geometry": deps["mapping"](corredor_wgs),
+            }
+        ],
+    }
+    return (
+        resumen,
+        {"type": "FeatureCollection", "features": tramos},
+        corredor_referencia,
+    )
 
 
 def _resultado_sin_parches(
@@ -418,6 +446,14 @@ def _resultado_sin_parches(
             "features": [],
         },
         "ruta_corredor_geojson": {"type": "FeatureCollection", "features": []},
+        "corredor_referencia_geojson": {
+            "type": "FeatureCollection",
+            "features": [],
+        },
+        "area_objetivo_geojson": {
+            "type": "FeatureCollection",
+            "features": [],
+        },
         "conexion_corredor": {
             "evaluada": False,
             "conecta": False,
@@ -703,7 +739,11 @@ def _calcular_metricas_parches(
     for indice in indices_objetivo:
         tamanos_componentes_objetivo[componente_por_nodo[indice]] += 1
     mayor_componente = max(tamanos_componentes_objetivo.values(), default=0)
-    conexion_corredor, ruta_corredor_geojson = _conexion_hacia_corredor(
+    (
+        conexion_corredor,
+        ruta_corredor_geojson,
+        corredor_referencia_geojson,
+    ) = _conexion_hacia_corredor(
         grafo=grafo,
         parches=parches,
         arbol=arbol,
@@ -803,6 +843,7 @@ def _calcular_metricas_parches(
             "features": conexiones_potenciales,
         },
         "ruta_corredor_geojson": ruta_corredor_geojson,
+        "corredor_referencia_geojson": corredor_referencia_geojson,
         "conexion_corredor": conexion_corredor,
         "hay_parches_aislados": bool(aislados),
         "campo_clase": campo_clase,
@@ -1116,7 +1157,7 @@ def analizar_fragmentacion_geojson(
             if area_ha >= area_min_ha and area_ha > 0:
                 parches.append(parte)
 
-    return _calcular_metricas_parches(
+    resultado = _calcular_metricas_parches(
         parches=parches,
         deps=deps,
         area_paisaje_ha=area_paisaje_ha,
@@ -1131,6 +1172,20 @@ def analizar_fragmentacion_geojson(
         corredores_contexto=corredores_contexto,
         radio_busqueda_corredor_m=float(radio_busqueda_corredor_m or 0.0),
     )
+    resultado["area_objetivo_geojson"] = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "properties": {"tipo": "Área evaluada"},
+                "geometry": {
+                    "type": aoi_geojson["type"],
+                    "coordinates": aoi_geojson["coordinates"],
+                },
+            }
+        ],
+    }
+    return resultado
 
 
 def agregar_resultados_fragmentacion(

@@ -4,7 +4,23 @@ Este historial documenta la evolución de la aplicación UX. Las versiones sigue
 el formato `MAJOR.MINOR.PATCH`: una versión principal, mejoras compatibles y
 correcciones compatibles, respectivamente.
 
-## [0.9.0] - 2026-09-11 — versión actual
+## [1.0.0] - 2026-09-11 — versión actual
+
+### Ficha ejecutiva con cartografía explicativa
+
+- Reorganiza el PDF con divulgación progresiva: conclusión y acción primero,
+  evidencia espacial después y trazabilidad técnica al final.
+- Desglosa el puntaje fuente por fuente y distingue explícitamente el índice de
+  prioridad de las hectáreas donde coinciden dos o tres señales.
+- Añade un mapa limpio de fragmentación, sin fondo satelital y sin líneas de red.
+- Añade un segundo mapa limpio de conectividad estructural con relaciones
+  esenciales, separaciones potenciales, ruta al corredor y polígono de referencia.
+- Mantiene las leyendas fuera de los mapas y acompaña cada color o trazo con una
+  explicación en lenguaje sencillo.
+- Conserva todos los mapas por fuente y la información metodológica como evidencia
+  secundaria, sin eliminar resultados del análisis.
+
+## [0.9.0] - 2026-09-11
 
 ### Divulgación progresiva orientada a decisiones
 

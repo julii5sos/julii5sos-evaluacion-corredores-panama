@@ -47,6 +47,13 @@ Los colores originales de Almanaque Azul (`#345a01`, `#a1d303`, `#e0c504`) solo 
 - Mapas: grupos independientes para capas temáticas, corredores externos, parches calculados y referencias.
 - Los controles de capas y las leyendas se mantienen fuera del mapa para no cubrir la evidencia espacial.
 - Alertas metodológicas: borde izquierdo de 4–5 px y texto que explique qué participa o no en el índice.
+- Ficha PDF: resumen ejecutivo en la primera página, un objetivo cartográfico por
+  página y detalle técnico al final.
+- Mapas impresos de fragmentación y conectividad: fondo neutro sin imagen satelital,
+  límite visible y leyenda externa. El mapa de fragmentación no dibuja relaciones;
+  el de conectividad muestra únicamente la estructura esencial y una ruta potencial.
+- Puntaje impreso: tabla de aportes por fuente y nota explícita de que el total no
+  representa número de capas coincidentes ni probabilidad de deforestación.
 
 ## Reglas de interacción
 
@@ -78,3 +85,6 @@ Los colores originales de Almanaque Azul (`#345a01`, `#a1d303`, `#e0c504`) solo 
 - [x] Eliminar enlaces redundantes y asegurar contraste de las líneas sobre imagen satelital.
 - [x] Explicar que la ruta al corredor es estructural potencial, no conectividad funcional.
 - [x] Mostrar acción y resultado antes de los detalles, con todos los datos técnicos disponibles bajo demanda.
+- [x] Separar fragmentación y conectividad en dos mapas impresos sin fondo satelital.
+- [x] Mantener las leyendas fuera de los mapas en la ficha PDF.
+- [x] Desglosar el puntaje y diferenciarlo de la coincidencia espacial.
