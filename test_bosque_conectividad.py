@@ -352,6 +352,11 @@ class BosqueConectividadTests(unittest.TestCase):
         self.assertLessEqual(conexion["mayor_separacion_m"], 150)
         self.assertEqual(len(resultado["parches_geojson"]["features"]), 1)
         self.assertGreaterEqual(len(resultado["ruta_corredor_geojson"]["features"]), 1)
+        self.assertEqual(len(resultado["area_objetivo_geojson"]["features"]), 1)
+        self.assertEqual(
+            resultado["corredor_referencia_geojson"]["features"][0]["properties"]["nombre"],
+            "Corredor de prueba",
+        )
 
         import folium
 

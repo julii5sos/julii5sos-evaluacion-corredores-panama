@@ -22,6 +22,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
 from reportlab.platypus import (
     Image as ReportLabImage,
+    KeepTogether,
     PageBreak,
     Paragraph,
     SimpleDocTemplate,
@@ -64,6 +65,7 @@ from metodologia_indice import (
     evaluar_senales,
     texto_recomendacion_visita,
 )
+from reporte_cartografico import crear_mapa_conectividad, crear_mapa_fragmentacion
 
 
 st.set_page_config(
@@ -668,7 +670,7 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-0.9.0-DIVULGACION-PROGRESIVA"
+APP_VERSION = "UX-1.0.0-FICHA-EJECUTIVA"
 METHODOLOGY_VERSION = "MT-2026.11-RUTA-CORREDOR"
 PROYECTO_EE = secreto_opcional("EE_PROJECT", "ee-julissaguevaravega")
 FUENTE_BOSQUE_NOMBRE = "Bosque y otros usos"
@@ -2272,482 +2274,138 @@ def generar_pdf(
     documento = SimpleDocTemplate(
         memoria,
         pagesize=A4,
-        rightMargin=1.55 * cm,
-        leftMargin=1.55 * cm,
-        topMargin=1.55 * cm,
-        bottomMargin=1.6 * cm,
-        title="Ficha de evaluación territorial y corredores",
+        rightMargin=1.45 * cm,
+        leftMargin=1.45 * cm,
+        topMargin=1.35 * cm,
+        bottomMargin=1.55 * cm,
+        title="Ficha ejecutiva de evaluación territorial y conectividad",
         author="Aplicación de evaluación territorial y corredores",
     )
 
-    verde = colors.HexColor("#244d23")
-    verde_claro = colors.HexColor("#e8f0e3")
-    borde = colors.HexColor("#8aa684")
+    tinta = colors.HexColor("#123b45")
+    verde = colors.HexColor("#00544d")
+    verde_claro = colors.HexColor("#eaf4f0")
+    superficie = colors.HexColor("#f7faf8")
+    azul_claro = colors.HexColor("#e9f1fb")
+    borde = colors.HexColor("#b6d1c8")
+    naranja_claro = colors.HexColor("#fff1e6")
+    gris = colors.HexColor("#52706f")
     estilos = getSampleStyleSheet()
-    estilos.add(
-        ParagraphStyle(
-            name="TituloFicha",
-            parent=estilos["Title"],
-            fontName="Times-Bold",
-            fontSize=15,
-            leading=18,
-            alignment=TA_CENTER,
-            textColor=verde,
-            spaceAfter=8,
-        )
+
+    def registrar_estilo(nombre, base, **opciones):
+        estilos.add(ParagraphStyle(name=nombre, parent=estilos[base], **opciones))
+
+    registrar_estilo(
+        "TituloFicha", "Title", fontName="Helvetica-Bold", fontSize=17,
+        leading=20, textColor=tinta, alignment=TA_CENTER, spaceAfter=4,
     )
-    estilos.add(
-        ParagraphStyle(
-            name="SubtituloFicha",
-            parent=estilos["BodyText"],
-            fontName="Times-Italic",
-            fontSize=9,
-            leading=11,
-            alignment=TA_CENTER,
-            textColor=colors.HexColor("#4d5f4c"),
-            spaceAfter=10,
-        )
+    registrar_estilo(
+        "SubtituloFicha", "BodyText", fontName="Helvetica", fontSize=8.5,
+        leading=11, textColor=gris, alignment=TA_CENTER, spaceAfter=9,
     )
-    estilos.add(
-        ParagraphStyle(
-            name="SeccionFicha",
-            parent=estilos["Heading2"],
-            fontName="Times-Bold",
-            fontSize=10.5,
-            leading=13,
-            textColor=verde,
-            spaceBefore=8,
-            spaceAfter=4,
-        )
+    registrar_estilo(
+        "TituloPagina", "Heading1", fontName="Helvetica-Bold", fontSize=15,
+        leading=18, textColor=tinta, spaceAfter=3,
     )
-    estilos.add(
-        ParagraphStyle(
-            name="CuerpoFicha",
-            parent=estilos["BodyText"],
-            fontName="Times-Roman",
-            fontSize=9.2,
-            leading=12.2,
-            alignment=4,
-            spaceAfter=5,
-        )
+    registrar_estilo(
+        "BajadaPagina", "BodyText", fontName="Helvetica", fontSize=8.5,
+        leading=11.2, textColor=gris, spaceAfter=8,
     )
-    estilos.add(
-        ParagraphStyle(
-            name="MapaTitulo",
-            parent=estilos["BodyText"],
-            fontName="Times-Bold",
-            fontSize=8.6,
-            leading=10,
-            alignment=TA_CENTER,
-            textColor=verde,
-            spaceAfter=3,
-        )
+    registrar_estilo(
+        "SeccionFicha", "Heading2", fontName="Helvetica-Bold", fontSize=10.2,
+        leading=12.5, textColor=verde, spaceBefore=7, spaceAfter=4,
     )
-    estilos.add(
-        ParagraphStyle(
-            name="MapaNota",
-            parent=estilos["BodyText"],
-            fontName="Times-Roman",
-            fontSize=6.8,
-            leading=8,
-            alignment=TA_CENTER,
-            textColor=colors.HexColor("#4d4d4d"),
-        )
+    registrar_estilo(
+        "CuerpoFicha", "BodyText", fontName="Helvetica", fontSize=8.4,
+        leading=11.2, textColor=tinta, spaceAfter=4,
     )
-    estilos.add(
-        ParagraphStyle(
-            name="CabeceraTabla",
-            parent=estilos["BodyText"],
-            fontName="Times-Bold",
-            fontSize=8.8,
-            leading=10,
-            textColor=colors.white,
-        )
+    registrar_estilo(
+        "CuerpoPequeno", "BodyText", fontName="Helvetica", fontSize=7.2,
+        leading=9.1, textColor=tinta, spaceAfter=3,
+    )
+    registrar_estilo(
+        "Etiqueta", "BodyText", fontName="Helvetica", fontSize=7,
+        leading=8.4, textColor=gris, spaceAfter=1,
+    )
+    registrar_estilo(
+        "Valor", "BodyText", fontName="Helvetica-Bold", fontSize=11,
+        leading=13, textColor=tinta,
+    )
+    registrar_estilo(
+        "MapaTitulo", "BodyText", fontName="Helvetica-Bold", fontSize=9.2,
+        leading=11, textColor=tinta, alignment=TA_CENTER, spaceAfter=3,
+    )
+    registrar_estilo(
+        "MapaNota", "BodyText", fontName="Helvetica", fontSize=6.7,
+        leading=8.2, textColor=gris, alignment=TA_CENTER,
+    )
+    registrar_estilo(
+        "CabeceraTabla", "BodyText", fontName="Helvetica-Bold", fontSize=7.4,
+        leading=9, textColor=tinta,
+    )
+    registrar_estilo(
+        "Prioridad", "BodyText", fontName="Helvetica", fontSize=9,
+        leading=12, textColor=tinta,
     )
 
-    r = resultados
-    aportes = r["aportes_indice"]
-    texto_justificacion_pesos = " ".join(
-        JUSTIFICACION_PESOS[fuente]
-        for fuente in ("tmf", "hansen", "esri", "gedi", "ndvi")
-    )
-    texto_justificacion_umbrales = " ".join(
-        JUSTIFICACION_UMBRALES[criterio]
-        for criterio in (
-            "hansen_post_2020_ha",
-            "jrc_deforestacion",
-            "jrc_degradacion",
-            "esri_salida_arboles",
-            "gedi_dosel_y_cobertura",
-            "ndvi",
-        )
-    )
-    texto_clases_ndvi = "; ".join(
-        f"{clase['etiqueta']} ({clase['rango']})"
-        for clase in CLASES_VIGOR_NDVI
-    )
-    area = r["area_ha"]
-    pct_arbol = r["esri_arboles_final"] / area * 100 if area else 0
-    pct_ganancia = r["esri_ganancia"] / area * 100 if area else 0
-    fuentes = sum(
-        [r["senal_tmf"], r["senal_esri"], r["senal_hansen"], r["senal_gedi"]]
-    )
-    descripcion_cobertura = (
-        "mantiene una cobertura arbórea importante"
-        if pct_arbol >= 50
-        else "presenta una cobertura arbórea limitada"
-        if pct_arbol < 20
-        else "combina áreas arboladas y áreas productivas"
-    )
-    resultado_general = (
-        "señales de pérdida o deterioro"
-        if fuentes >= 2
-        else "una señal localizada de cambio"
-        if fuentes == 1
-        else "ninguna señal relevante de deterioro reciente"
-    )
-    coincidencia = (
-        f"{r['consistencia']['nivel']}: {r['consistencia']['detalle']}"
-    )
-    texto_coincidencia_espacial = (
-        f"El mapa 7 ubica {r['coincidencia_1_fuente']:.2f} ha con señal de una "
-        f"fuente, {r['coincidencia_2_fuentes']:.2f} ha con coincidencia de dos "
-        f"fuentes y {r['coincidencia_3_fuentes']:.2f} ha con coincidencia de tres. "
-        f"Priorice las {r['coincidencia_varias_fuentes']:.2f} ha señaladas por dos "
-        "o tres fuentes. Esta superposición no modifica el índice y no demuestra "
-        "por sí sola la causa del cambio."
-    )
-    texto_dosel = (
-        f"La altura promedio del dosel fue de {r['gedi_altura']:.1f} m. "
-        f"El {r['gedi_cobertura_pct']:.0f}% del área presentó datos válidos en el producto de altura."
-        if r["gedi_disponible"]
-        else "El producto de altura del dosel no presenta información suficiente para interpretar esta área."
-    )
+    def parrafo(texto, estilo="CuerpoFicha"):
+        return Paragraph(str(texto), estilos[estilo])
 
-    historia = [
-        Paragraph("FICHA DE EVALUACIÓN TERRITORIAL Y CORREDORES", estilos["TituloFicha"]),
-        Paragraph(
-            "Documento indicativo para orientar revisiones territoriales. No determina cumplimiento EUDR.",
-            estilos["SubtituloFicha"],
-        ),
-    ]
-    datos = [
-        [Paragraph("Área evaluada", estilos["CuerpoFicha"]), Paragraph(nombre_area, estilos["CuerpoFicha"])],
-        [Paragraph("Superficie total", estilos["CuerpoFicha"]), Paragraph(f"{area:,.2f} ha", estilos["CuerpoFicha"])],
-        [Paragraph("Fecha del análisis", estilos["CuerpoFicha"]), Paragraph(date.today().strftime("%d/%m/%Y"), estilos["CuerpoFicha"])],
-        [
-            Paragraph("Referencia metodológica", estilos["CuerpoFicha"]),
-            Paragraph(
-                f"JRC: estado {ANO_DIAG_TMF}; Hansen: pérdida 2021-{ANO_HANSEN_MAX} "
-                f"posterior al corte {CUTOFF_LABEL}; ESRI: {ANO_ESRI_MIN}-{ANO_ESRI_MAX}",
-                estilos["CuerpoFicha"],
-            ),
-        ],
-        [
-            Paragraph("Apoyo visual", estilos["CuerpoFicha"]),
-            Paragraph(
-                f"NDVI {anio_ndvi_inicial}-{ANO_NDVI_MAX}; no modifica el índice",
-                estilos["CuerpoFicha"],
-            ),
-        ],
-        [
-            Paragraph("Metodología aplicada", estilos["CuerpoFicha"]),
-            Paragraph(
-                METHODOLOGY_VERSION,
-                estilos["CuerpoFicha"],
-            ),
-        ],
-    ]
-    tabla = Table(datos, colWidths=[4.0 * cm, 12.5 * cm])
-    tabla.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (0, -1), verde_claro),
-                ("FONTNAME", (0, 0), (0, -1), "Times-Bold"),
-                ("FONTNAME", (1, 0), (1, -1), "Times-Roman"),
-                ("GRID", (0, 0), (-1, -1), 0.4, borde),
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 6),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-                ("TOPPADDING", (0, 0), (-1, -1), 4),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-            ]
-        )
-    )
-    historia.extend([tabla, Spacer(1, 7)])
-
-    visita = r.get("prioridad_visita")
-    prioridad_pdf = visita["prioridad_visita"] if visita else r["prioridad"]
-    accion_pdf = (
-        texto_recomendacion_visita(prioridad_pdf)
-        if visita
-        else texto_recomendacion(prioridad_pdf)
-    )
-    detalle_puntaje_pdf = (
-        f"Cambios: {visita['puntaje_cambios']:.1f}/{PUNTAJE_MAXIMO:.1f}; "
-        f"corredor: +{visita['aporte_corredor']:.2f}; "
-        f"estructura 2021: {visita['contexto_estructural']['estado']} (sin puntos); "
-        f"total: {visita['puntaje_integrado']:.2f}/{PUNTAJE_MAXIMO_VISITA:.1f}"
-        if visita
-        else f"Índice operativo: {r['puntaje']:.1f}/{PUNTAJE_MAXIMO:.1f}"
-    )
-    color_prioridad = {
-        "Muy alta": "#7f0000",
-        "Alta": "#b71c1c",
-        "Media": "#e65100",
-        "Preventiva": "#b8860b",
-        "Baja": "#2e7d32",
-    }[prioridad_pdf]
-    tarjeta_prioridad = Table(
-        [[Paragraph(
-            f"<b>PRIORIDAD {prioridad_pdf.upper()} DE VISITA</b><br/>"
-            f"{detalle_puntaje_pdf} - {accion_pdf}",
-            ParagraphStyle(
-                "Prioridad",
-                fontName="Times-Roman",
-                fontSize=9.5,
-                leading=12,
-                textColor=colors.white,
-            ),
-        )]],
-        colWidths=[16.5 * cm],
-    )
-    tarjeta_prioridad.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor(color_prioridad)),
-                ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor(color_prioridad)),
-                ("LEFTPADDING", (0, 0), (-1, -1), 9),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 9),
-                ("TOPPADDING", (0, 0), (-1, -1), 7),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
-            ]
-        )
-    )
-    metricas = Table(
-        [
-            [
-                Paragraph("Cobertura clasificada como árboles", estilos["CuerpoFicha"]),
-                Paragraph(f"<b>{r['esri_arboles_final']:.1f} ha ({pct_arbol:.1f}%)</b>", estilos["CuerpoFicha"]),
-                Paragraph("Pérdida posterior a 2020", estilos["CuerpoFicha"]),
-                Paragraph(f"<b>{r['hansen_post']:.2f} ha</b>", estilos["CuerpoFicha"]),
-            ],
-            [
-                Paragraph("Deforestación señalada por JRC", estilos["CuerpoFicha"]),
-                Paragraph(f"<b>{r['tmf_deforestacion']:.1f} ha</b>", estilos["CuerpoFicha"]),
-                Paragraph("Altura promedio del dosel", estilos["CuerpoFicha"]),
-                Paragraph(
-                    f"<b>{r['gedi_altura']:.1f} m</b>" if r["gedi_disponible"] else "Datos insuficientes",
-                    estilos["CuerpoFicha"],
-                ),
-            ],
-            [
-                Paragraph("Cobertura arbórea persistente a 2020", estilos["CuerpoFicha"]),
-                Paragraph(
-                    f"<b>{r['linea_base']:.1f} ha ({r['pct_linea_base']:.1f}%)</b>",
-                    estilos["CuerpoFicha"],
-                ),
-                Paragraph("Pérdida Hansen 2001-2020", estilos["CuerpoFicha"]),
-                Paragraph(f"<b>{r['hansen_pre']:.2f} ha</b>", estilos["CuerpoFicha"]),
-            ],
-            [
-                Paragraph("Señal espacial de una fuente", estilos["CuerpoFicha"]),
-                Paragraph(
-                    f"<b>{r['coincidencia_1_fuente']:.2f} ha</b>",
-                    estilos["CuerpoFicha"],
-                ),
-                Paragraph("Coincidencia de dos o tres fuentes", estilos["CuerpoFicha"]),
-                Paragraph(
-                    f"<b>{r['coincidencia_varias_fuentes']:.2f} ha "
-                    f"({r['pct_coincidencia_varias_fuentes']:.2f}%)</b>",
-                    estilos["CuerpoFicha"],
-                ),
-            ],
-        ],
-        colWidths=[4.6 * cm, 3.0 * cm, 4.6 * cm, 3.0 * cm],
-    )
-    metricas.setStyle(
-        TableStyle(
-            [
-                ("GRID", (0, 0), (-1, -1), 0.35, borde),
-                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f7faf6")),
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 5),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 5),
-                ("TOPPADDING", (0, 0), (-1, -1), 3),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-            ]
-        )
-    )
-    historia.extend([tarjeta_prioridad, Spacer(1, 5), metricas, Spacer(1, 3)])
-
-    secciones = [
-        (
-            "RESULTADO GENERAL",
-            f"El área {descripcion_cobertura}. El análisis identificó {resultado_general}. "
-            "Este resultado no confirma por sí solo que haya ocurrido deforestación. "
-            "Su función es señalar sectores que requieren una revisión más detallada.",
-        ),
-        (
-            "¿QUÉ SE ENCONTRÓ?",
-            f"<b>1. Estado actual de la cobertura.</b> En {anio_esri_final} se identificaron "
-            f"{r['esri_arboles_final']:.1f} ha con cobertura clasificada como árboles, "
-            f"aproximadamente {pct_arbol:.1f}% del área.<br/><br/>"
-            f"<b>2. Cambios que requieren atención.</b> Entre {anio_esri_inicial} y "
-            f"{anio_esri_final}, {r['esri_salida']:.1f} ha pasaron de árboles a otra "
-            f"cobertura ({r['pct_esri_salida']:.1f}% del área), mientras "
-            f"{r['esri_ganancia']:.1f} ha pasaron a árboles ({pct_ganancia:.1f}%). "
-            f"Hansen registró {r['hansen_post']:.2f} ha de pérdida después del "
-            f"{CUTOFF_LABEL}. {coincidencia}<br/><br/>"
-            f"<b>3. Condición del bosque y la vegetación.</b> JRC TMF {anio_tmf_diagnostico} registró "
-            f"{r['tmf_estable']:.1f} ha de bosque estable, {r['tmf_degradacion']:.1f} ha "
-            f"de degradación, {r['tmf_deforestacion']:.1f} ha de deforestación y "
-            f"{r['tmf_recuperacion']:.1f} ha de recuperación, {r['tmf_agua']:.1f} ha "
-            f"de agua y {r['tmf_otra_cobertura']:.1f} ha de otra cobertura. {texto_dosel}",
-        ),
-        (
-            "¿QUÉ SIGNIFICAN ESTOS RESULTADOS?",
-            "Las imágenes satelitales permiten reconocer dónde pudo ocurrir un cambio, "
-            "pero no establecen automáticamente su causa. El patrón observado puede "
-            "corresponder a manejo productivo, cosecha de plantaciones, regeneración, "
-            "nubosidad residual o una modificación real de la cobertura forestal.",
-        ),
-        (
-            "CONSISTENCIA ENTRE FUENTES",
-            coincidencia,
-        ),
-        (
-            "¿DÓNDE SE DEBE REVISAR?",
-            f"{texto_coincidencia_espacial} Deben contrastarse con imágenes recientes, "
-            "registros de manejo, información del predio y verificación de campo "
-            "cuando corresponda.",
-        ),
-        ("ACCIÓN RECOMENDADA", accion_pdf),
-        (
-            "CONCLUSIÓN DE LA PREEVALUACIÓN",
-            f"El área presenta prioridad {prioridad_pdf.lower()} de visita. La decisión "
-            "final debe complementarse con información del productor, documentación del "
-            "predio, imágenes recientes y verificación de campo cuando corresponda.",
-        ),
-    ]
-    if visita:
-        secciones.insert(
-            1,
-            (
-                "DIAGNÓSTICO TERRITORIAL INTEGRADO",
-                f"{visita['lectura_integrada']} "
-                f"La combinación territorial es <b>{visita['combinacion_territorial']}</b>. "
-                f"Orientación operativa: {visita['foco_visita']} La condición estructural "
-                "sirve para ubicar la revisión, pero no añade puntos porque requiere "
-                "calibración ecológica para el territorio y las especies objetivo.",
-            ),
-        )
-    contexto_corredores = r.get("corredores")
-    if contexto_corredores:
-        nombres_corredores = ", ".join(
-            dict.fromkeys(
-                detalle["nombre"]
-                for detalle in contexto_corredores["corredores"]
+    def tabla_simple(filas, anchos, *, cabecera=False, fondo=None):
+        contenido = [
+            [parrafo(celda, "CabeceraTabla" if cabecera and i == 0 else "CuerpoPequeno") for celda in fila]
+            for i, fila in enumerate(filas)
+        ]
+        tabla = Table(contenido, colWidths=anchos, repeatRows=1 if cabecera else 0)
+        comandos = [
+            ("GRID", (0, 0), (-1, -1), 0.35, borde),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 5),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ]
+        if fondo:
+            comandos.append(("BACKGROUND", (0, 0), (-1, -1), fondo))
+        if cabecera:
+            comandos.extend(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), verde_claro),
+                    ("LINEBELOW", (0, 0), (-1, 0), 0.8, verde),
+                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, superficie]),
+                ]
             )
-        ) or "ninguno"
-        secciones.insert(
-            4,
-            (
-                "CONTEXTO DE CORREDORES ECOLÓGICOS",
-                f"El área intersecta {contexto_corredores['area_en_corredores_ha']:.2f} ha "
-                f"de los corredores interpretados por Almanaque Azul "
-                f"({contexto_corredores['porcentaje_aoi_en_corredores']:.2f}% del área). "
-                f"Corredores presentes: {nombres_corredores}. "
-                f"Intersección con el Corredor Biológico Mesoamericano: "
-                f"{'sí' if contexto_corredores['intersecta_mesoamericano'] else 'no'}. "
-                "Las categorías originales son alta, mediana y media-baja. Este contexto "
-                "no modifica el índice satelital de cambios; aporta únicamente al valor "
-                "estratégico de la prioridad integrada de visita.",
-            ),
-        )
-    contexto_fragmentacion = r.get("fragmentacion")
-    if contexto_fragmentacion:
-        clase_fragmentacion = contexto_fragmentacion["metricas_clase"]
-        red_fragmentacion = contexto_fragmentacion["metricas_red"]
-        conexion_corredor = contexto_fragmentacion.get("conexion_corredor") or {}
-        lectura_ruta = (
-            f" Se identificó una conexión estructural potencial hacia "
-            f"{conexion_corredor.get('corredor_nombre')} (categoría "
-            f"{str(conexion_corredor.get('categoria_etiqueta')).lower()}), mediante "
-            f"{conexion_corredor.get('numero_fragmentos_ruta', 0)} fragmentos y con "
-            f"un salto máximo de {conexion_corredor.get('mayor_separacion_m', 0):.1f} m."
-            if conexion_corredor.get("conecta")
-            else " No se identificó una cadena estructural completa hacia un corredor publicado dentro del radio evaluado."
-        )
-        secciones.insert(
-            5,
-            (
-                "FRAGMENTACIÓN Y RED DE PARCHES",
-                f"El recorte de {FUENTE_BOSQUE_CORTA} produjo "
-                f"{clase_fragmentacion['numero_parches']} "
-                f"parches y {clase_fragmentacion['area_total_bosque_ha']:.2f} ha de bosque. "
-                f"La red, calculada con un umbral de {red_fragmentacion['umbral_m']:.0f} m, "
-                f"contiene {red_fragmentacion['numero_componentes']} componentes y "
-                f"{red_fragmentacion['numero_aristas']} conexiones; "
-                f"{red_fragmentacion.get('numero_parches_aislados', 0)} parches no tienen "
-                f"otro parche dentro del umbral.{lectura_ruta} La importancia "
-                "Alta/Media/Baja de los parches es relativa al área evaluada, no equivale "
-                "a las categorías de Almanaque Azul. Esta red se conecta con la decisión "
-                "para focalizar la visita en parches conectores y componentes aislados, "
-                "sin modificar el puntaje integrado.",
-            ),
-        )
-    for titulo, cuerpo in secciones:
-        historia.append(Paragraph(titulo, estilos["SeccionFicha"]))
-        historia.append(Paragraph(cuerpo, estilos["CuerpoFicha"]))
+        tabla.setStyle(TableStyle(comandos))
+        return tabla
 
-    historia.extend([PageBreak(), Paragraph("MAPAS TEMÁTICOS DEL ÁREA EVALUADA", estilos["TituloFicha"])])
-    for mapa in mapas or []:
-        contenido = [Paragraph(mapa["titulo"], estilos["MapaTitulo"])]
-        if mapa.get("imagen"):
-            imagen = ReportLabImage(BytesIO(mapa["imagen"]))
-            # Se conserva la proporción original y solo se limita el tamaño
-            # máximo. La celda aumenta su altura según el mapa.
-            escala = min(
-                (15.75 * cm) / imagen.imageWidth,
-                (9.8 * cm) / imagen.imageHeight,
-            )
-            imagen.drawWidth = imagen.imageWidth * escala
-            imagen.drawHeight = imagen.imageHeight * escala
-            tabla_imagen = Table([[imagen]], colWidths=[15.75 * cm])
-            tabla_imagen.setStyle(
-                TableStyle(
-                    [
-                        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-                        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-                        ("TOPPADDING", (0, 0), (-1, -1), 0),
-                        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-                    ]
-                )
-            )
-            contenido.extend([tabla_imagen, Spacer(1, 2)])
-        else:
-            contenido.append(
-                Table(
-                    [[Paragraph("Imagen no disponible. Consulte el mapa interactivo.", estilos["MapaNota"])]],
-                    colWidths=[15.4 * cm],
-                    rowHeights=[7.0 * cm],
-                    style=TableStyle(
-                        [
-                            ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#bdbdbd")),
-                            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f4f4f4")),
-                            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                        ]
-                    ),
-                )
-            )
-        contenido.append(Paragraph(mapa["leyenda"], estilos["MapaNota"]))
-        tabla_mapa = Table([[contenido]], colWidths=[16.3 * cm], hAlign="CENTER")
-        tabla_mapa.setStyle(
+    def tarjeta(texto, *, fondo=verde_claro, acento=verde, estilo="CuerpoFicha"):
+        tabla = Table([[parrafo(texto, estilo)]], colWidths=[17.0 * cm])
+        tabla.setStyle(
             TableStyle(
                 [
-                    ("BOX", (0, 0), (-1, -1), 0.45, borde),
+                    ("BACKGROUND", (0, 0), (-1, -1), fondo),
+                    ("LINEBEFORE", (0, 0), (0, -1), 4, acento),
+                    ("BOX", (0, 0), (-1, -1), 0.35, borde),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 10),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+                    ("TOPPADDING", (0, 0), (-1, -1), 7),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+                ]
+            )
+        )
+        return tabla
+
+    def tarjetas_metricas(items):
+        celdas = []
+        for etiqueta, valor in items:
+            celdas.append([parrafo(etiqueta, "Etiqueta"), parrafo(valor, "Valor")])
+        tabla = Table([celdas], colWidths=[4.25 * cm] * len(celdas))
+        tabla.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, -1), superficie),
+                    ("BOX", (0, 0), (-1, -1), 0.4, borde),
+                    ("INNERGRID", (0, 0), (-1, -1), 0.35, borde),
                     ("VALIGN", (0, 0), (-1, -1), "TOP"),
                     ("LEFTPADDING", (0, 0), (-1, -1), 7),
                     ("RIGHTPADDING", (0, 0), (-1, -1), 7),
@@ -2756,97 +2414,442 @@ def generar_pdf(
                 ]
             )
         )
-        historia.extend([tabla_mapa, Spacer(1, 7)])
-    historia.append(
+        return tabla
+
+    def leyenda(items):
+        filas = []
+        for color, etiqueta, detalle in items:
+            filas.append(["", parrafo(f"<b>{etiqueta}</b><br/>{detalle}", "CuerpoPequeno")])
+        tabla = Table(filas, colWidths=[0.45 * cm, 7.95 * cm], hAlign="LEFT")
+        comandos = [
+            ("GRID", (0, 0), (-1, -1), 0.25, borde),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 4),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ]
+        for i, (color, _, _) in enumerate(items):
+            comandos.append(("BACKGROUND", (0, i), (0, i), colors.HexColor(color)))
+        tabla.setStyle(TableStyle(comandos))
+        return tabla
+
+    r = resultados
+    aportes = r["aportes_indice"]
+    area = r["area_ha"]
+    pct_arbol = r["esri_arboles_final"] / area * 100 if area else 0
+    pct_ganancia = r["esri_ganancia"] / area * 100 if area else 0
+    visita = r.get("prioridad_visita")
+    prioridad_pdf = visita["prioridad_visita"] if visita else r["prioridad"]
+    puntaje_cambios = visita["puntaje_cambios"] if visita else r["puntaje"]
+    aporte_corredor = visita["aporte_corredor"] if visita else 0.0
+    puntaje_integrado = visita["puntaje_integrado"] if visita else r["puntaje"]
+    maximo_integrado = PUNTAJE_MAXIMO_VISITA if visita else PUNTAJE_MAXIMO
+    accion_pdf = (
+        texto_recomendacion_visita(prioridad_pdf)
+        if visita
+        else texto_recomendacion(prioridad_pdf)
+    )
+    fuentes = sum(
+        bool(valor)
+        for valor in (r["senal_tmf"], r["senal_esri"], r["senal_hansen"], r["senal_gedi"])
+    )
+    resultado_general = (
+        "varias señales de cambio que justifican una revisión prioritaria"
+        if fuentes >= 2
+        else "una señal localizada que conviene revisar"
+        if fuentes == 1
+        else "sin señales relevantes de deterioro reciente en las fuentes evaluadas"
+    )
+    coincidencia = f"{r['consistencia']['nivel']}: {r['consistencia']['detalle']}"
+    contexto_corredores = r.get("corredores") or {}
+    contexto_fragmentacion = r.get("fragmentacion") or {}
+    conexion_corredor = contexto_fragmentacion.get("conexion_corredor") or {}
+
+    historia = [
+        Paragraph("FICHA EJECUTIVA DE PREEVALUACIÓN TERRITORIAL", estilos["TituloFicha"]),
         Paragraph(
-            "Nota cartográfica: el contorno celeste identifica el área evaluada. Las imágenes "
-            "se generan automáticamente a partir de las fuentes indicadas y deben interpretarse "
-            "junto con las leyendas y las limitaciones metodológicas. El mapa 7 estandariza "
-            "JRC, Hansen y ESRI en una malla común de 30 m solo para orientar la ubicación; "
-            "GEDI y NDVI no participan en esa superposición.",
-            estilos["CuerpoFicha"],
-        )
+            "Lectura rápida para orientar una visita. Los mapas y cálculos son indicativos y no sustituyen la verificación de campo.",
+            estilos["SubtituloFicha"],
+        ),
+    ]
+
+    identificacion = tabla_simple(
+        [
+            ["Área evaluada", nombre_area, "Superficie", f"{area:,.2f} ha"],
+            ["Fecha", date.today().strftime("%d/%m/%Y"), "Método", METHODOLOGY_VERSION],
+        ],
+        [2.2 * cm, 6.2 * cm, 2.0 * cm, 6.6 * cm],
+        fondo=superficie,
+    )
+    historia.extend([identificacion, Spacer(1, 7)])
+
+    color_prioridad = {
+        "Muy alta": "#9b1c1c",
+        "Alta": "#b42318",
+        "Media": "#c85d0a",
+        "Preventiva": "#9a6a00",
+        "Baja": "#2f6b4f",
+    }[prioridad_pdf]
+    historia.extend(
+        [
+            tarjeta(
+                f"<b>Prioridad {prioridad_pdf.lower()} de visita</b> &nbsp;·&nbsp; "
+                f"<b>{puntaje_integrado:.2f} de {maximo_integrado:.1f} puntos</b><br/>"
+                f"{accion_pdf}",
+                fondo=colors.HexColor("#fff7ed") if prioridad_pdf != "Baja" else verde_claro,
+                acento=colors.HexColor(color_prioridad),
+                estilo="Prioridad",
+            ),
+            Spacer(1, 7),
+            Paragraph("Qué significa el puntaje", estilos["SeccionFicha"]),
+            Paragraph(
+                "El valor total es una suma de criterios. Mide prioridad operativa para revisar el área; "
+                "no es una probabilidad de deforestación ni indica cuántas capas se superponen.",
+                estilos["CuerpoFicha"],
+            ),
+        ]
     )
 
-    historia.extend([PageBreak(), Paragraph("DIAGNÓSTICO POR FUENTE", estilos["TituloFicha"])])
-    filas_fuentes = [
-        ["Fuente", "Resultado específico", "Señal", "Aporte"],
-        [f"JRC TMF {anio_tmf_diagnostico}", f"Estable {r['tmf_estable']:.1f}; degradación {r['tmf_degradacion']:.1f}; deforestación {r['tmf_deforestacion']:.1f}; recuperación {r['tmf_recuperacion']:.1f}; agua {r['tmf_agua']:.1f}; otra cobertura {r['tmf_otra_cobertura']:.1f} ha", "Sí" if r["senal_tmf"] else "No", f"{aportes['tmf']:.1f}/{PESOS_INDICE['tmf']:.1f}"],
-        ["Hansen GFC", f"Pérdida posterior al {CUTOFF_LABEL}: {r['hansen_post']:.2f} ha", "Sí" if r["senal_hansen"] else "No", f"{aportes['hansen']:.1f}/{PESOS_INDICE['hansen']:.1f}"],
-        [f"ESRI {anio_esri_inicial}-{anio_esri_final}", f"Salida de árboles {r['esri_salida']:.1f} ha ({r['pct_esri_salida']:.1f}%)", "Sí" if r["senal_esri"] else "No", f"{aportes['esri']:.1f}/{PESOS_INDICE['esri']:.1f}"],
-        ["GEDI", f"Dosel {r['gedi_altura']:.1f} m; área con datos válidos {r['gedi_cobertura_pct']:.0f}%" if r["gedi_disponible"] else "Datos insuficientes", "Contexto" if r["senal_gedi"] else "No", f"{aportes['gedi']:.1f}/{PESOS_INDICE['gedi']:.1f}"],
-        [f"NDVI {anio_ndvi_inicial}-{ANO_NDVI_MAX}", "Apoyo visual; no participa en el índice operativo", "No aplica", "0.0"],
+    filas_puntaje = [
+        ["Fuente o criterio", "Qué observó", "Aporte"],
+        [f"JRC TMF {anio_tmf_diagnostico}", "Señal" if r["senal_tmf"] else "Sin señal", f"{aportes['tmf']:.1f} / {PESOS_INDICE['tmf']:.1f}"],
+        ["Hansen GFC", "Señal" if r["senal_hansen"] else "Sin señal", f"{aportes['hansen']:.1f} / {PESOS_INDICE['hansen']:.1f}"],
+        [f"ESRI {anio_esri_inicial}-{anio_esri_final}", "Señal" if r["senal_esri"] else "Sin señal", f"{aportes['esri']:.1f} / {PESOS_INDICE['esri']:.1f}"],
+        ["GEDI · altura del dosel", "Contexto" if r["senal_gedi"] else "Sin aporte", f"{aportes['gedi']:.1f} / {PESOS_INDICE['gedi']:.1f}"],
+        [f"NDVI {anio_ndvi_inicial}-{ANO_NDVI_MAX}", "Apoyo visual", "0.0 / 0.0"],
     ]
-    filas_fuentes = [
+    if visita:
+        filas_puntaje.append(["Valor estratégico de corredores", "Aporta al total de visita", f"{aporte_corredor:.2f} / 1.5"])
+    filas_puntaje.extend(
         [
-            Paragraph(str(c), estilos["CabeceraTabla"] if i == 0 else estilos["CuerpoFicha"])
-            for c in fila
+            ["Subtotal de cambios", "Suma de JRC + Hansen + ESRI + GEDI", f"{puntaje_cambios:.2f} / {PUNTAJE_MAXIMO:.1f}"],
+            ["TOTAL INTEGRADO", "Cambios + valor del corredor" if visita else "Índice de cambios", f"{puntaje_integrado:.2f} / {maximo_integrado:.1f}"],
         ]
-        for i, fila in enumerate(filas_fuentes)
-    ]
-    tabla_fuentes = Table(
-        filas_fuentes,
-        colWidths=[3.3 * cm, 8.0 * cm, 2.2 * cm, 2.8 * cm],
-        repeatRows=1,
     )
-    tabla_fuentes.setStyle(
+    tabla_puntaje = tabla_simple(
+        filas_puntaje,
+        [5.2 * cm, 7.7 * cm, 4.1 * cm],
+        cabecera=True,
+    )
+    tabla_puntaje.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, 0), verde),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("FONTNAME", (0, 0), (-1, 0), "Times-Bold"),
-                ("FONTNAME", (0, 1), (-1, -1), "Times-Roman"),
-                ("FONTSIZE", (0, 0), (-1, -1), 8.5),
-                ("GRID", (0, 0), (-1, -1), 0.4, borde),
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f4f7f2")]),
-                ("LEFTPADDING", (0, 0), (-1, -1), 5),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 5),
-                ("TOPPADDING", (0, 0), (-1, -1), 4),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+                ("BACKGROUND", (0, -1), (-1, -1), azul_claro),
+                ("LINEABOVE", (0, -1), (-1, -1), 1, tinta),
             ]
         )
     )
+    historia.extend([tabla_puntaje, Spacer(1, 7)])
+
     historia.extend(
         [
-            tabla_fuentes,
-            Paragraph("INFORMACIÓN TÉCNICA DE RESPALDO", estilos["SeccionFicha"]),
-            Paragraph(
-                "La preevaluación integró JRC Tropical Moist Forest, Hansen Global Forest "
-                "Change, ESRI Land Use/Land Cover, altura del dosel basada en GEDI y NDVI "
-                "derivado de Sentinel-2. Los cálculos se realizan por fuente en su resolución "
-                "de trabajo. Únicamente el mapa 7 realiza una superposición espacial "
-                "estandarizada en 30 m para orientar la revisión; no modifica el índice.",
-                estilos["CuerpoFicha"],
+            tarjetas_metricas(
+                [
+                    ("Árboles en ESRI", f"{r['esri_arboles_final']:.1f} ha"),
+                    ("Pérdida Hansen posterior a 2020", f"{r['hansen_post']:.2f} ha"),
+                    ("Deforestación señalada por JRC", f"{r['tmf_deforestacion']:.1f} ha"),
+                    ("Señal en 2 o 3 fuentes", f"{r['coincidencia_varias_fuentes']:.2f} ha"),
+                ]
+            ),
+            Spacer(1, 7),
+            tarjeta(
+                f"<b>Lectura rápida.</b> El análisis encontró {resultado_general}. "
+                f"La coincidencia espacial más sólida ocupa {r['coincidencia_varias_fuentes']:.2f} ha "
+                f"({r['pct_coincidencia_varias_fuentes']:.2f}% del área). "
+                "Revise primero esos sectores y contraste el resultado con imágenes recientes, "
+                "documentos del predio y observación de campo.",
+                fondo=azul_claro,
+                acento=tinta,
+            ),
+            Spacer(1, 5),
+            Paragraph("Puntaje y coincidencia espacial son cosas distintas", estilos["SeccionFicha"]),
+            tabla_simple(
+                [
+                    ["Señal de una fuente", f"{r['coincidencia_1_fuente']:.2f} ha", "Revisión inicial"],
+                    ["Coincidencia de dos fuentes", f"{r['coincidencia_2_fuentes']:.2f} ha", "Mayor respaldo espacial"],
+                    ["Coincidencia de tres fuentes", f"{r['coincidencia_3_fuentes']:.2f} ha", "Revisión prioritaria"],
+                ],
+                [6.0 * cm, 3.0 * cm, 8.0 * cm],
+                fondo=superficie,
             ),
             Paragraph(
-                "Los pesos del índice son criterios operativos preliminares: JRC TMF 2.0, "
-                "Hansen 2.0, ESRI 1.5, GEDI 0.5 y NDVI 0.0. Cada fuente se suma una sola vez. "
-                "El índice no representa una probabilidad, "
-                "una certificación, una determinación legal ni una confirmación definitiva "
-                "de deforestación o de cumplimiento EUDR.",
+                "Estas hectáreas indican dónde coinciden las señales. No se suman al puntaje y no confirman por sí solas la causa del cambio.",
+                estilos["CuerpoPequeno"],
+            ),
+        ]
+    )
+
+    if contexto_fragmentacion:
+        clase = contexto_fragmentacion["metricas_clase"]
+        red = contexto_fragmentacion["metricas_red"]
+
+        historia.extend(
+            [
+                PageBreak(),
+                Paragraph("1. Cómo está distribuido el bosque", estilos["TituloPagina"]),
+                Paragraph(
+                    f"Este mapa muestra únicamente los fragmentos de {FUENTE_BOSQUE_CORTA} dentro del área evaluada. "
+                    "No utiliza fondo satelital para que la forma, el tamaño y la distribución se lean con claridad.",
+                    estilos["BajadaPagina"],
+                ),
+                tarjetas_metricas(
+                    [
+                        ("Bosque dentro del área", f"{clase['area_total_bosque_ha']:.2f} ha"),
+                        ("Fragmentos identificados", f"{clase['numero_parches']}"),
+                        ("Mayor fragmento", f"{clase['indice_parche_mayor_pct']:.1f}% del área"),
+                        ("Tamaño mediano", f"{clase['area_mediana_parche_ha']:.2f} ha"),
+                    ]
+                ),
+                Spacer(1, 8),
+                crear_mapa_fragmentacion(contexto_fragmentacion, ancho=17.0 * cm, alto=10.2 * cm),
+                Spacer(1, 6),
+                Table(
+                    [[
+                        leyenda(
+                            [
+                                ("#2f6b4f", "Valor alto", "Fragmentos relativamente importantes para mantener unido el bosque."),
+                                ("#78a66a", "Valor intermedio", "Aportan a la continuidad, con menor influencia relativa."),
+                            ]
+                        ),
+                        leyenda(
+                            [
+                                ("#c7dbc4", "Valor bajo", "Menor influencia relativa dentro de esta área; no significa que carezca de valor ecológico."),
+                                ("#eef5f1", "Área evaluada", "La superficie reportada siempre queda dentro de este límite."),
+                            ]
+                        ),
+                    ]],
+                    colWidths=[8.5 * cm, 8.5 * cm],
+                    style=TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 3)]),
+                ),
+                Spacer(1, 6),
+                tarjeta(
+                    f"<b>Lectura sencilla.</b> Se identificaron {clase['numero_parches']} fragmentos que reúnen "
+                    f"{clase['area_total_bosque_ha']:.2f} ha, equivalentes al "
+                    f"{clase['porcentaje_paisaje_bosque']:.1f}% del área. "
+                    "Los colores comparan los fragmentos entre sí dentro de este análisis; no son categorías oficiales de Almanaque Azul.",
+                    fondo=verde_claro,
+                ),
+                Paragraph("Datos adicionales", estilos["SeccionFicha"]),
+                tabla_simple(
+                    [
+                        ["Área media por fragmento", f"{clase['area_media_parche_ha']:.2f} ha", "Densidad de fragmentos", f"{clase['densidad_parches_por_100ha']:.2f} por 100 ha"],
+                        ["Densidad de bordes", f"{clase['densidad_borde_m_ha']:.2f} m/ha", "Índice de forma medio", f"{clase['indice_forma_medio']:.2f}"],
+                    ],
+                    [4.1 * cm, 4.4 * cm, 4.1 * cm, 4.4 * cm],
+                    fondo=superficie,
+                ),
+            ]
+        )
+
+        conecta = bool(conexion_corredor.get("conecta"))
+        lectura_ruta = (
+            f"La cadena potencial llega a <b>{conexion_corredor.get('corredor_nombre')}</b> "
+            f"(categoría publicada {str(conexion_corredor.get('categoria_etiqueta') or 'no indicada').lower()}) "
+            f"por medio de {conexion_corredor.get('numero_fragmentos_ruta', 0)} fragmentos. "
+            f"El salto mayor es de {float(conexion_corredor.get('mayor_separacion_m') or 0):.1f} m."
+            if conecta
+            else "No se identificó una cadena completa hacia un corredor publicado dentro del entorno evaluado."
+        )
+        historia.extend(
+            [
+                PageBreak(),
+                Paragraph("2. Cómo puede mantenerse la continuidad del bosque", estilos["TituloPagina"]),
+                Paragraph(
+                    "Este segundo mapa conserva los fragmentos como contexto y añade solo las relaciones esenciales, "
+                    "las separaciones que conviene revisar y una ruta potencial hacia un corredor de referencia.",
+                    estilos["BajadaPagina"],
+                ),
+                tarjetas_metricas(
+                    [
+                        ("Distancia evaluada", f"{red['umbral_m']:.0f} m"),
+                        ("Fragmentos con vecino cercano", f"{red.get('numero_parches_conectados', 0)} de {red['numero_nodos']}"),
+                        ("Fragmentos separados", f"{red.get('numero_parches_aislados', 0)}"),
+                        ("Grupos de bosque", f"{red['numero_componentes']}"),
+                    ]
+                ),
+                Spacer(1, 8),
+                crear_mapa_conectividad(contexto_fragmentacion, ancho=17.0 * cm, alto=10.2 * cm),
+                Spacer(1, 6),
+                Table(
+                    [[
+                        leyenda(
+                            [
+                                ("#b8d1bd", "Fragmentos de bosque", "Cobertura 2021 usada para el análisis estructural."),
+                                ("#176b61", "Estructura esencial", "Línea continua entre bordes próximos; el cálculo usa todas las relaciones válidas."),
+                                ("#9a4a25", "Separación para revisar", "Línea discontinua desde un fragmento sin vecino dentro del umbral."),
+                            ]
+                        ),
+                        leyenda(
+                            [
+                                ("#e97719", "Ruta potencial al corredor", "Una sola cadena de saltos; no demuestra movimiento de fauna."),
+                                ("#dce8a5", "Corredor de referencia", "Polígono publicado por Almanaque Azul."),
+                                ("#eef5f1", "Área evaluada", "El bosque exterior puede apoyar el cálculo sin aumentar las hectáreas reportadas."),
+                            ]
+                        ),
+                    ]],
+                    colWidths=[8.5 * cm, 8.5 * cm],
+                    style=TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 3)]),
+                ),
+                Spacer(1, 6),
+                tarjeta(
+                    f"<b>Lectura sencilla.</b> Con una distancia máxima de {red['umbral_m']:.0f} m, "
+                    f"{red.get('numero_parches_conectados', 0)} fragmentos tienen al menos un vecino cercano y "
+                    f"{red.get('numero_parches_aislados', 0)} quedan separados. {lectura_ruta}",
+                    fondo=naranja_claro if conecta else azul_claro,
+                    acento=colors.HexColor("#e97719") if conecta else tinta,
+                ),
+                Paragraph("Qué se calculó y qué se muestra", estilos["SeccionFicha"]),
+                tabla_simple(
+                    [
+                        ["Relaciones usadas en el cálculo", f"{red['numero_aristas']}", "Relaciones esenciales dibujadas", f"{red.get('numero_relaciones_mostradas', 0)}"],
+                        ["Fragmentos del entorno considerados", f"{red.get('numero_parches_contexto', red['numero_nodos'])}", "Con continuidad o conexión exterior", f"{red.get('numero_parches_continuidad_exterior', 0)}"],
+                        ["Separaciones potenciales", f"{red.get('numero_brechas_potenciales', 0)}", "Distancia media de separaciones", f"{red.get('distancia_media_brechas_potenciales_m', 0):.1f} m"],
+                    ],
+                    [4.5 * cm, 2.2 * cm, 7.1 * cm, 3.2 * cm],
+                    fondo=superficie,
+                ),
+                Paragraph(
+                    "Importante: esta es conectividad estructural potencial basada en cobertura y distancia. "
+                    "No demuestra conectividad funcional para una especie, calidad de hábitat ni uso real del corredor.",
+                    estilos["CuerpoPequeno"],
+                ),
+            ]
+        )
+
+    historia.extend(
+        [
+            PageBreak(),
+            Paragraph("Evidencia temática por fuente", estilos["TituloPagina"]),
+            Paragraph(
+                "Estas imágenes permiten revisar el detalle de cada fuente. Se presentan después de la conclusión y de los mapas explicativos para no sobrecargar la lectura inicial.",
+                estilos["BajadaPagina"],
+            ),
+        ]
+    )
+
+    def tarjeta_mapa(mapa):
+        titulo_mapa = mapa["titulo"].replace("ΔNDVI", "Variación NDVI")
+        contenido = [parrafo(titulo_mapa, "MapaTitulo")]
+        if mapa.get("imagen"):
+            imagen = ReportLabImage(BytesIO(mapa["imagen"]))
+            escala = min((15.8 * cm) / imagen.imageWidth, (6.5 * cm) / imagen.imageHeight)
+            imagen.drawWidth = imagen.imageWidth * escala
+            imagen.drawHeight = imagen.imageHeight * escala
+            contenido.append(
+                Table(
+                    [[imagen]],
+                    colWidths=[15.8 * cm],
+                    style=TableStyle([("ALIGN", (0, 0), (-1, -1), "CENTER"), ("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 0), ("TOPPADDING", (0, 0), (-1, -1), 0), ("BOTTOMPADDING", (0, 0), (-1, -1), 0)]),
+                )
+            )
+        else:
+            contenido.append(
+                Table(
+                    [[parrafo("Imagen no disponible. Consulte el mapa interactivo.", "MapaNota")]],
+                    colWidths=[15.8 * cm],
+                    rowHeights=[5.5 * cm],
+                    style=TableStyle([("BOX", (0, 0), (-1, -1), 0.35, borde), ("BACKGROUND", (0, 0), (-1, -1), superficie), ("VALIGN", (0, 0), (-1, -1), "MIDDLE")]),
+                )
+            )
+        contenido.append(parrafo(mapa["leyenda"], "MapaNota"))
+        tabla = Table([[contenido]], colWidths=[16.4 * cm], hAlign="CENTER")
+        tabla.setStyle(
+            TableStyle(
+                [
+                    ("BOX", (0, 0), (-1, -1), 0.4, borde),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 7),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 7),
+                    ("TOPPADDING", (0, 0), (-1, -1), 5),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ]
+            )
+        )
+        return KeepTogether([tabla, Spacer(1, 6)])
+
+    for indice, mapa in enumerate(mapas or []):
+        historia.append(tarjeta_mapa(mapa))
+        if indice % 2 == 1 and indice < len(mapas or []) - 1:
+            historia.append(PageBreak())
+
+    historia.extend(
+        [
+            Paragraph("Detalle técnico y trazabilidad", estilos["TituloPagina"]),
+            Paragraph(
+                "Esta sección conserva la información completa para personal técnico. No es necesaria para comprender la conclusión ejecutiva.",
+                estilos["BajadaPagina"],
+            ),
+        ]
+    )
+    filas_fuentes = [
+        ["Fuente", "Resultado específico", "Aporte"],
+        [f"JRC TMF {anio_tmf_diagnostico}", f"Estable {r['tmf_estable']:.1f}; degradación {r['tmf_degradacion']:.1f}; deforestación {r['tmf_deforestacion']:.1f}; recuperación {r['tmf_recuperacion']:.1f}; agua {r['tmf_agua']:.1f}; otra cobertura {r['tmf_otra_cobertura']:.1f} ha", f"{aportes['tmf']:.1f}/{PESOS_INDICE['tmf']:.1f}"],
+        ["Hansen GFC", f"Pérdida 2001-2020: {r['hansen_pre']:.2f} ha; posterior al {CUTOFF_LABEL}: {r['hansen_post']:.2f} ha", f"{aportes['hansen']:.1f}/{PESOS_INDICE['hansen']:.1f}"],
+        [f"ESRI {anio_esri_inicial}-{anio_esri_final}", f"Árboles finales {r['esri_arboles_final']:.1f} ha; salida {r['esri_salida']:.1f} ha ({r['pct_esri_salida']:.1f}%); ganancia {r['esri_ganancia']:.1f} ha ({pct_ganancia:.1f}%)", f"{aportes['esri']:.1f}/{PESOS_INDICE['esri']:.1f}"],
+        ["GEDI", f"Dosel {r['gedi_altura']:.1f} m; datos válidos en {r['gedi_cobertura_pct']:.0f}% del área" if r["gedi_disponible"] else "Datos insuficientes", f"{aportes['gedi']:.1f}/{PESOS_INDICE['gedi']:.1f}"],
+        [f"NDVI {anio_ndvi_inicial}-{ANO_NDVI_MAX}", "Apoyo visual; no modifica el puntaje", "0.0/0.0"],
+    ]
+    historia.extend(
+        [
+            tabla_simple(filas_fuentes, [3.0 * cm, 10.8 * cm, 3.2 * cm], cabecera=True),
+            Paragraph("Contexto de corredores", estilos["SeccionFicha"]),
+        ]
+    )
+    if contexto_corredores:
+        nombres = ", ".join(
+            dict.fromkeys(detalle["nombre"] for detalle in contexto_corredores.get("corredores", []))
+        ) or "ninguno"
+        historia.append(
+            Paragraph(
+                f"El área intersecta {contexto_corredores['area_en_corredores_ha']:.2f} ha de corredores "
+                f"({contexto_corredores['porcentaje_aoi_en_corredores']:.2f}% del área). "
+                f"Corredores presentes: {nombres}. Intersección con el Corredor Biológico Mesoamericano: "
+                f"{'sí' if contexto_corredores['intersecta_mesoamericano'] else 'no'}. "
+                "Este valor aporta al puntaje integrado de visita; la estructura del bosque sirve para focalizar la revisión, pero no añade puntos.",
+                estilos["CuerpoFicha"],
+            )
+        )
+    else:
+        historia.append(Paragraph("No se obtuvo contexto de corredores para esta área.", estilos["CuerpoFicha"]))
+
+    texto_justificacion_pesos = " ".join(
+        JUSTIFICACION_PESOS[fuente] for fuente in ("tmf", "hansen", "esri", "gedi", "ndvi")
+    )
+    texto_justificacion_umbrales = " ".join(
+        JUSTIFICACION_UMBRALES[criterio]
+        for criterio in (
+            "hansen_post_2020_ha", "jrc_deforestacion", "jrc_degradacion",
+            "esri_salida_arboles", "gedi_dosel_y_cobertura", "ndvi",
+        )
+    )
+    texto_clases_ndvi = "; ".join(
+        f"{clase['etiqueta']} ({clase['rango']})" for clase in CLASES_VIGOR_NDVI
+    )
+    historia.extend(
+        [
+            Paragraph("Cómo se interpreta", estilos["SeccionFicha"]),
+            Paragraph(
+                f"<b>Consistencia entre fuentes.</b> {coincidencia} La superposición espacial se calcula en una malla común de 30 m con JRC, Hansen y ESRI; GEDI y NDVI no participan y el resultado no modifica el puntaje.",
                 estilos["CuerpoFicha"],
             ),
             Paragraph(
                 f"<b>Justificación de los pesos.</b> {texto_justificacion_pesos}",
-                estilos["CuerpoFicha"],
+                estilos["CuerpoPequeno"],
             ),
             Paragraph(
                 f"<b>Justificación de los umbrales.</b> {texto_justificacion_umbrales}",
-                estilos["CuerpoFicha"],
+                estilos["CuerpoPequeno"],
             ),
             Paragraph(
-                f"<b>Escala visual de vigor NDVI.</b> {texto_clases_ndvi}. "
-                "Los intervalos describen vigor espectral y no identifican por sí solos "
-                "el tipo de cobertura ni la presencia de bosque natural.",
-                estilos["CuerpoFicha"],
+                f"<b>Escala visual NDVI.</b> {texto_clases_ndvi}. Describe vigor espectral, no identifica por sí sola bosque natural.",
+                estilos["CuerpoPequeno"],
             ),
-            Paragraph(
-                "<b>Consistencia entre fuentes.</b> Alta: JRC, Hansen y ESRI presentan "
-                "señal; parcial: dos fuentes presentan señal; mixta: coexisten deterioro "
-                "y recuperación o ganancia; sin señal consistente: menos de dos fuentes "
-                "coinciden. Esta lectura no modifica el puntaje.",
-                estilos["CuerpoFicha"],
+            tarjeta(
+                "<b>Alcance.</b> Esta ficha orienta dónde revisar. No es una certificación, una determinación legal, una confirmación definitiva de deforestación ni una evaluación de conectividad funcional para fauna.",
+                fondo=azul_claro,
+                acento=tinta,
             ),
         ]
     )
@@ -2857,10 +2860,10 @@ def generar_pdf(
         canvas_pdf.setStrokeColor(colors.HexColor("#9aab96"))
         canvas_pdf.setLineWidth(0.4)
         canvas_pdf.line(1.55 * cm, 1.2 * cm, ancho - 1.55 * cm, 1.2 * cm)
-        canvas_pdf.setFont("Times-Roman", 7.5)
-        canvas_pdf.setFillColor(colors.HexColor("#555555"))
-        canvas_pdf.drawString(1.55 * cm, 0.82 * cm, "Preevaluación territorial indicativa - requiere verificación")
-        canvas_pdf.drawRightString(ancho - 1.55 * cm, 0.82 * cm, f"Página {documento_pdf.page}")
+        canvas_pdf.setFont("Helvetica", 7.2)
+        canvas_pdf.setFillColor(gris)
+        canvas_pdf.drawString(1.45 * cm, 0.82 * cm, "Preevaluación territorial indicativa · requiere verificación")
+        canvas_pdf.drawRightString(ancho - 1.45 * cm, 0.82 * cm, f"Página {documento_pdf.page}")
         canvas_pdf.restoreState()
 
     documento.build(historia, onFirstPage=pie_pagina, onLaterPages=pie_pagina)

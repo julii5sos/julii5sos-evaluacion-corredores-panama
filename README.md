@@ -28,6 +28,10 @@ La aplicación orienta revisiones territoriales. No es una certificación, no de
 - Experiencia con divulgación progresiva: muestra primero la acción, la conclusión y el
   mapa; los cálculos, gráficos, tablas, fuentes y descargas permanecen disponibles como
   detalles opcionales, sin eliminar información del análisis.
+- Ficha PDF ejecutiva con puntaje desglosado y dos mapas sin fondo satelital: uno
+  para explicar la fragmentación y otro para mostrar la conectividad estructural y
+  la ruta potencial hacia un corredor de referencia. Las leyendas quedan fuera del
+  mapa y la evidencia técnica permanece al final.
 
 El índice satelital de cambios no se altera. La prioridad de visita lo conserva
 como componente dominante y añade hasta 1.5 puntos de valor estratégico: hasta
@@ -55,6 +59,9 @@ conectores, separaciones y componentes aislados.
 5. Abra, solo si los necesita, los detalles de **Cambios satelitales**, **Corredores
    ecológicos** o **Bosque y conectividad**. Allí se conservan las métricas, gráficos,
    tablas y archivos descargables del análisis completo.
+6. Prepare la ficha PDF. La primera página explica el puntaje y la acción; las dos
+   siguientes separan fragmentación y conectividad para evitar que las líneas oculten
+   el patrón del bosque.
 
 ## Fuentes
 
