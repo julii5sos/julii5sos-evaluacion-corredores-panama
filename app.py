@@ -17,4 +17,4 @@ if not APLICACION_ACTIVA.is_file():
         "No se encontró app_experiencia.py, la implementación activa del visor."
     )
 
-runpy.run_path(str(APLICACION_ACTIVA), run_name="__main__")
+runpy.run_path(str(APLICACION_ACTIVA), run_name="version/1.1.0-subcuencas")
