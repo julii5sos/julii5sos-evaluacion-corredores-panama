@@ -670,7 +670,7 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-1.0.0-FICHA-EJECUTIVA"
+APP_VERSION = "UX-1.1.0-SUBCUENCAS"
 METHODOLOGY_VERSION = "MT-2026.11-RUTA-CORREDOR"
 PROYECTO_EE = secreto_opcional("EE_PROJECT", "ee-julissaguevaravega")
 FUENTE_BOSQUE_NOMBRE = "Bosque y otros usos"
@@ -970,6 +970,7 @@ LEYENDAS = {
 def construir_registro_metodologico(
     tipo_area,
     finca_id,
+    subcuenca_nombre,
     geometria_geojson,
     anio_tmf_visual_inicial,
     anio_tmf_visual_final,
@@ -990,6 +991,14 @@ def construir_registro_metodologico(
             "identificador": str(finca_id),
             "geometria_vectorial_incluida": False,
             "fuente": "coleccion_privada_configurada_en_el_servidor",
+        }
+    elif tipo_area == "Subcuenca":
+        especificacion_area = {
+            "tipo": "subcuenca",
+            "identificador": str(subcuenca_nombre),
+            "asset": ASSET_SUBCUENCAS,
+            "campo_identificador": "SUBCUENC_2",
+            "geometria_vectorial_incluida": False,
         }
     elif tipo_area == "Dibujar polígono en el mapa":
         especificacion_area = {
@@ -1344,7 +1353,11 @@ def solicitar_acceso_fincas():
     return False
 
 
-def nombre_area_legible(tipo_area, finca_id=None, subcuenca_nombre=None):
+def nombre_area_legible(
+    tipo_area,
+    finca_id=None,
+    subcuenca_nombre=None,
+):
     if tipo_area == "Toda la cuenca":
         return "Cuenca hidrográfica de interés"
     if tipo_area == "Subcuenca":
@@ -1353,6 +1366,7 @@ def nombre_area_legible(tipo_area, finca_id=None, subcuenca_nombre=None):
         return "Polígono dibujado por el usuario"
     nombre = str(finca_id).strip()
     return nombre if nombre.casefold().startswith("finca") else f"Finca {nombre}"
+
 
 def clave_orden_natural(valor):
     partes = re.split(r"(\d+)", str(valor).strip())
@@ -1378,6 +1392,7 @@ def obtener_ids_fincas():
         key=clave_orden_natural,
     )
 
+
 @st.cache_data(ttl=3600)
 def obtener_ids_subcuencas():
     if not ASSET_SUBCUENCAS:
@@ -1392,20 +1407,30 @@ def obtener_ids_subcuencas():
         [valor for valor in valores if valor is not None],
         key=clave_orden_natural,
     )
-    
-def obtener_area(tipo_area, finca_id=None, geometria_geojson=None, subcuenca_nombre=None):
+
+
+def obtener_area(
+    tipo_area,
+    finca_id=None,
+    subcuenca_nombre=None,
+    geometria_geojson=None,
+):
     if tipo_area == "Finca de monitoreo":
         if not ASSET_FINCAS or not acceso_fincas_vigente():
             raise PermissionError("La finca privada requiere un acceso autorizado.")
         return ee.FeatureCollection(ASSET_FINCAS).filter(
             ee.Filter.eq("FincaID", finca_id)
         )
+
     if tipo_area == "Subcuenca":
         if not ASSET_SUBCUENCAS:
             raise PermissionError("La colección de subcuencas no está configurada.")
+        if subcuenca_nombre is None:
+            raise ValueError("Debe seleccionar una subcuenca antes de ejecutar el análisis.")
         return ee.FeatureCollection(ASSET_SUBCUENCAS).filter(
             ee.Filter.eq("SUBCUENC_2", subcuenca_nombre)
         )
+
     if tipo_area == "Dibujar polígono en el mapa":
         if not geometria_geojson:
             raise ValueError("Debe dibujar un polígono antes de ejecutar el análisis.")
@@ -1420,8 +1445,8 @@ def obtener_area(tipo_area, finca_id=None, geometria_geojson=None, subcuenca_nom
         return ee.FeatureCollection(
             [ee.Feature(geometria_recortada, {"Origen": "Dibujo del usuario"})]
         )
-    return ee.FeatureCollection(ASSET_CUENCA)
 
+    return ee.FeatureCollection(ASSET_CUENCA)
 
 def serializar_poligono_dibujado(dibujo):
     geometria = dibujo.get("geometry", dibujo) if dibujo else None
@@ -1849,13 +1874,18 @@ def analizar_bosque_asset_cache(
 def ejecutar_analisis(
     tipo_area,
     finca_id,
+    subcuenca_nombre,
+    geometria_geojson,
     anio_tmf_diagnostico,
     anio_esri_inicial,
     anio_esri_final,
-    subcuenca_nombre=None,
-    geometria_geojson=None,
 ):
-    area_fc = obtener_area(tipo_area, finca_id,subcuenca_nombre, geometria_geojson)
+    area_fc = obtener_area(
+        tipo_area=tipo_area,
+        finca_id=finca_id,
+        subcuenca_nombre=subcuenca_nombre,
+        geometria_geojson=geometria_geojson,
+    )
     geometria = area_fc.geometry()
 
     tmf = obtener_tmf(anio_tmf_diagnostico, geometria)
@@ -2186,19 +2216,27 @@ def descargar_miniaturas(especificaciones, geometria, mapas_existentes=None):
 def generar_mapas_reporte(
     tipo_area,
     finca_id,
+    subcuenca_nombre,
+    geometria_geojson,
     anio_tmf_diagnostico,
     anio_esri_inicial,
     anio_esri_final,
     anio_ndvi_inicial,
-    geometria_geojson=None,
     intento_cache=0,
     _mapas_existentes=None,
 ):
+    _ = intento_cache
+
+    area_fc = obtener_area(
+        tipo_area=tipo_area,
+        finca_id=finca_id,
+        subcuenca_nombre=subcuenca_nombre,
+        geometria_geojson=geometria_geojson,
+    )
+
+    geometria = area_fc.geometry()
     # El número de intento forma parte de la clave de caché y permite reintentar
     # si Earth Engine no entrega alguna miniatura temporalmente.
-    _ = intento_cache
-    area_fc = obtener_area(tipo_area, finca_id,subcuenca_nombre, geometria_geojson)
-    geometria = area_fc.geometry()
     tmf = obtener_tmf(anio_tmf_diagnostico, geometria)
     gedi = imagen_gedi(geometria)
     ndvi_final = obtener_ndvi(ANO_NDVI_MAX, geometria)
@@ -3849,6 +3887,7 @@ with st.expander("Cómo funciona y qué información utiliza", expanded=False):
 
 try:
     iniciar_earth_engine()
+
     st.sidebar.markdown("## Configurar análisis")
     st.sidebar.caption("Paso 1 de 3 · Seleccione la unidad territorial")
     etiquetas_area = {
@@ -3861,7 +3900,9 @@ try:
         "Finca de monitoreo": (
             "Opción más rápida. Seleccione una finca disponible después de autorizar el acceso."
         ),
-        "Subcuenca": "Seleccione una de las subcuencas de la CHCP.",
+        "Subcuenca": (
+            "Seleccione una subcuenca de la Cuenca Hidrográfica del Canal de Panamá."
+        ),
         "Dibujar polígono en el mapa": (
             "Úsela cuando el área no aparece en la lista. El dibujo se limita automáticamente a la cuenca."
         ),
@@ -3903,6 +3944,8 @@ try:
         subcuenca_seleccionada = st.sidebar.selectbox(
             "Subcuenca:",
             obtener_ids_subcuencas(),
+            format_func=str,
+            help="Seleccione la subcuenca que desea evaluar.",
         )
     elif tipo_area == "Dibujar polígono en el mapa":
         st.subheader("1. Dibuje el área que desea evaluar")
@@ -3994,15 +4037,19 @@ try:
         st.success(
             "Polígono listo. Puede continuar con el tipo de revisión y ejecutar la preevaluación."
         )
-    nombre_area = nombre_area_legible(tipo_area, finca_seleccionada, subcuenca_seleccionada)
+    nombre_area = nombre_area_legible(
+        tipo_area,
+        finca_seleccionada,
+        subcuenca_seleccionada,
+    )
 
     area_seleccionada = obtener_area(
         tipo_area,
         finca_seleccionada,
-        geometria_dibujada_json,
         subcuenca_seleccionada,
+        geometria_dibujada_json,
     )
-      geometria = area_seleccionada.geometry()
+    geometria = area_seleccionada.geometry()
     superficie_ha = float(geometria.area(1).divide(10000).getInfo())
     if tipo_area == "Dibujar polígono en el mapa":
         superficie_original_ha = float(
@@ -4021,15 +4068,19 @@ try:
     elif tipo_area == "Subcuenca":
         geometria_cuenca_check = ee.FeatureCollection(ASSET_CUENCA).geometry()
         superficie_dentro_cuenca_ha = float(
-            geometria.intersection(geometria_cuenca_check, 1).area(1).divide(10000).getInfo()
+            geometria.intersection(geometria_cuenca_check, 1)
+            .area(1)
+            .divide(10000)
+            .getInfo()
         )
         if superficie_dentro_cuenca_ha + 0.01 < superficie_ha:
             area_fuera_ha = superficie_ha - superficie_dentro_cuenca_ha
             st.warning(
-                f"Una parte de esta subcuenca ({area_fuera_ha:,.1f} ha) cae fuera del límite "
-                "de la cuenca principal (por ejemplo, en un lago). Se incluye en la superficie "
-                "total, pero no puede tener bosque, lo que puede reducir el % de bosque calculado."
+                f"Una parte de esta subcuenca ({area_fuera_ha:,.1f} ha) cae fuera del "
+                "límite de la cuenca principal. Se mantiene en la superficie total de la "
+                "subcuenca, pero se recomienda revisar este solapamiento cartográfico."
             )
+
     bosque_automatico_disponible = bool(ASSET_BOSQUE_2021)
     umbral_conectividad_m = 500
     area_min_parche_ha = 0.0
@@ -4386,6 +4437,7 @@ try:
         METHODOLOGY_VERSION,
         tipo_area,
         finca_seleccionada,
+        subcuenca_seleccionada,
         ANO_DIAG_TMF,
         ANO_ESRI_MIN,
         ANO_ESRI_MAX,
@@ -4394,7 +4446,6 @@ try:
         huella_bosque,
         umbral_conectividad_m,
         area_min_parche_ha,
-        subcuenca_seleccionada,
     )
     firma_visual_actual = (
         firma_analisis_actual,
@@ -4503,13 +4554,13 @@ try:
         firma_anterior = st.session_state.get("firma_analisis")
         with st.spinner("Calculando las señales territoriales..."):
             resultados_nuevos = ejecutar_analisis(
-                tipo_area,
-                subcuenca_seleccionada,
-                finca_seleccionada,
-                ANO_DIAG_TMF,
-                ANO_ESRI_MIN,
-                ANO_ESRI_MAX,
-                geometria_dibujada_json,
+                tipo_area=tipo_area,
+                finca_id=finca_seleccionada,
+                subcuenca_nombre=subcuenca_seleccionada,
+                geometria_geojson=geometria_dibujada_json,
+                anio_tmf_diagnostico=ANO_DIAG_TMF,
+                anio_esri_inicial=ANO_ESRI_MIN,
+                anio_esri_final=ANO_ESRI_MAX,
             )
             aoi_geojson_serializado = json.dumps(
                 geometria.getInfo(),
@@ -4606,6 +4657,7 @@ try:
         registro_resultados = construir_registro_metodologico(
             tipo_area=tipo_area,
             finca_id=finca_seleccionada,
+            subcuenca_nombre=subcuenca_seleccionada,
             geometria_geojson=geometria_dibujada_json,
             anio_tmf_visual_inicial=anio_tmf_inicial,
             anio_tmf_visual_final=anio_tmf_final,
@@ -4664,18 +4716,20 @@ try:
                             "Solicitando siete mapas a Earth Engine en grupos de tres."
                         )
                         mapas_reporte, errores_mapas = generar_mapas_reporte(
-                            tipo_area,
-                            subcuenca_seleccionada,
-                            finca_seleccionada,
-                            ANO_DIAG_TMF,
-                            anio_esri_inicial,
-                            anio_esri_final,
-                            anio_ndvi_inicial,
-                            geometria_dibujada_json,
-                            intento_informe,
-                            st.session_state.get("mapas_reporte")
-                            if errores_informe
-                            else None,
+                            tipo_area=tipo_area,
+                            finca_id=finca_seleccionada,
+                            subcuenca_nombre=subcuenca_seleccionada,
+                            geometria_geojson=geometria_dibujada_json,
+                            anio_tmf_diagnostico=ANO_DIAG_TMF,
+                            anio_esri_inicial=anio_esri_inicial,
+                            anio_esri_final=anio_esri_final,
+                            anio_ndvi_inicial=anio_ndvi_inicial,
+                            intento_cache=intento_informe,
+                            _mapas_existentes=(
+                                st.session_state.get("mapas_reporte")
+                                if errores_informe
+                                else None
+                            ),
                         )
                         disponibles = sum(
                             1 for mapa_reporte in mapas_reporte if mapa_reporte.get("imagen")
@@ -5134,7 +5188,7 @@ try:
             use_container_width=True,
             returned_objects=[],
             key=(
-                f"mapa-{APP_VERSION}-{tipo_area}-{finca_seleccionada}-{modo_mapa}-{modo_comparador}-"
+                f"mapa-{APP_VERSION}-{tipo_area}-{finca_seleccionada}-{subcuenca_seleccionada}-{modo_mapa}-{modo_comparador}-"
                 f"{anio_tmf_inicial}-{anio_tmf_final}-{anio_esri_inicial}-"
                 f"{anio_esri_final}-{anio_ndvi_inicial}-{anio_ndvi_final}-"
                 f"{anio_tmf_capa}-{anio_esri_capa}-{anio_ndvi_capa}-"
