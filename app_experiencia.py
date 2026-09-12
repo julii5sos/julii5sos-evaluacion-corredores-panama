@@ -689,6 +689,7 @@ ASSET_CUENCA = (
     "CuencasHidrograficadeInteres"
 )
 ASSET_FINCAS = secreto_opcional("EE_ASSET_FINCAS")
+ASSET_SUBCUENCAS = secreto_opcional("EE_ASSET_SubCuencas")
 ASSET_BOSQUE_2021 = secreto_opcional("EE_ASSET_BOSQUE_2021")
 ACCESO_FINCA_DURACION_SEG = 30 * 60
 ACCESO_FINCA_MAX_INTENTOS = 5
@@ -1343,14 +1344,15 @@ def solicitar_acceso_fincas():
     return False
 
 
-def nombre_area_legible(tipo_area, finca_id=None):
+def nombre_area_legible(tipo_area, finca_id=None, subcuenca_nombre=None):
     if tipo_area == "Toda la cuenca":
         return "Cuenca hidrográfica de interés"
+    if tipo_area == "Subcuenca":
+        return f"Subcuenca {subcuenca_nombre}"
     if tipo_area == "Dibujar polígono en el mapa":
         return "Polígono dibujado por el usuario"
     nombre = str(finca_id).strip()
     return nombre if nombre.casefold().startswith("finca") else f"Finca {nombre}"
-
 
 def clave_orden_natural(valor):
     partes = re.split(r"(\d+)", str(valor).strip())
@@ -1376,13 +1378,33 @@ def obtener_ids_fincas():
         key=clave_orden_natural,
     )
 
-
-def obtener_area(tipo_area, finca_id=None, geometria_geojson=None):
+@st.cache_data(ttl=3600)
+def obtener_ids_subcuencas():
+    if not ASSET_SUBCUENCAS:
+        raise PermissionError("La colección de subcuencas no está configurada.")
+    valores = (
+        ee.FeatureCollection(ASSET_SUBCUENCAS)
+        .aggregate_array("SUBCUENC_2")
+        .distinct()
+        .getInfo()
+    )
+    return sorted(
+        [valor for valor in valores if valor is not None],
+        key=clave_orden_natural,
+    )
+    
+def obtener_area(tipo_area, finca_id=None, geometria_geojson=None, subcuenca_nombre=None):
     if tipo_area == "Finca de monitoreo":
         if not ASSET_FINCAS or not acceso_fincas_vigente():
             raise PermissionError("La finca privada requiere un acceso autorizado.")
         return ee.FeatureCollection(ASSET_FINCAS).filter(
             ee.Filter.eq("FincaID", finca_id)
+        )
+    if tipo_area == "Subcuenca":
+        if not ASSET_SUBCUENCAS:
+            raise PermissionError("La colección de subcuencas no está configurada.")
+        return ee.FeatureCollection(ASSET_SUBCUENCAS).filter(
+            ee.Filter.eq("SUBCUENC_2", subcuenca_nombre)
         )
     if tipo_area == "Dibujar polígono en el mapa":
         if not geometria_geojson:
@@ -1830,9 +1852,10 @@ def ejecutar_analisis(
     anio_tmf_diagnostico,
     anio_esri_inicial,
     anio_esri_final,
+    subcuenca_nombre=None,
     geometria_geojson=None,
 ):
-    area_fc = obtener_area(tipo_area, finca_id, geometria_geojson)
+    area_fc = obtener_area(tipo_area, finca_id,subcuenca_nombre, geometria_geojson)
     geometria = area_fc.geometry()
 
     tmf = obtener_tmf(anio_tmf_diagnostico, geometria)
@@ -2174,7 +2197,7 @@ def generar_mapas_reporte(
     # El número de intento forma parte de la clave de caché y permite reintentar
     # si Earth Engine no entrega alguna miniatura temporalmente.
     _ = intento_cache
-    area_fc = obtener_area(tipo_area, finca_id, geometria_geojson)
+    area_fc = obtener_area(tipo_area, finca_id,subcuenca_nombre, geometria_geojson)
     geometria = area_fc.geometry()
     tmf = obtener_tmf(anio_tmf_diagnostico, geometria)
     gedi = imagen_gedi(geometria)
@@ -3826,11 +3849,11 @@ with st.expander("Cómo funciona y qué información utiliza", expanded=False):
 
 try:
     iniciar_earth_engine()
-
     st.sidebar.markdown("## Configurar análisis")
     st.sidebar.caption("Paso 1 de 3 · Seleccione la unidad territorial")
     etiquetas_area = {
         "Finca de monitoreo": "Finca registrada (recomendado)",
+        "Subcuenca": "Subcuenca de la CHCP",
         "Dibujar polígono en el mapa": "Dibujar un área en el mapa",
         "Toda la cuenca": "Toda la cuenca (análisis regional)",
     }
@@ -3838,6 +3861,7 @@ try:
         "Finca de monitoreo": (
             "Opción más rápida. Seleccione una finca disponible después de autorizar el acceso."
         ),
+        "Subcuenca": "Seleccione una de las subcuencas de la CHCP.",
         "Dibujar polígono en el mapa": (
             "Úsela cuando el área no aparece en la lista. El dibujo se limita automáticamente a la cuenca."
         ),
@@ -3847,12 +3871,13 @@ try:
     }
     tipo_area = st.sidebar.radio(
         "¿Qué área desea analizar?",
-        ["Finca de monitoreo", "Dibujar polígono en el mapa", "Toda la cuenca"],
+        ["Finca de monitoreo", "Subcuenca", "Dibujar polígono en el mapa", "Toda la cuenca"],
         format_func=lambda valor: etiquetas_area[valor],
         help="Se recomienda iniciar con una finca. El análisis de toda la cuenca puede tardar varios minutos.",
     )
     st.sidebar.caption(descripciones_area[tipo_area])
     finca_seleccionada = None
+    subcuenca_seleccionada = None
     geometria_dibujada_json = st.session_state.get("geometria_dibujada_json")
     version_mapa_dibujo = st.session_state.get("version_mapa_dibujo", 0)
     if tipo_area == "Finca de monitoreo":
@@ -3867,6 +3892,17 @@ try:
             obtener_ids_fincas(),
             format_func=str,
             help="Las fincas están ordenadas de forma natural: 1, 2, 3...",
+        )
+    elif tipo_area == "Subcuenca":
+        if not ASSET_SUBCUENCAS:
+            st.error(
+                "La colección de subcuencas no está configurada. El administrador debe "
+                "definir EE_ASSET_SubCuencas en los secretos de Streamlit."
+            )
+            st.stop()
+        subcuenca_seleccionada = st.sidebar.selectbox(
+            "Subcuenca:",
+            obtener_ids_subcuencas(),
         )
     elif tipo_area == "Dibujar polígono en el mapa":
         st.subheader("1. Dibuje el área que desea evaluar")
@@ -3958,14 +3994,15 @@ try:
         st.success(
             "Polígono listo. Puede continuar con el tipo de revisión y ejecutar la preevaluación."
         )
-    nombre_area = nombre_area_legible(tipo_area, finca_seleccionada)
+    nombre_area = nombre_area_legible(tipo_area, finca_seleccionada, subcuenca_seleccionada)
 
     area_seleccionada = obtener_area(
         tipo_area,
         finca_seleccionada,
         geometria_dibujada_json,
+        subcuenca_seleccionada,
     )
-    geometria = area_seleccionada.geometry()
+      geometria = area_seleccionada.geometry()
     superficie_ha = float(geometria.area(1).divide(10000).getInfo())
     if tipo_area == "Dibujar polígono en el mapa":
         superficie_original_ha = float(
@@ -3981,7 +4018,18 @@ try:
             st.warning(
                 "Una parte del polígono estaba fuera de la cuenca y fue excluida del análisis."
             )
-
+    elif tipo_area == "Subcuenca":
+        geometria_cuenca_check = ee.FeatureCollection(ASSET_CUENCA).geometry()
+        superficie_dentro_cuenca_ha = float(
+            geometria.intersection(geometria_cuenca_check, 1).area(1).divide(10000).getInfo()
+        )
+        if superficie_dentro_cuenca_ha + 0.01 < superficie_ha:
+            area_fuera_ha = superficie_ha - superficie_dentro_cuenca_ha
+            st.warning(
+                f"Una parte de esta subcuenca ({area_fuera_ha:,.1f} ha) cae fuera del límite "
+                "de la cuenca principal (por ejemplo, en un lago). Se incluye en la superficie "
+                "total, pero no puede tener bosque, lo que puede reducir el % de bosque calculado."
+            )
     bosque_automatico_disponible = bool(ASSET_BOSQUE_2021)
     umbral_conectividad_m = 500
     area_min_parche_ha = 0.0
@@ -4346,6 +4394,7 @@ try:
         huella_bosque,
         umbral_conectividad_m,
         area_min_parche_ha,
+        subcuenca_seleccionada,
     )
     firma_visual_actual = (
         firma_analisis_actual,
@@ -4455,6 +4504,7 @@ try:
         with st.spinner("Calculando las señales territoriales..."):
             resultados_nuevos = ejecutar_analisis(
                 tipo_area,
+                subcuenca_seleccionada,
                 finca_seleccionada,
                 ANO_DIAG_TMF,
                 ANO_ESRI_MIN,
@@ -4615,6 +4665,7 @@ try:
                         )
                         mapas_reporte, errores_mapas = generar_mapas_reporte(
                             tipo_area,
+                            subcuenca_seleccionada,
                             finca_seleccionada,
                             ANO_DIAG_TMF,
                             anio_esri_inicial,
