@@ -1,16 +1,24 @@
 # Evaluación territorial y corredores ecológicos de Panamá
 
-Aplicación Streamlit para conectar tres lecturas en un diagnóstico territorial
-único, conservando la trazabilidad de cada una:
+Aplicación Streamlit con tres rutas de trabajo independientes para que cada
+persona empiece por su pregunta y vea únicamente los controles necesarios:
 
-1. señales satelitales de cambio forestal y prioridad de revisión;
-2. corredores ecológicos interpretados y publicados por Fundación Almanaque Azul;
-3. fragmentación y conectividad estructural calculadas desde un recorte institucional de la capa **Bosque y otros usos 2021** de SINIA–MiAMBIENTE, almacenado como asset privado de Earth Engine.
+1. **Evaluación territorial:** señales satelitales de cambio forestal y prioridad de revisión.
+2. **Corredores y conectividad:** corredores publicados, fragmentación y conectividad estructural.
+3. **Evaluación integral:** reúne las dos lecturas anteriores para priorizar una visita,
+   sin confundir el cambio territorial con el valor estratégico de los corredores.
+
+Después de elegir la ruta, el área puede ser una finca registrada, una subcuenca
+consultada directamente desde Earth Engine, un polígono dibujado o toda la cuenca.
 
 La aplicación orienta revisiones territoriales. No es una certificación, no determina cumplimiento EUDR y no demuestra por sí sola conectividad funcional para una especie.
 
 ## Qué se añadió en este repositorio
 
+- Pantalla inicial con tres opciones: evaluación territorial, corredores y conectividad,
+  o evaluación integral.
+- Selección de subcuencas desde la colección configurada en Earth Engine, además de
+  fincas, polígonos dibujados y la cuenca completa.
 - 22 polígonos de corredores y 14 puntos críticos publicados por Almanaque Azul.
 - Las categorías originales `alta`, `mediana` y `media-baja`, sin sustituirlas por una clasificación inventada.
 - Los tres tramos panameños identificados como Corredor Biológico Mesoamericano: oeste, San Lorenzo y este.
@@ -43,23 +51,23 @@ conectores, separaciones y componentes aislados.
 
 ## Flujo de uso
 
-1. Seleccione una finca, dibuje un polígono o use toda la cuenca configurada y elija la vista.
-2. Ejecute el análisis. La aplicación muestra primero la prioridad de visita, cuatro
-   indicadores clave y el mapa. La configuración y la metodología permanecen cerradas
-   hasta que la persona decida consultarlas.
-3. La aplicación conserva el área elegida para las hectáreas, pero revisa también un
+1. Elija **Evaluación territorial**, **Corredores y conectividad** o **Evaluación integral**.
+2. Seleccione una finca, una subcuenca, dibuje un polígono o use toda la cuenca configurada.
+3. Ejecute el análisis. La aplicación procesa solo las fuentes necesarias y muestra
+   primero una conclusión breve, los indicadores principales y el mapa.
+4. En las opciones con conectividad, la aplicación conserva el área elegida para las hectáreas, pero revisa también un
    entorno exterior de hasta 5 km para evitar falsos aislamientos y buscar una cadena
    estructural hacia un corredor publicado.
-4. Use **Capas disponibles en el mapa** para encender o apagar por separado la
+5. Use **Capas disponibles en el mapa** para encender o apagar por separado la
    cobertura completa de bosque del área y su entorno, los fragmentos evaluados,
    la estructura esencial, la ruta potencial hacia un corredor y las separaciones.
    La ruta naranja es una orientación estructural para revisar, no un corredor nuevo
    ni evidencia de movimiento de fauna. El bosque exterior que se muestre no se suma
    a las hectáreas informadas para el polígono.
-5. Abra, solo si los necesita, los detalles de **Cambios satelitales**, **Corredores
+6. Abra, solo si los necesita, los detalles de **Cambios satelitales**, **Corredores
    ecológicos** o **Bosque y conectividad**. Allí se conservan las métricas, gráficos,
    tablas y archivos descargables del análisis completo.
-6. Prepare la ficha PDF. La primera página explica el puntaje y la acción; las dos
+7. En la evaluación territorial o integral, prepare la ficha PDF. La primera página explica el puntaje y la acción; las dos
    siguientes separan fragmentación y conectividad para evitar que las líneas oculten
    el patrón del bosque.
 
@@ -93,6 +101,7 @@ Guarde los secretos únicamente en `.streamlit/secrets.toml` para desarrollo loc
 ```toml
 EE_PROJECT = "proyecto-de-earth-engine"
 EE_ASSET_FINCAS = "projects/PROYECTO/assets/COLECCION_PRIVADA_DE_FINCAS"
+EE_ASSET_SubCuencas = "projects/PROYECTO/assets/COLECCION_DE_SUBCUENCAS"
 EE_ASSET_BOSQUE_2021 = "projects/ee-julissaguevaravega/assets/CBOTB_2021_25k"
 FINCAS_ACCESS_CODE = "CODIGO_PRIVADO_DE_AL_MENOS_8_CARACTERES"
 

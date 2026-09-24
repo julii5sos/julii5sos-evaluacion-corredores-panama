@@ -68,6 +68,41 @@ from metodologia_indice import (
 from reporte_cartografico import crear_mapa_conectividad, crear_mapa_fragmentacion
 
 
+MODO_TERRITORIAL = "territorial"
+MODO_CORREDORES = "corredores"
+MODO_INTEGRAL = "integral"
+
+MODOS_ANALISIS = {
+    MODO_TERRITORIAL: {
+        "titulo": "Evaluación territorial",
+        "pregunta": "¿Existen cambios que requieren revisión?",
+        "descripcion": (
+            "Examina señales satelitales de cambio del bosque y genera una prioridad "
+            "territorial sin sumar el valor de los corredores."
+        ),
+        "resultado": "Prioridad territorial, mapa de cambios y evidencia por fuente.",
+    },
+    MODO_CORREDORES: {
+        "titulo": "Corredores y conectividad",
+        "pregunta": "¿Cómo está conectado o fragmentado el bosque?",
+        "descripcion": (
+            "Revisa corredores publicados, fragmentos de bosque, conexiones, "
+            "separaciones y rutas estructurales potenciales."
+        ),
+        "resultado": "Lectura de conectividad, mapa de fragmentos y descargas geográficas.",
+    },
+    MODO_INTEGRAL: {
+        "titulo": "Evaluación integral",
+        "pregunta": "¿Dónde conviene priorizar una visita considerando todo?",
+        "descripcion": (
+            "Combina cambios territoriales, valor estratégico de corredores y "
+            "estructura del bosque en una lectura conjunta."
+        ),
+        "resultado": "Prioridad integrada, mapa completo e informe trazable.",
+    },
+}
+
+
 st.set_page_config(
     page_title="Evaluación territorial y corredores | Panamá",
     page_icon=":material/map:",
@@ -189,6 +224,63 @@ st.markdown(
     }
     .cabecera-app p {margin: .65rem 0 0; color: var(--institucional-suave); max-width: 980px;}
     .alcance-app {margin-top: .65rem; font-size: .86rem; color: var(--institucional-suave);}
+    .selector-modos-intro {
+        max-width: 780px;
+        margin: 1.25rem 0 .85rem;
+    }
+    .selector-modos-intro h2 {
+        margin-bottom: .3rem;
+        color: var(--institucional-verde);
+        font-size: clamp(1.55rem, 2.5vw, 2.05rem);
+    }
+    .selector-modos-intro p {
+        margin: 0;
+        color: var(--institucional-suave);
+        font-size: 1.02rem;
+        line-height: 1.55;
+    }
+    .modo-card {
+        min-height: 205px;
+        padding: .2rem .1rem 0;
+    }
+    .modo-card small {
+        display: block;
+        margin-bottom: .4rem;
+        color: var(--institucional-suave);
+        font-weight: 700;
+        letter-spacing: .035em;
+        text-transform: uppercase;
+    }
+    .modo-card h3 {
+        margin: 0 0 .45rem;
+        color: var(--institucional-verde);
+        font-size: 1.22rem;
+        line-height: 1.3;
+    }
+    .modo-card p {
+        margin: 0 0 .65rem;
+        color: var(--institucional-suave);
+        line-height: 1.5;
+    }
+    .modo-card .modo-resultado {
+        padding-top: .6rem;
+        border-top: 1px solid var(--institucional-borde);
+        color: var(--institucional-tinta);
+        font-size: .92rem;
+    }
+    .modo-activo {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .45rem .8rem;
+        align-items: baseline;
+        margin: .15rem 0 .75rem;
+        padding: .7rem .85rem;
+        border: 1px solid var(--institucional-borde);
+        border-radius: .35rem;
+        background: var(--institucional-verde-claro);
+    }
+    .modo-activo b {color: var(--institucional-verde);}
+    .modo-activo span {color: var(--institucional-suave);}
     .resumen-inicial {
         margin: .9rem 0 1rem;
         padding: 1rem 1.1rem 1.05rem;
@@ -670,7 +762,7 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-1.1.0-SUBCUENCAS"
+APP_VERSION = "UX-2.0.0-TRES-ANALISIS"
 METHODOLOGY_VERSION = "MT-2026.11-RUTA-CORREDOR"
 PROYECTO_EE = secreto_opcional("EE_PROJECT", "ee-julissaguevaravega")
 FUENTE_BOSQUE_NOMBRE = "Bosque y otros usos"
@@ -795,6 +887,26 @@ VIS_COINCIDENCIA_REVISION = {
 VIS_RGB = {"min": 150, "max": 3200, "gamma": 1.15, "bands": ["B4", "B3", "B2"]}
 
 PERFILES_VISUALIZACION = {
+    "Resumen de cambios territoriales": {
+        "descripcion": (
+            "Muestra primero los sectores donde coinciden las señales principales "
+            "de cambio territorial."
+        ),
+        "modo": "Explorar capas",
+        "comparador": "Sin comparador",
+        "capas": [
+            "Sectores para revisión",
+        ],
+    },
+    "Corredores y conectividad": {
+        "descripcion": (
+            "Muestra corredores publicados, fragmentos de bosque y conexiones "
+            "estructurales sin añadir capas satelitales de cambio."
+        ),
+        "modo": "Explorar capas",
+        "comparador": "Sin comparador",
+        "capas": [],
+    },
     "Diagnóstico territorial integrado": {
         "descripcion": (
             "Conecta señales recientes, corredores y la estructura del bosque de 2021 "
@@ -835,6 +947,24 @@ PERFILES_VISUALIZACION = {
         "comparador": "NDVI Sentinel-2",
         "capas": [],
     },
+}
+
+PERFILES_POR_MODO = {
+    MODO_TERRITORIAL: [
+        "Resumen de cambios territoriales",
+        "Consultar capas individuales",
+        "Comparar estado forestal entre dos años (JRC TMF)",
+        "Comparar uso del suelo entre dos años (ESRI)",
+        "Comparar vigor vegetal entre dos años (NDVI)",
+    ],
+    MODO_CORREDORES: ["Corredores y conectividad"],
+    MODO_INTEGRAL: [
+        "Diagnóstico territorial integrado",
+        "Consultar capas individuales",
+        "Comparar estado forestal entre dos años (JRC TMF)",
+        "Comparar uso del suelo entre dos años (ESRI)",
+        "Comparar vigor vegetal entre dos años (NDVI)",
+    ],
 }
 
 LEYENDAS = {
@@ -981,6 +1111,7 @@ def construir_registro_metodologico(
     anio_tmf_capa,
     anio_esri_capa,
     anio_ndvi_capa,
+    modo_analisis,
     modo_comparador,
     capas_activas,
     resultados=None,
@@ -1011,6 +1142,7 @@ def construir_registro_metodologico(
 
     configuracion = {
         "metodologia": METHODOLOGY_VERSION,
+        "modo_analisis": modo_analisis,
         "area": especificacion_area,
         "periodos": {
             "referencia_metodologica": ANO_REFERENCIA_ANALISIS,
@@ -1161,7 +1293,7 @@ def construir_registro_metodologico(
             "de campo ni determina cumplimiento EUDR."
         ),
     }
-    if resultados:
+    if resultados and "puntaje" in resultados:
         registro["resultados_resumen"] = {
             "area_ha": resultados["area_ha"],
             "puntaje": resultados["puntaje"],
@@ -1201,29 +1333,35 @@ def construir_registro_metodologico(
                 },
             },
         }
-        if resultados.get("fragmentacion"):
-            registro["resultados_resumen"]["fragmentacion_conectividad"] = {
-                "metricas_clase": resultados["fragmentacion"]["metricas_clase"],
-                "metricas_red": resultados["fragmentacion"]["metricas_red"],
-                "conexion_corredor": resultados["fragmentacion"].get(
-                    "conexion_corredor"
-                ),
-                "top_conectores": resultados["fragmentacion"]["top_conectores"],
-                "campo_clase": resultados["fragmentacion"]["campo_clase"],
-                "valores_bosque": resultados["fragmentacion"]["valores_bosque"],
-                "fuente_cobertura": resultados["fragmentacion"].get(
-                    "fuente_cobertura", FUENTE_BOSQUE_CORTA
-                ),
-                "ano_referencia_cobertura": resultados["fragmentacion"].get(
-                    "ano_referencia_cobertura", ANO_BOSQUE_REFERENCIA
-                ),
-                "metodo": resultados["fragmentacion"]["metodo"],
-                "participa_indice_prioridad": False,
-                "papel_diagnostico": (
-                    "orienta la focalizacion espacial de la visita y permite "
-                    "identificar conectores y componentes aislados"
-                ),
-            }
+    elif resultados:
+        registro["resultados_resumen"] = {
+            "area_ha": resultados.get("area_ha"),
+            "corredores": resultados.get("corredores"),
+        }
+
+    if resultados and resultados.get("fragmentacion"):
+        registro["resultados_resumen"]["fragmentacion_conectividad"] = {
+            "metricas_clase": resultados["fragmentacion"]["metricas_clase"],
+            "metricas_red": resultados["fragmentacion"]["metricas_red"],
+            "conexion_corredor": resultados["fragmentacion"].get(
+                "conexion_corredor"
+            ),
+            "top_conectores": resultados["fragmentacion"]["top_conectores"],
+            "campo_clase": resultados["fragmentacion"]["campo_clase"],
+            "valores_bosque": resultados["fragmentacion"]["valores_bosque"],
+            "fuente_cobertura": resultados["fragmentacion"].get(
+                "fuente_cobertura", FUENTE_BOSQUE_CORTA
+            ),
+            "ano_referencia_cobertura": resultados["fragmentacion"].get(
+                "ano_referencia_cobertura", ANO_BOSQUE_REFERENCIA
+            ),
+            "metodo": resultados["fragmentacion"]["metodo"],
+            "participa_indice_prioridad": False,
+            "papel_diagnostico": (
+                "orienta la focalizacion espacial de la visita y permite "
+                "identificar conectores y componentes aislados"
+            ),
+        }
     return registro
 
 
@@ -2936,11 +3074,74 @@ def generar_pdf(
 # Presentación de leyendas y resultados
 # -----------------------------------------------------------------------------
 
+CLAVES_ESTADO_RESULTADOS = (
+    "resultados_analisis",
+    "firma_analisis",
+    "pdf_analisis",
+    "firma_informe",
+    "errores_mapas",
+    "intento_informe",
+    "mapas_reporte",
+)
+
+
+def limpiar_estado_resultados():
+    for clave in CLAVES_ESTADO_RESULTADOS:
+        st.session_state.pop(clave, None)
+
+
+def establecer_modo_analisis(modo):
+    limpiar_estado_resultados()
+    st.session_state["modo_analisis"] = modo
+    st.session_state.pop("orden_capas_personalizado", None)
+    st.session_state.pop("capa_a_reordenar", None)
+
+
+def mostrar_selector_modos():
+    st.markdown(
+        """
+        <div class="selector-modos-intro">
+          <h2>¿Qué desea analizar?</h2>
+          <p>Elija una opción. Solo verá los controles y resultados necesarios para esa pregunta.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    columnas = st.columns(3)
+    for columna, (modo, contenido) in zip(columnas, MODOS_ANALISIS.items()):
+        with columna:
+            with st.container(border=True):
+                st.markdown(
+                    f"""
+                    <div class="modo-card">
+                      <small>{html_lib.escape(contenido['pregunta'])}</small>
+                      <h3>{html_lib.escape(contenido['titulo'])}</h3>
+                      <p>{html_lib.escape(contenido['descripcion'])}</p>
+                      <div class="modo-resultado"><b>Recibirá:</b> {html_lib.escape(contenido['resultado'])}</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+                if st.button(
+                    f"Elegir {contenido['titulo'].lower()}",
+                    key=f"elegir-modo-{modo}",
+                    type="primary" if modo == MODO_INTEGRAL else "secondary",
+                    use_container_width=True,
+                ):
+                    establecer_modo_analisis(modo)
+                    st.rerun()
+    st.info(
+        "Puede cambiar de opción después. La aplicación conservará separadas las "
+        "conclusiones territoriales, de conectividad e integrales."
+    )
+
+
 def mostrar_flujo(paso_actual, contenedor=None):
     pasos = [
-        ("Configurar", "Elija el área y la vista."),
-        ("Analizar", "Procese las señales territoriales."),
-        ("Revisar", "Consulte el resultado, el mapa y las descargas."),
+        ("Objetivo", "Elija el tipo de análisis."),
+        ("Área", "Seleccione la unidad territorial."),
+        ("Analizar", "Procese únicamente la información necesaria."),
+        ("Revisar", "Consulte la conclusión, el mapa y los detalles."),
     ]
     tarjetas = []
     for numero, (titulo, descripcion) in enumerate(pasos, start=1):
@@ -3159,6 +3360,81 @@ def mostrar_resumen_ejecutivo(resultados):
     st.caption(
         "Revise ahora el mapa. El desglose de las fuentes, los corredores y la "
         "conectividad permanece disponible después, si necesita profundizar."
+    )
+
+
+def mostrar_resumen_conectividad(resultados):
+    corredores = resultados.get("corredores") or {}
+    fragmentacion = resultados.get("fragmentacion") or {}
+    clase = fragmentacion.get("metricas_clase") or {}
+    red = fragmentacion.get("metricas_red") or {}
+    conexion = fragmentacion.get("conexion_corredor") or {}
+
+    if conexion.get("conecta"):
+        titulo = "Se identificó una conexión estructural potencial hacia un corredor"
+        detalle = (
+            "La cadena de fragmentos respeta la distancia configurada. Representa una "
+            "posibilidad estructural que debe contrastarse con especies, campo y uso del suelo."
+        )
+    elif corredores.get("intersecta"):
+        titulo = "El área coincide con corredores publicados"
+        detalle = (
+            "La superposición aporta contexto estratégico, aunque no se identificó una "
+            "cadena completa de fragmentos hacia el corredor con los parámetros actuales."
+        )
+    else:
+        titulo = "No se identificó contacto directo con los corredores publicados"
+        detalle = (
+            "Revise los fragmentos separados y el bosque del entorno para reconocer "
+            "oportunidades de continuidad fuera del área seleccionada."
+        )
+
+    st.markdown(
+        f"""
+        <div class="resultado-prioridad" style="--prioridad-color:#00544d;">
+          <small>Lectura de corredores y conectividad</small>
+          <strong>{html_lib.escape(titulo)}</strong>
+          <p>{html_lib.escape(detalle)}</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    col_corredor, col_bosque, col_parches, col_separados = st.columns(4)
+    col_corredor.metric(
+        "Área en corredores",
+        f"{float(corredores.get('area_en_corredores_ha', 0)):,.1f} ha",
+        f"{float(corredores.get('porcentaje_aoi_en_corredores', 0)):.1f}% del área",
+        delta_color="off",
+    )
+    if fragmentacion:
+        col_bosque.metric(
+            f"Bosque {ANO_BOSQUE_REFERENCIA}",
+            f"{float(clase.get('area_total_bosque_ha', 0)):,.1f} ha",
+            f"{float(clase.get('porcentaje_paisaje_bosque', 0)):.1f}% del área",
+            delta_color="off",
+        )
+        col_parches.metric(
+            "Fragmentos evaluados",
+            f"{int(clase.get('numero_parches', 0)):,}",
+        )
+        col_separados.metric(
+            "Fragmentos separados",
+            f"{int(red.get('numero_parches_aislados', 0)):,}",
+            f"Distancia: {float(red.get('umbral_m', 0)):,.0f} m",
+            delta_color="off",
+        )
+    else:
+        col_bosque.metric(f"Bosque {ANO_BOSQUE_REFERENCIA}", "No disponible")
+        col_parches.metric("Fragmentos evaluados", "No disponible")
+        col_separados.metric("Fragmentos separados", "No disponible")
+        st.warning(
+            "La cobertura institucional de bosque no estuvo disponible. La lectura de "
+            "corredores permanece válida, pero no debe interpretarse como un resultado "
+            "completo de conectividad."
+        )
+    st.caption(
+        "Este modo describe contexto espacial y conectividad estructural. No calcula "
+        "una prioridad de deforestación ni confirma conectividad funcional para una especie."
     )
 
 
@@ -3822,74 +4098,79 @@ def mostrar_resultados_fragmentacion(resultados):
 # Aplicación
 # -----------------------------------------------------------------------------
 
+modo_analisis = st.session_state.get("modo_analisis")
+if modo_analisis not in MODOS_ANALISIS:
+    st.session_state.pop("modo_analisis", None)
+    modo_analisis = None
+
+if modo_analisis is None:
+    st.markdown(
+        """
+        <div class="cabecera-app">
+          <h1>Evaluación territorial y corredores</h1>
+          <div class="subtitulo-app">Una entrada sencilla para tres preguntas distintas</div>
+          <p>Primero elija qué necesita conocer. Después seleccione una finca, una
+          subcuenca, un polígono o toda la cuenca.</p>
+          <div class="alcance-app">Resultado indicativo · requiere interpretación y
+          verificación de campo · no determina cumplimiento EUDR</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    mostrar_flujo(1)
+    mostrar_selector_modos()
+    st.sidebar.info("Empiece eligiendo el tipo de análisis en la página principal.")
+    st.stop()
+
+contenido_modo = MODOS_ANALISIS[modo_analisis]
+analiza_cambios = modo_analisis in (MODO_TERRITORIAL, MODO_INTEGRAL)
+analiza_conectividad = modo_analisis in (MODO_CORREDORES, MODO_INTEGRAL)
 st.markdown(
-    """
+    f"""
     <div class="cabecera-app">
-      <h1>EVALUACIÓN TERRITORIAL Y CORREDORES</h1>
-      <div class="subtitulo-app">Cambios del bosque, corredores y áreas para revisión en Panamá</div>
-      <p>Seleccione un área, ejecute el análisis y consulte la prioridad de revisión
-      junto con su evidencia cartográfica.</p>
-      <div class="alcance-app">Resultado indicativo · requiere interpretación documental y
+      <h1>{html_lib.escape(contenido_modo['titulo'])}</h1>
+      <div class="subtitulo-app">{html_lib.escape(contenido_modo['pregunta'])}</div>
+      <p>{html_lib.escape(contenido_modo['descripcion'])}</p>
+      <div class="alcance-app">Resultado indicativo · requiere interpretación y
       verificación de campo · no determina cumplimiento EUDR</div>
     </div>
     """,
     unsafe_allow_html=True,
 )
+columna_modo, columna_cambiar = st.columns([3, 1])
+columna_modo.markdown(
+    f'<div class="modo-activo"><b>Opción elegida:</b> '
+    f'{html_lib.escape(contenido_modo["titulo"])} · '
+    f'{html_lib.escape(contenido_modo["resultado"])}</div>',
+    unsafe_allow_html=True,
+)
+if columna_cambiar.button("Cambiar análisis", use_container_width=True):
+    limpiar_estado_resultados()
+    st.session_state.pop("modo_analisis", None)
+    st.rerun()
 
-with st.expander("Cómo funciona y qué información utiliza", expanded=False):
-    st.markdown(
-        """
-        <section class="resumen-inicial" aria-labelledby="resumen-aplicacion">
-          <h2 id="resumen-aplicacion">Tres pasos sencillos</h2>
-          <p>La aplicación reúne varios mapas para indicar qué lugares conviene revisar con más atención.</p>
-          <div class="resumen-principiante" role="list" aria-label="Cómo funciona la aplicación">
-            <article class="resumen-paso" role="listitem">
-              <span class="resumen-paso-numero" aria-hidden="true">1</span>
-              <h3>Elija el lugar</h3>
-              <p>Seleccione una finca, dibuje un área o revise toda la cuenca.</p>
-            </article>
-            <article class="resumen-paso" role="listitem">
-              <span class="resumen-paso-numero" aria-hidden="true">2</span>
-              <h3>Ejecute el análisis</h3>
-              <p>La aplicación revisa cambios, corredores y la distribución del bosque.</p>
-            </article>
-            <article class="resumen-paso" role="listitem">
-              <span class="resumen-paso-numero" aria-hidden="true">3</span>
-              <h3>Revise el resultado</h3>
-              <p>Obtenga una prioridad, un mapa y archivos para documentar la revisión.</p>
-            </article>
-          </div>
-          <div class="resumen-aclaracion">
-            <strong>Importante:</strong> una prioridad alta no confirma deforestación,
-            una causa específica ni incumplimiento. Indica que varias señales justifican
-            una revisión más detallada.
-          </div>
-        </section>
-        """,
-        unsafe_allow_html=True,
-    )
-    st.markdown("#### Información utilizada")
-    st.markdown(
-        """
-        - **Estado y cambios del bosque (JRC TMF):** muestra cómo se ha clasificado el bosque tropical a través del tiempo.
-        - **Pérdida anual de cobertura arbórea (Hansen):** señala los años en que se detectó pérdida de árboles.
-        - **Uso y cobertura del suelo (ESRI):** ayuda a reconocer cambios entre árboles, cultivos, pastizales, agua y áreas construidas.
-        - **Altura del dosel (GEDI):** aporta información sobre la estructura vertical de la vegetación.
-        - **Vigor vegetal (NDVI de Sentinel-2):** permite observar qué tan activa o densa parece la vegetación; se usa como apoyo visual y no aumenta la prioridad.
-        - **Corredores de Almanaque Azul:** muestra categorías originales alta, mediana y media-baja, incluidos los tramos mesoamericanos oeste, San Lorenzo y este.
-        - **Bosque y otros usos 2021:** la cobertura institucional de SINIA–MiAMBIENTE se carga automáticamente para mostrar cuánto bosque hay, cómo está dividido y cuáles fragmentos ayudan a mantenerlo unido.
-
-        Los corredores aportan valor estratégico y la distribución del bosque orienta el lugar
-        de la revisión; ninguno se confunde con evidencia satelital de pérdida. La configuración
-        se mantiene igual entre análisis para que los resultados puedan compararse.
-        """
-    )
+with st.expander("Qué incluye esta opción", expanded=False):
+    if modo_analisis == MODO_TERRITORIAL:
+        st.markdown(
+            "Revisa cambios del bosque, pérdida de cobertura, uso del suelo, altura "
+            "del dosel y vigor vegetal. No calcula conectividad."
+        )
+    elif modo_analisis == MODO_CORREDORES:
+        st.markdown(
+            "Revisa la relación del área con corredores, puntos críticos, fragmentos "
+            "de bosque y conexiones potenciales. No calcula prioridad por pérdida."
+        )
+    else:
+        st.markdown(
+            "Combina las señales de cambio territorial con corredores y estructura "
+            "del bosque, manteniendo separadas sus conclusiones."
+        )
 
 try:
     iniciar_earth_engine()
 
-    st.sidebar.markdown("## Configurar análisis")
-    st.sidebar.caption("Paso 1 de 3 · Seleccione la unidad territorial")
+    st.sidebar.markdown(f"## {contenido_modo['titulo']}")
+    st.sidebar.caption("Paso 2 de 4 · Seleccione la unidad territorial")
     etiquetas_area = {
         "Finca de monitoreo": "Finca registrada (recomendado)",
         "Subcuenca": "Subcuenca de la CHCP",
@@ -4097,70 +4378,74 @@ try:
     catalogo_corredores = cargar_catalogo_corredores()
 
     st.sidebar.markdown("---")
-    with st.sidebar.expander("Fuentes territoriales disponibles", expanded=False):
-        st.caption(
-            f"Corredores públicos: {catalogo_corredores['corredores_poligonos']} "
-            f"polígonos y {catalogo_corredores['puntos_criticos']} puntos críticos."
-        )
-        if bosque_automatico_disponible:
-            st.success(
-                "Cobertura lista. La aplicación consultará automáticamente el área "
-                "elegida y su entorno de conectividad."
+    if analiza_conectividad:
+        with st.sidebar.expander("Fuentes de conectividad", expanded=False):
+            st.caption(
+                f"Corredores públicos: {catalogo_corredores['corredores_poligonos']} "
+                f"polígonos y {catalogo_corredores['puntos_criticos']} puntos críticos."
             )
-        else:
-            st.warning(
-                "La cobertura institucional todavía no fue configurada por la administración. "
-                "El resto del diagnóstico puede ejecutarse, pero no mostrará la red de parches."
+            if bosque_automatico_disponible:
+                st.success(
+                    "Cobertura lista. La aplicación consultará automáticamente el área "
+                    "elegida y su entorno de conectividad."
+                )
+            else:
+                st.warning(
+                    "La cobertura institucional todavía no fue configurada por la administración. "
+                    "Se revisarán los corredores, pero no se mostrará la red de fragmentos."
+                )
+            st.caption(
+                f"Fuente: {FUENTE_BOSQUE_CORTA}. Se usa automáticamente la categoría "
+                f"«{VALOR_COBERTURA_BOSQUE_2021}»; no necesita cargar archivos."
             )
-        st.caption(
-            f"Fuente: {FUENTE_BOSQUE_CORTA}. Se usa automáticamente la categoría "
-            f"«{VALOR_COBERTURA_BOSQUE_2021}»; la persona usuaria no necesita cargar "
-            "archivos ni seleccionar clases."
-        )
 
-    with st.sidebar.expander("Ajustes avanzados de conectividad", expanded=False):
-        st.caption(
-            "Para un análisis rápido conserve los valores recomendados. Estos ajustes "
-            "solo cambian cómo se agrupan y relacionan los fragmentos de bosque."
-        )
-        umbral_conectividad_m = st.select_slider(
-            "Distancia para considerar cercanos dos fragmentos",
-            options=[100, 250, 500, 1000, 1500, 3000, 6000],
-            value=500,
-            format_func=lambda valor: f"{valor:,} m",
-            help=(
-                "Dos fragmentos se consideran cercanos cuando la separación entre sus "
-                "bordes no supera esta distancia. El valor recomendado es 500 m."
-            ),
-        )
-        area_min_parche_ha = st.number_input(
-            "Tamaño mínimo del fragmento (ha)",
-            min_value=0.0,
-            value=0.0,
-            step=0.1,
-            help=(
-                "Deje 0 para conservar todos los fragmentos. Aumente el valor únicamente "
-                "si desea excluir áreas muy pequeñas del análisis técnico."
-            ),
-        )
+        with st.sidebar.expander("Ajustes avanzados de conectividad", expanded=False):
+            st.caption(
+                "Para un análisis rápido conserve los valores recomendados. Estos ajustes "
+                "solo cambian cómo se agrupan y relacionan los fragmentos de bosque."
+            )
+            umbral_conectividad_m = st.select_slider(
+                "Distancia para considerar cercanos dos fragmentos",
+                options=[100, 250, 500, 1000, 1500, 3000, 6000],
+                value=500,
+                format_func=lambda valor: f"{valor:,} m",
+                help=(
+                    "Dos fragmentos se consideran cercanos cuando la separación entre sus "
+                    "bordes no supera esta distancia. El valor recomendado es 500 m."
+                ),
+            )
+            area_min_parche_ha = st.number_input(
+                "Tamaño mínimo del fragmento (ha)",
+                min_value=0.0,
+                value=0.0,
+                step=0.1,
+                help=(
+                    "Deje 0 para conservar todos los fragmentos. Aumente el valor únicamente "
+                    "si desea excluir áreas muy pequeñas del análisis técnico."
+                ),
+            )
 
     st.sidebar.markdown("---")
     st.sidebar.markdown("### Vista inicial del mapa")
-    objetivo = st.sidebar.selectbox(
-        "¿Qué desea ver en el mapa?",
-        list(PERFILES_VISUALIZACION),
-        help=(
-            "Puede consultar capas de un solo año o comparar dos años. "
-            "El cálculo científico es el mismo en todas las opciones."
-        ),
-    )
+    opciones_objetivo = PERFILES_POR_MODO[modo_analisis]
+    if len(opciones_objetivo) == 1:
+        objetivo = opciones_objetivo[0]
+        st.sidebar.markdown(f"**{objetivo}**")
+    else:
+        objetivo = st.sidebar.selectbox(
+            "¿Qué desea ver en el mapa?",
+            opciones_objetivo,
+            help=(
+                "Puede consultar capas de un solo año o comparar dos años. "
+                "La selección organiza el mapa; no cambia el método de cálculo."
+            ),
+        )
     perfil = PERFILES_VISUALIZACION[objetivo]
     st.sidebar.caption(perfil["descripcion"])
-    with st.sidebar.expander("Qué cambia esta selección", expanded=False):
+    with st.sidebar.expander("Acerca de esta vista", expanded=False):
         st.caption(
-            "Esta selección solo organiza el mapa. El análisis siempre usa períodos "
-            f"fijos y documentados: JRC {ANO_DIAG_TMF}, Hansen 2021-{ANO_HANSEN_MAX} "
-            f"y ESRI {ANO_ESRI_MIN}-{ANO_ESRI_MAX}."
+            "Esta selección solo organiza el mapa. Las fuentes y reglas del análisis "
+            "se mantienen fijas para que los resultados sean comparables."
         )
 
     opciones_capas = [
@@ -4273,168 +4558,91 @@ try:
             expanded=False,
         )
         panel_capas.caption(
-            "Active solo la información que desea consultar. Para una lectura clara, "
-            "comience con una o dos capas."
+            "Active solo la información que desea consultar. Los valores recomendados "
+            "ya están seleccionados."
         )
-        capas_seleccionadas = panel_capas.multiselect(
-            "Cambios observados por satélite",
-            opciones_capas,
-            default=capas_activas,
-            format_func=lambda valor: nombres_capas[valor],
-            help=(
-                "Cada opción seleccionada se dibuja en el mapa. Puede volver aquí para "
-                "encenderla o apagarla."
-            ),
-        )
-        orden_guardado = st.session_state.get("orden_capas_personalizado", [])
-        orden_capas_mapa = [
-            nombre for nombre in orden_guardado if nombre in capas_seleccionadas
-        ]
-        orden_capas_mapa.extend(
-            nombre for nombre in capas_seleccionadas if nombre not in orden_capas_mapa
-        )
-        st.session_state["orden_capas_personalizado"] = orden_capas_mapa
-        capas_activas = list(orden_capas_mapa)
-
-        panel_capas.caption("Resultado de bosque y conectividad")
-        mostrar_bosque_contexto = panel_capas.checkbox(
-            "Cobertura completa de bosque 2021 · área + entorno",
-            value=False,
-            disabled=not bosque_automatico_disponible,
-            help=(
-                f"Muestra en verde el bosque dentro del área y hasta "
-                f"{RADIO_BUSQUEDA_CORREDOR_M / 1000:.0f} km alrededor. El bosque exterior "
-                "sirve como contexto visual y para la conectividad, pero no se suma a "
-                "las hectáreas del área evaluada."
-            ),
-        )
-        mostrar_fragmentos_bosque = panel_capas.checkbox(
-            "Fragmentos evaluados dentro del área",
-            value=True,
-            help=(
-                "Colorea únicamente los fragmentos dentro del polígono según su valor "
-                "relativo para mantener unido el bosque."
-            ),
-        )
-        mostrar_conexiones_bosque = panel_capas.checkbox(
-            "Estructura esencial entre fragmentos",
-            value=False,
-            help=(
-                "Muestra solo los enlaces indispensables de cada grupo. Todas las "
-                "relaciones dentro de la distancia elegida siguen usándose en el cálculo."
-            ),
-        )
-        mostrar_brechas_bosque = panel_capas.checkbox(
-            "Fragmentos separados y distancia al vecino",
-            value=False,
-            help=(
-                "Resalta los fragmentos sin otro bosque dentro de la distancia elegida y, "
-                "cuando existe un vecino, dibuja una línea discontinua hacia él. El cálculo "
-                "también considera el bosque exterior, aunque no lo muestra."
-            ),
-        )
-        mostrar_ruta_corredor = panel_capas.checkbox(
-            "Conexión potencial hacia un corredor",
-            value=True,
-            help=(
-                "Resalta una sola cadena posible de bosque hacia el corredor publicado "
-                "de mayor categoría alcanzable. Cada salto debe respetar la distancia elegida."
-            ),
-        )
-
-        panel_capas.caption("Contexto territorial")
-        mostrar_corredores_mapa = panel_capas.checkbox(
-            "Corredores estratégicos",
-            value=objetivo == "Diagnóstico territorial integrado",
-            help="Muestra los corredores interpretados y publicados por Almanaque Azul.",
-        )
-        mostrar_puntos_criticos_mapa = panel_capas.checkbox(
-            "Puntos críticos publicados",
-            value=False,
-            help="Muestra los puntos críticos interpretados por Almanaque Azul.",
-        )
-
-        if any(
-            nombre in capas_activas
-            for nombre in ("Estado forestal JRC", "Deforestación JRC", "Degradación JRC")
-        ):
-            anio_tmf_capa = panel_capas.selectbox(
-                "Año de la capa JRC:",
-                list(range(1990, ANO_TMF_MAX + 1)),
-                index=ANO_TMF_MAX - 1990,
-                help="Muestra un solo año; no activa el comparador.",
+        if analiza_cambios:
+            capas_activas = panel_capas.multiselect(
+                "Cambios observados por satélite",
+                opciones_capas,
+                default=capas_activas,
+                format_func=lambda valor: nombres_capas[valor],
+                help="Cada opción seleccionada se dibuja en el mapa.",
             )
-        if "Uso y cobertura ESRI" in capas_activas:
-            anio_esri_capa = panel_capas.selectbox(
-                "Año de la capa ESRI:",
-                list(range(ANO_ESRI_MIN, ANO_ESRI_MAX + 1)),
-                index=ANO_ESRI_MAX - ANO_ESRI_MIN,
-                help="Muestra un solo año; no activa el comparador.",
-            )
-        if "Vegetación NDVI" in capas_activas:
-            anio_ndvi_capa = panel_capas.selectbox(
-                "Año de la capa NDVI:",
-                list(range(2017, ANO_NDVI_MAX + 1)),
-                index=ANO_NDVI_MAX - 2017,
-                help="Muestra un solo año; no activa el comparador.",
-            )
-        if "ΔNDVI" in capas_activas:
-            anio_ndvi_inicial = panel_capas.selectbox(
-                f"Año inicial del cambio NDVI (final {ANO_NDVI_MAX}):",
-                list(range(2017, ANO_NDVI_MAX)),
-                index=list(range(2017, ANO_NDVI_MAX)).index(2023),
-            )
+            orden_capas_mapa = list(capas_activas)
+            capa_visible_inicial = capas_activas[0] if capas_activas else None
 
-        if orden_capas_mapa:
-            with st.sidebar.expander("Orden de capas (opcional)", expanded=False):
-                st.caption(
-                    "Todas las capas seleccionadas serán visibles. La primera se dibuja encima."
+            if any(
+                nombre in capas_activas
+                for nombre in ("Estado forestal JRC", "Deforestación JRC", "Degradación JRC")
+            ):
+                anio_tmf_capa = panel_capas.selectbox(
+                    "Año de la capa JRC:",
+                    list(range(1990, ANO_TMF_MAX + 1)),
+                    index=ANO_TMF_MAX - 1990,
                 )
-                for posicion, nombre in enumerate(orden_capas_mapa, start=1):
-                    st.caption(f"{posicion}. {nombres_capas[nombre]}")
-
-                clave_capa_mover = "capa_a_reordenar"
-                if st.session_state.get(clave_capa_mover) not in orden_capas_mapa:
-                    st.session_state[clave_capa_mover] = orden_capas_mapa[0]
-                capa_a_mover = st.selectbox(
-                    "Capa que desea mover:",
-                    orden_capas_mapa,
-                    format_func=lambda valor: nombres_capas[valor],
-                    key=clave_capa_mover,
+            if "Uso y cobertura ESRI" in capas_activas:
+                anio_esri_capa = panel_capas.selectbox(
+                    "Año de la capa ESRI:",
+                    list(range(ANO_ESRI_MIN, ANO_ESRI_MAX + 1)),
+                    index=ANO_ESRI_MAX - ANO_ESRI_MIN,
                 )
-                columna_subir, columna_bajar = st.columns(2)
-                if columna_subir.button(
-                    "Subir",
-                    use_container_width=True,
-                    disabled=orden_capas_mapa.index(capa_a_mover) == 0,
-                ):
-                    indice = orden_capas_mapa.index(capa_a_mover)
-                    orden_capas_mapa[indice - 1], orden_capas_mapa[indice] = (
-                        orden_capas_mapa[indice],
-                        orden_capas_mapa[indice - 1],
-                    )
-                    st.session_state["orden_capas_personalizado"] = orden_capas_mapa
-                    st.rerun()
-                if columna_bajar.button(
-                    "Bajar",
-                    use_container_width=True,
-                    disabled=orden_capas_mapa.index(capa_a_mover) == len(orden_capas_mapa) - 1,
-                ):
-                    indice = orden_capas_mapa.index(capa_a_mover)
-                    orden_capas_mapa[indice + 1], orden_capas_mapa[indice] = (
-                        orden_capas_mapa[indice],
-                        orden_capas_mapa[indice + 1],
-                    )
-                    st.session_state["orden_capas_personalizado"] = orden_capas_mapa
-                    st.rerun()
-
-            capa_visible_inicial = orden_capas_mapa[0]
+            if "Vegetación NDVI" in capas_activas:
+                anio_ndvi_capa = panel_capas.selectbox(
+                    "Año de la capa NDVI:",
+                    list(range(2017, ANO_NDVI_MAX + 1)),
+                    index=ANO_NDVI_MAX - 2017,
+                )
+            if "ΔNDVI" in capas_activas:
+                anio_ndvi_inicial = panel_capas.selectbox(
+                    f"Año inicial del cambio NDVI (final {ANO_NDVI_MAX}):",
+                    list(range(2017, ANO_NDVI_MAX)),
+                    index=list(range(2017, ANO_NDVI_MAX)).index(2023),
+                )
         else:
+            capas_activas = []
+            orden_capas_mapa = []
             capa_visible_inicial = None
-            st.sidebar.warning("Seleccione al menos una capa temática.")
+
+        if analiza_conectividad:
+            panel_capas.caption("Bosque y conectividad")
+            mostrar_fragmentos_bosque = panel_capas.checkbox(
+                "Fragmentos evaluados dentro del área",
+                value=True,
+            )
+            mostrar_ruta_corredor = panel_capas.checkbox(
+                "Conexión potencial hacia un corredor",
+                value=True,
+            )
+            mostrar_corredores_mapa = panel_capas.checkbox(
+                "Corredores estratégicos",
+                value=True,
+            )
+            mostrar_bosque_contexto = panel_capas.checkbox(
+                "Bosque 2021 en el área y su entorno",
+                value=False,
+                disabled=not bosque_automatico_disponible,
+            )
+            panel_capas.caption("Capas adicionales")
+            mostrar_conexiones_bosque = panel_capas.checkbox(
+                "Estructura esencial entre fragmentos",
+                value=False,
+            )
+            mostrar_brechas_bosque = panel_capas.checkbox(
+                "Fragmentos separados y distancia al vecino",
+                value=False,
+            )
+            mostrar_puntos_criticos_mapa = panel_capas.checkbox(
+                "Puntos críticos publicados",
+                value=False,
+            )
+
+        if not capas_activas and not analiza_conectividad:
+            panel_capas.warning("Seleccione al menos una capa temática.")
 
     firma_analisis_actual = (
         METHODOLOGY_VERSION,
+        modo_analisis,
         tipo_area,
         finca_seleccionada,
         subcuenca_seleccionada,
@@ -4481,7 +4689,7 @@ try:
         <div class="contexto-analisis">
           <div class="contexto-item"><small>Área</small><strong>{html_lib.escape(nombre_area)}</strong></div>
           <div class="contexto-item"><small>Superficie</small><strong>{superficie_ha:,.1f} ha</strong></div>
-          <div class="contexto-item"><small>Vista</small><strong>{html_lib.escape(objetivo)}</strong></div>
+          <div class="contexto-item"><small>Análisis</small><strong>{html_lib.escape(contenido_modo['titulo'])}</strong></div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -4493,106 +4701,84 @@ try:
             "más detallada se recomienda seleccionar una finca."
         )
 
-    with st.expander("Ver configuración, períodos y contenido del resultado", expanded=False):
-        st.markdown(
-            f"""
-            - **Método:** `{METHODOLOGY_VERSION}`.
-            - **Modo del mapa:** {html_lib.escape(modo_mapa)}.
-            - **Corredores:** Almanaque Azul {catalogo_corredores['version_publicada']}.
-            - **Bosque y otros usos {ANO_BOSQUE_REFERENCIA}:** {'disponible automáticamente' if bosque_automatico_disponible else 'pendiente de configuración'}.
-            - **Períodos fijos del análisis:** JRC {ANO_DIAG_TMF}, Hansen 2021-{ANO_HANSEN_MAX}
-              y ESRI {ANO_ESRI_MIN}-{ANO_ESRI_MAX}.
-
-            Las opciones de años y capas organizan la visualización; no cambian los períodos
-            utilizados para calcular la prioridad.
-            """
+    with st.expander("Ver qué se calculará", expanded=False):
+        st.markdown(f"**Resultado esperado:** {contenido_modo['resultado']}")
+        if analiza_cambios:
+            st.markdown(
+                f"- Cambios territoriales con JRC {ANO_DIAG_TMF}, Hansen 2021-{ANO_HANSEN_MAX} "
+                f"y ESRI {ANO_ESRI_MIN}-{ANO_ESRI_MAX}.\n"
+                "- NDVI y GEDI como información complementaria."
+            )
+        if analiza_conectividad:
+            st.markdown(
+                f"- Corredores de Almanaque Azul {catalogo_corredores['version_publicada']}.\n"
+                f"- Fragmentos y conexiones del bosque {ANO_BOSQUE_REFERENCIA}."
+            )
+        st.caption(
+            "Las opciones del mapa no cambian el método de cálculo. Los detalles técnicos "
+            "permanecen disponibles después de ejecutar."
         )
-        st.markdown("#### Cambio vegetal y vigor vegetal")
-        st.markdown(
-            f"""
-            - **ΔNDVI {anio_ndvi_inicial} → {ANO_NDVI_MAX}:** muestra cuánto cambió el vigor
-              vegetal entre ambos años. Rojo indica disminución y verde indica aumento.
-            - **Vegetación {anio_ndvi_capa}:** muestra la condición del vigor vegetal únicamente
-              en {anio_ndvi_capa}. No representa un cambio y no distingue por sí sola entre bosque,
-              cultivo o pastizal denso.
-
-            GEDI aporta el componente estructural —altura del dosel— que NDVI no puede determinar.
-            """
-        )
-        st.markdown("#### Cómo se utilizan los períodos")
-        st.markdown(
-            f"""
-            - **JRC 2020-2025 en el comparador:** es una lectura visual desde el año del
-              corte de referencia EUDR ({CUTOFF_LABEL}) hasta el estado forestal más
-              reciente disponible ({ANO_DIAG_TMF}). **No es la operación que calcula la
-              señal JRC.** El análisis lee la banda `Dec{ANO_DIAG_TMF}` y mide los píxeles
-              clasificados por JRC como degradación o deforestación.
-            - **Hansen 2021-{ANO_HANSEN_MAX}:** identifica pérdidas arbóreas posteriores
-              al 31/12/2020. Es la fuente que aplica explícitamente el corte temporal post-2020.
-            - **ESRI {ANO_ESRI_MIN}-{ANO_ESRI_MAX}:** el análisis compara los extremos de
-              la serie configurada y mide dónde la clase árboles de {ANO_ESRI_MIN} cambió
-              a otra clase en {ANO_ESRI_MAX}. El año {ANO_ESRI_MAX} es el último disponible
-              en esta configuración.
-
-            Los años elegidos por el usuario en el mapa son solo para exploración visual;
-            no alteran esos períodos del análisis.
-            """
-        )
-        st.markdown("#### Qué recibirá")
-        mostrar_entregables()
 
     st.subheader("Analizar esta área")
     st.caption(
-        "Calcula la prioridad, prepara el mapa y conserva todos los detalles técnicos para consulta."
+        f"{contenido_modo['resultado']}. El mapa y los detalles se preparan al finalizar."
     )
     if st.button(
         "Ejecutar análisis",
         type="primary",
         use_container_width=True,
-        help="Calcula las señales territoriales. El PDF se prepara por separado para reducir la espera.",
+        help=f"Ejecuta únicamente el análisis de {contenido_modo['titulo'].lower()}.",
     ):
         firma_anterior = st.session_state.get("firma_analisis")
-        with st.spinner("Calculando las señales territoriales..."):
-            resultados_nuevos = ejecutar_analisis(
-                tipo_area=tipo_area,
-                finca_id=finca_seleccionada,
-                subcuenca_nombre=subcuenca_seleccionada,
-                geometria_geojson=geometria_dibujada_json,
-                anio_tmf_diagnostico=ANO_DIAG_TMF,
-                anio_esri_inicial=ANO_ESRI_MIN,
-                anio_esri_final=ANO_ESRI_MAX,
-            )
-            aoi_geojson_serializado = json.dumps(
-                geometria.getInfo(),
-                ensure_ascii=False,
-                sort_keys=True,
-            )
-            resultados_nuevos["corredores"] = analizar_corredores_cache(
-                aoi_geojson_serializado
-            )
-            if bosque_automatico_disponible:
-                try:
-                    resultados_nuevos["fragmentacion"] = analizar_bosque_asset_cache(
-                        ASSET_BOSQUE_2021,
-                        CAMPO_COBERTURA_BOSQUE_2021,
-                        VALOR_COBERTURA_BOSQUE_2021,
-                        aoi_geojson_serializado,
-                        umbral_conectividad_m,
-                        area_min_parche_ha,
-                    )
-                    resultados_nuevos["fragmentacion"][
-                        "fuente_cobertura"
-                    ] = FUENTE_BOSQUE_CORTA
-                    resultados_nuevos["fragmentacion"][
-                        "ano_referencia_cobertura"
-                    ] = ANO_BOSQUE_REFERENCIA
-                except Exception as error:
-                    resultados_nuevos["fragmentacion_error"] = str(error)
-            resultados_nuevos["prioridad_visita"] = calcular_prioridad_visita(
-                puntaje_cambios=resultados_nuevos["puntaje"],
-                contexto_corredores=resultados_nuevos["corredores"],
-                contexto_fragmentacion=resultados_nuevos.get("fragmentacion"),
-            )
+        with st.spinner(f"Calculando {contenido_modo['titulo'].lower()}..."):
+            if analiza_cambios:
+                resultados_nuevos = ejecutar_analisis(
+                    tipo_area=tipo_area,
+                    finca_id=finca_seleccionada,
+                    subcuenca_nombre=subcuenca_seleccionada,
+                    geometria_geojson=geometria_dibujada_json,
+                    anio_tmf_diagnostico=ANO_DIAG_TMF,
+                    anio_esri_inicial=ANO_ESRI_MIN,
+                    anio_esri_final=ANO_ESRI_MAX,
+                )
+            else:
+                resultados_nuevos = {"area_ha": superficie_ha}
+
+            if analiza_conectividad:
+                aoi_geojson_serializado = json.dumps(
+                    geometria.getInfo(),
+                    ensure_ascii=False,
+                    sort_keys=True,
+                )
+                resultados_nuevos["corredores"] = analizar_corredores_cache(
+                    aoi_geojson_serializado
+                )
+                if bosque_automatico_disponible:
+                    try:
+                        resultados_nuevos["fragmentacion"] = analizar_bosque_asset_cache(
+                            ASSET_BOSQUE_2021,
+                            CAMPO_COBERTURA_BOSQUE_2021,
+                            VALOR_COBERTURA_BOSQUE_2021,
+                            aoi_geojson_serializado,
+                            umbral_conectividad_m,
+                            area_min_parche_ha,
+                        )
+                        resultados_nuevos["fragmentacion"][
+                            "fuente_cobertura"
+                        ] = FUENTE_BOSQUE_CORTA
+                        resultados_nuevos["fragmentacion"][
+                            "ano_referencia_cobertura"
+                        ] = ANO_BOSQUE_REFERENCIA
+                    except Exception as error:
+                        resultados_nuevos["fragmentacion_error"] = str(error)
+
+            if modo_analisis == MODO_INTEGRAL:
+                resultados_nuevos["prioridad_visita"] = calcular_prioridad_visita(
+                    puntaje_cambios=resultados_nuevos["puntaje"],
+                    contexto_corredores=resultados_nuevos["corredores"],
+                    contexto_fragmentacion=resultados_nuevos.get("fragmentacion"),
+                )
+            resultados_nuevos["modo_analisis"] = modo_analisis
             st.session_state["resultados_analisis"] = resultados_nuevos
             st.session_state["firma_analisis"] = firma_analisis_actual
             if firma_anterior != firma_analisis_actual:
@@ -4605,12 +4791,15 @@ try:
     analisis_actual = (
         st.session_state.get("firma_analisis") == firma_analisis_actual
     )
-    mostrar_flujo(3 if analisis_actual else 2, flujo_contenedor)
+    mostrar_flujo(4 if analisis_actual else 3, flujo_contenedor)
 
     if st.session_state.get("firma_analisis") == firma_analisis_actual:
         resultados = st.session_state["resultados_analisis"]
         st.subheader("Resultado principal")
-        mostrar_resumen_ejecutivo(resultados)
+        if modo_analisis == MODO_CORREDORES:
+            mostrar_resumen_conectividad(resultados)
+        else:
+            mostrar_resumen_ejecutivo(resultados)
 
     # El mapa aparece después de la decisión principal y antes de los detalles.
     # Se completa más abajo, cuando todas las capas ya están construidas.
@@ -4620,22 +4809,38 @@ try:
         resultados = st.session_state["resultados_analisis"]
         st.markdown("#### Profundizar en el resultado")
         st.caption("Abra únicamente la información que necesite consultar.")
-        columna_cambios, columna_corredores, columna_bosque = st.columns(3)
-        ver_detalle_cambios = columna_cambios.checkbox(
-            "Cambios satelitales",
-            value=False,
-            help="Muestra el aporte, las superficies y los gráficos de cada fuente.",
-        )
-        ver_detalle_corredores = columna_corredores.checkbox(
-            "Corredores ecológicos",
-            value=False,
-            help="Muestra la intersección, las categorías publicadas y la tabla de corredores.",
-        )
-        ver_detalle_bosque = columna_bosque.checkbox(
-            "Bosque y conectividad",
-            value=False,
-            help="Muestra las métricas de fragmentación, cercanía y conexión estructural.",
-        )
+        ver_detalle_cambios = False
+        ver_detalle_corredores = False
+        ver_detalle_bosque = False
+        if modo_analisis == MODO_TERRITORIAL:
+            ver_detalle_cambios = st.checkbox(
+                "Ver cambios satelitales y superficies",
+                value=False,
+            )
+        elif modo_analisis == MODO_CORREDORES:
+            columna_corredores, columna_bosque = st.columns(2)
+            ver_detalle_corredores = columna_corredores.checkbox(
+                "Ver corredores ecológicos",
+                value=False,
+            )
+            ver_detalle_bosque = columna_bosque.checkbox(
+                "Ver bosque y conectividad",
+                value=False,
+            )
+        else:
+            columna_cambios, columna_corredores, columna_bosque = st.columns(3)
+            ver_detalle_cambios = columna_cambios.checkbox(
+                "Cambios satelitales",
+                value=False,
+            )
+            ver_detalle_corredores = columna_corredores.checkbox(
+                "Corredores ecológicos",
+                value=False,
+            )
+            ver_detalle_bosque = columna_bosque.checkbox(
+                "Bosque y conectividad",
+                value=False,
+            )
         if ver_detalle_cambios:
             mostrar_resultados(
                 resultados,
@@ -4643,11 +4848,11 @@ try:
                 ANO_ESRI_MIN,
                 ANO_ESRI_MAX,
             )
-        if ver_detalle_corredores:
+        if ver_detalle_corredores and resultados.get("corredores"):
             mostrar_resultados_corredores(resultados["corredores"])
         if ver_detalle_bosque and resultados.get("fragmentacion"):
             mostrar_resultados_fragmentacion(resultados["fragmentacion"])
-        elif resultados.get("fragmentacion_error"):
+        elif ver_detalle_bosque and resultados.get("fragmentacion_error"):
             st.warning(
                 "El componente de bosque y conectividad no estuvo disponible en esta ejecución. "
                 "Los demás resultados permanecen disponibles."
@@ -4668,6 +4873,7 @@ try:
             anio_tmf_capa=anio_tmf_capa,
             anio_esri_capa=anio_esri_capa,
             anio_ndvi_capa=anio_ndvi_capa,
+            modo_analisis=modo_analisis,
             modo_comparador=modo_comparador,
             capas_activas=capas_activas,
             resultados=resultados,
@@ -4683,7 +4889,7 @@ try:
             if st.session_state.get("firma_informe") == firma_visual_actual
             else []
         )
-        if not informe_actual or errores_informe:
+        if modo_analisis != MODO_CORREDORES and (not informe_actual or errores_informe):
             etiqueta_informe = (
                 "Reintentar mapas faltantes"
                 if informe_actual and errores_informe
@@ -4779,7 +4985,12 @@ try:
                         )
                 informe_actual = st.session_state.get("pdf_analisis")
 
-        if informe_actual:
+        if modo_analisis == MODO_CORREDORES:
+            columna_pdf.caption(
+                "El registro metodológico incluye el resultado de corredores y conectividad. "
+                "Los archivos geográficos se descargan desde el detalle del resultado."
+            )
+        elif informe_actual:
             columna_pdf.download_button(
                 "Descargar informe PDF",
                 data=informe_actual,
@@ -4808,7 +5019,10 @@ try:
             help="Contiene fuentes, períodos, umbrales, pesos, reglas y el resumen del resultado.",
         )
 
-        if st.session_state.get("firma_informe") == firma_visual_actual:
+        if (
+            modo_analisis != MODO_CORREDORES
+            and st.session_state.get("firma_informe") == firma_visual_actual
+        ):
             errores_mapas = st.session_state.get("errores_mapas", [])
             if errores_mapas:
                 disponibles = 7 - len(errores_mapas)
@@ -5176,11 +5390,16 @@ try:
             "temporal para que ninguna capa temática la cubra."
         )
     else:
-        mapa_resultados_contenedor.caption(
-            "Elija las capas desde «Capas disponibles en el mapa», en el panel lateral. "
-            "La estructura esencial evita líneas redundantes y la ruta naranja, cuando existe, "
-            "muestra una conexión estructural potencial hacia un corredor de referencia."
-        )
+        if analiza_conectividad:
+            mapa_resultados_contenedor.caption(
+                "Elija las capas desde el panel lateral. La ruta naranja, cuando existe, "
+                "muestra una conexión estructural potencial hacia un corredor de referencia."
+            )
+        else:
+            mapa_resultados_contenedor.caption(
+                "Elija las capas desde el panel lateral para ubicar las señales de cambio "
+                "y revisar las fuentes que coinciden en un mismo sector."
+            )
     with mapa_resultados_contenedor:
         st_folium(
             mapa,
@@ -5188,7 +5407,7 @@ try:
             use_container_width=True,
             returned_objects=[],
             key=(
-                f"mapa-{APP_VERSION}-{tipo_area}-{finca_seleccionada}-{subcuenca_seleccionada}-{modo_mapa}-{modo_comparador}-"
+                f"mapa-{APP_VERSION}-{modo_analisis}-{tipo_area}-{finca_seleccionada}-{subcuenca_seleccionada}-{modo_mapa}-{modo_comparador}-"
                 f"{anio_tmf_inicial}-{anio_tmf_final}-{anio_esri_inicial}-"
                 f"{anio_esri_final}-{anio_ndvi_inicial}-{anio_ndvi_final}-"
                 f"{anio_tmf_capa}-{anio_esri_capa}-{anio_ndvi_capa}-"
@@ -5318,6 +5537,10 @@ try:
 
     with st.expander("Metodología y reproducibilidad", expanded=False):
         st.markdown(f"**Metodología aplicada:** {METHODOLOGY_VERSION}")
+        st.caption(
+            f"Opción ejecutada: {contenido_modo['titulo']}. Esta sección documenta también "
+            "las fuentes de las otras opciones para mantener trazabilidad de la aplicación."
+        )
         tab_fuentes, tab_reglas, tab_limites = st.tabs(
             ["Fuentes y períodos", "Reglas del análisis", "Alcance y limitaciones"]
         )
@@ -5464,7 +5687,7 @@ try:
             )
 
 except Exception as error:
-    mostrar_flujo(1)
+    mostrar_flujo(2)
     mostrar_error_amigable(error)
     with st.expander("Detalle técnico para soporte", expanded=False):
         st.code(f"{type(error).__name__}: {error}")
