@@ -4,6 +4,23 @@ MODO_TERRITORIAL = "territorial"
 MODO_CORREDORES = "corredores"
 MODO_INTEGRAL = "integral"
 
+TIPO_AREA_SUBCUENCA = "Subcuenca"
+TIPO_AREA_DIBUJADA = "Dibujar polígono en el mapa"
+
+
+def area_debe_recortarse_a_cuenca(tipo_area):
+    """Solo limita los polígonos creados por el usuario a la cuenca principal."""
+
+    return tipo_area == TIPO_AREA_DIBUJADA
+
+
+def aplicar_limite_cuenca(tipo_area, geometria, geometria_cuenca):
+    """Conserva áreas institucionales completas y recorta únicamente dibujos."""
+
+    if area_debe_recortarse_a_cuenca(tipo_area):
+        return geometria.intersection(geometria_cuenca, 1)
+    return geometria
+
 MODOS_ANALISIS = {
     MODO_TERRITORIAL: {
         "titulo": "Evaluación territorial",
