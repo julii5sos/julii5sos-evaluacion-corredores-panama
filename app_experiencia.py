@@ -735,7 +735,7 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-2.0.0-TRES-ANALISIS"
+APP_VERSION = "UX-2.1.0-INTEGRAL-RESUMIDA"
 METHODOLOGY_VERSION = "MT-2026.11-RUTA-CORREDOR"
 PROYECTO_EE = secreto_opcional("EE_PROJECT", "ee-julissaguevaravega")
 FUENTE_BOSQUE_NOMBRE = "Bosque y otros usos"
@@ -933,10 +933,6 @@ PERFILES_POR_MODO = {
     MODO_CORREDORES: ["Corredores y conectividad"],
     MODO_INTEGRAL: [
         "Diagnóstico territorial integrado",
-        "Consultar capas individuales",
-        "Comparar estado forestal entre dos años (JRC TMF)",
-        "Comparar uso del suelo entre dos años (ESRI)",
-        "Comparar vigor vegetal entre dos años (NDVI)",
     ],
 }
 
@@ -3187,7 +3183,7 @@ def mostrar_error_amigable(error):
             "La aplicación no pudo completar la conexión inicial con las fuentes territoriales. "
             "Sus datos y selecciones no causaron este problema."
         )
-    st.error("El visor no pudo iniciar el análisis territorial.")
+    st.error("El visor no pudo iniciar el análisis seleccionado.")
     st.markdown(f"**Qué ocurrió:** {explicacion}")
     st.markdown(
         """
@@ -3333,6 +3329,128 @@ def mostrar_resumen_ejecutivo(resultados):
     st.caption(
         "Revise ahora el mapa. El desglose de las fuentes, los corredores y la "
         "conectividad permanece disponible después, si necesita profundizar."
+    )
+
+
+def mostrar_resumen_integral(resultados):
+    """Presenta la decisión integrada sin obligar a interpretar capas técnicas."""
+
+    visita = resultados.get("prioridad_visita")
+    if not visita:
+        mostrar_resumen_ejecutivo(resultados)
+        return
+
+    prioridad = visita["prioridad_visita"]
+    color = {
+        "Muy alta": "#7f0000",
+        "Alta": "#b71c1c",
+        "Media": "#a33a00",
+        "Preventiva": "#8a5b00",
+        "Baja": "#2e7d32",
+    }[prioridad]
+    recomendacion = texto_recomendacion_visita(prioridad)
+    corredores = resultados.get("corredores") or {}
+    fragmentacion = resultados.get("fragmentacion") or {}
+    clase = fragmentacion.get("metricas_clase") or {}
+    estructura = visita["contexto_estructural"]
+    consistencia = resultados.get("consistencia") or {}
+
+    cambios_senalados_ha = sum(
+        float(resultados.get(clave, 0) or 0)
+        for clave in (
+            "coincidencia_1_fuente",
+            "coincidencia_2_fuentes",
+            "coincidencia_3_fuentes",
+        )
+    )
+    fuentes_con_senal = sum(
+        bool(resultados.get(clave))
+        for clave in ("senal_tmf", "senal_hansen", "senal_esri")
+    )
+    area_corredor_ha = float(corredores.get("area_en_corredores_ha", 0) or 0)
+    porcentaje_corredor = float(
+        corredores.get("porcentaje_aoi_en_corredores", 0) or 0
+    )
+    bosque_ha = float(clase.get("area_total_bosque_ha", 0) or 0)
+    porcentaje_bosque = float(clase.get("porcentaje_paisaje_bosque", 0) or 0)
+
+    st.markdown(
+        f"""
+        <div class="resultado-prioridad" style="--prioridad-color:{color};">
+          <small>Conclusión integrada</small>
+          <strong>Prioridad {html_lib.escape(prioridad.lower())} de visita</strong>
+          <p>{html_lib.escape(recomendacion)}</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        f"""
+        <div class="resultado-fuente">
+          <b>Dónde empezar</b><br/>
+          {html_lib.escape(visita['foco_visita'])}<br/>
+          <small>{html_lib.escape(visita['combinacion_territorial'])}</small>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    col_cambios, col_corredor, col_bosque, col_estructura = st.columns(4)
+    col_cambios.metric(
+        "Cambios señalados",
+        f"{cambios_senalados_ha:,.2f} ha",
+        f"{fuentes_con_senal} de 3 fuentes principales",
+        delta_color="off",
+    )
+    col_corredor.metric(
+        "Área en corredores",
+        f"{area_corredor_ha:,.1f} ha",
+        f"{porcentaje_corredor:.1f}% del área",
+        delta_color="off",
+    )
+    if fragmentacion:
+        col_bosque.metric(
+            f"Bosque {ANO_BOSQUE_REFERENCIA}",
+            f"{bosque_ha:,.1f} ha",
+            f"{porcentaje_bosque:.1f}% del área",
+            delta_color="off",
+        )
+    else:
+        col_bosque.metric(f"Bosque {ANO_BOSQUE_REFERENCIA}", "No disponible")
+    col_estructura.metric(
+        "Conectividad del bosque",
+        estructura["estado"],
+        f"Consistencia satelital: {consistencia.get('nivel', 'No disponible')}",
+        delta_color="off",
+    )
+
+    razon_cambios = (
+        f"La evidencia territorial produjo una prioridad {resultados['prioridad'].lower()} "
+        f"y una consistencia {str(consistencia.get('nivel', 'no disponible')).lower()}."
+    )
+    razon_corredor = (
+        f"El área coincide con {area_corredor_ha:,.1f} ha de corredores publicados."
+        if corredores.get("intersecta")
+        else "No se identificó una coincidencia directa con los corredores publicados."
+    )
+    razon_estructura = estructura.get(
+        "interpretacion",
+        "La estructura del bosque no estuvo disponible para esta ejecución.",
+    )
+    st.markdown("#### Por qué se obtuvo este resultado")
+    st.markdown(
+        "\n".join(
+            [
+                f"- {razon_cambios}",
+                f"- {razon_corredor}",
+                f"- {razon_estructura}",
+            ]
+        )
+    )
+    st.caption(
+        "El mapa siguiente ya está preparado con la evidencia principal. Abra los "
+        "detalles o personalice las capas solo si necesita profundizar."
     )
 
 
@@ -4399,11 +4517,21 @@ try:
             )
 
     st.sidebar.markdown("---")
-    st.sidebar.markdown("### Vista inicial del mapa")
+    titulo_vista_mapa = (
+        "### Mapa recomendado"
+        if modo_analisis == MODO_INTEGRAL
+        else "### Vista inicial del mapa"
+    )
+    st.sidebar.markdown(titulo_vista_mapa)
     opciones_objetivo = PERFILES_POR_MODO[modo_analisis]
     if len(opciones_objetivo) == 1:
         objetivo = opciones_objetivo[0]
-        st.sidebar.markdown(f"**{objetivo}**")
+        if modo_analisis == MODO_INTEGRAL:
+            st.sidebar.success(
+                "La aplicación preparará automáticamente una vista resumida para decidir."
+            )
+        else:
+            st.sidebar.markdown(f"**{objetivo}**")
     else:
         objetivo = st.sidebar.selectbox(
             "¿Qué desea ver en el mapa?",
@@ -4416,10 +4544,17 @@ try:
     perfil = PERFILES_VISUALIZACION[objetivo]
     st.sidebar.caption(perfil["descripcion"])
     with st.sidebar.expander("Acerca de esta vista", expanded=False):
-        st.caption(
-            "Esta selección solo organiza el mapa. Las fuentes y reglas del análisis "
-            "se mantienen fijas para que los resultados sean comparables."
-        )
+        if modo_analisis == MODO_INTEGRAL:
+            st.caption(
+                "El mapa reúne los sectores prioritarios, corredores, fragmentos clave "
+                "y la conexión potencial cuando existe. No necesita escoger capas para "
+                "obtener la conclusión integrada."
+            )
+        else:
+            st.caption(
+                "Esta selección solo organiza el mapa. Las fuentes y reglas del análisis "
+                "se mantienen fijas para que los resultados sean comparables."
+            )
 
     opciones_capas = [
         "Sectores para revisión",
@@ -4526,22 +4661,33 @@ try:
             )
     else:
         modo_comparador = "Sin comparador"
-        panel_capas = st.sidebar.expander(
-            "Capas disponibles en el mapa",
-            expanded=False,
-        )
-        panel_capas.caption(
-            "Active solo la información que desea consultar. Los valores recomendados "
-            "ya están seleccionados."
-        )
-        if analiza_cambios:
-            capas_activas = panel_capas.multiselect(
-                "Cambios observados por satélite",
-                opciones_capas,
-                default=capas_activas,
-                format_func=lambda valor: nombres_capas[valor],
-                help="Cada opción seleccionada se dibuja en el mapa.",
+        if modo_analisis == MODO_INTEGRAL:
+            # La vista integrada prioriza una lectura preparada. Las tres capas que
+            # sostienen la decisión no requieren intervención del usuario.
+            mostrar_fragmentos_bosque = True
+            mostrar_ruta_corredor = True
+            mostrar_corredores_mapa = True
+            panel_capas = st.sidebar.expander(
+                "Personalizar mapa · opcional",
+                expanded=False,
             )
+            panel_capas.caption(
+                "El resumen ya incluye sectores prioritarios, corredores, fragmentos "
+                "clave y la conexión potencial cuando existe. Agregue detalles solo "
+                "si necesita una revisión técnica."
+            )
+            capas_adicionales = panel_capas.multiselect(
+                "Añadir evidencia satelital",
+                [capa for capa in opciones_capas if capa != "Sectores para revisión"],
+                default=[],
+                format_func=lambda valor: nombres_capas[valor],
+                placeholder="Seleccione capas adicionales",
+                help=(
+                    "Estas capas complementan el resumen, pero no cambian la prioridad "
+                    "calculada."
+                ),
+            )
+            capas_activas = list(perfil["capas"]) + capas_adicionales
             orden_capas_mapa = list(capas_activas)
             capa_visible_inicial = capas_activas[0] if capas_activas else None
 
@@ -4550,68 +4696,147 @@ try:
                 for nombre in ("Estado forestal JRC", "Deforestación JRC", "Degradación JRC")
             ):
                 anio_tmf_capa = panel_capas.selectbox(
-                    "Año de la capa JRC:",
+                    "Año de la evidencia JRC",
                     list(range(1990, ANO_TMF_MAX + 1)),
                     index=ANO_TMF_MAX - 1990,
                 )
             if "Uso y cobertura ESRI" in capas_activas:
                 anio_esri_capa = panel_capas.selectbox(
-                    "Año de la capa ESRI:",
+                    "Año de la evidencia ESRI",
                     list(range(ANO_ESRI_MIN, ANO_ESRI_MAX + 1)),
                     index=ANO_ESRI_MAX - ANO_ESRI_MIN,
                 )
             if "Vegetación NDVI" in capas_activas:
                 anio_ndvi_capa = panel_capas.selectbox(
-                    "Año de la capa NDVI:",
+                    "Año de la evidencia NDVI",
                     list(range(2017, ANO_NDVI_MAX + 1)),
                     index=ANO_NDVI_MAX - 2017,
                 )
             if "ΔNDVI" in capas_activas:
                 anio_ndvi_inicial = panel_capas.selectbox(
-                    f"Año inicial del cambio NDVI (final {ANO_NDVI_MAX}):",
+                    f"Año inicial del cambio NDVI (final {ANO_NDVI_MAX})",
                     list(range(2017, ANO_NDVI_MAX)),
                     index=list(range(2017, ANO_NDVI_MAX)).index(2023),
                 )
-        else:
-            capas_activas = []
-            orden_capas_mapa = []
-            capa_visible_inicial = None
 
-        if analiza_conectividad:
-            panel_capas.caption("Bosque y conectividad")
-            mostrar_fragmentos_bosque = panel_capas.checkbox(
-                "Fragmentos evaluados dentro del área",
-                value=True,
-            )
-            mostrar_ruta_corredor = panel_capas.checkbox(
-                "Conexión potencial hacia un corredor",
-                value=True,
-            )
-            mostrar_corredores_mapa = panel_capas.checkbox(
-                "Corredores estratégicos",
-                value=True,
-            )
+            panel_capas.caption("Detalles técnicos de conectividad")
             mostrar_bosque_contexto = panel_capas.checkbox(
-                "Bosque 2021 en el área y su entorno",
+                f"Mostrar bosque {ANO_BOSQUE_REFERENCIA} en el entorno",
                 value=False,
                 disabled=not bosque_automatico_disponible,
             )
-            panel_capas.caption("Capas adicionales")
             mostrar_conexiones_bosque = panel_capas.checkbox(
-                "Estructura esencial entre fragmentos",
+                "Mostrar red técnica entre fragmentos",
                 value=False,
+                disabled=not bosque_automatico_disponible,
             )
             mostrar_brechas_bosque = panel_capas.checkbox(
-                "Fragmentos separados y distancia al vecino",
+                "Mostrar fragmentos aislados y distancia al vecino",
                 value=False,
+                disabled=not bosque_automatico_disponible,
             )
             mostrar_puntos_criticos_mapa = panel_capas.checkbox(
-                "Puntos críticos publicados",
+                "Mostrar puntos críticos de referencia (Almanaque Azul)",
                 value=False,
+                help=(
+                    "Son ubicaciones externas publicadas por Almanaque Azul. No son "
+                    "fragmentos calculados por la aplicación ni cambian la prioridad."
+                ),
             )
+        else:
+            panel_capas = st.sidebar.expander(
+                "Capas disponibles en el mapa",
+                expanded=False,
+            )
+            panel_capas.caption(
+                "Active solo la información que desea consultar. Los valores recomendados "
+                "ya están seleccionados."
+            )
+            if analiza_cambios:
+                capas_activas = panel_capas.multiselect(
+                    "Cambios observados por satélite",
+                    opciones_capas,
+                    default=capas_activas,
+                    format_func=lambda valor: nombres_capas[valor],
+                    placeholder="Seleccione las capas que desea consultar",
+                    help="Cada opción seleccionada se dibuja en el mapa.",
+                )
+                orden_capas_mapa = list(capas_activas)
+                capa_visible_inicial = capas_activas[0] if capas_activas else None
 
-        if not capas_activas and not analiza_conectividad:
-            panel_capas.warning("Seleccione al menos una capa temática.")
+                if any(
+                    nombre in capas_activas
+                    for nombre in ("Estado forestal JRC", "Deforestación JRC", "Degradación JRC")
+                ):
+                    anio_tmf_capa = panel_capas.selectbox(
+                        "Año de la capa JRC:",
+                        list(range(1990, ANO_TMF_MAX + 1)),
+                        index=ANO_TMF_MAX - 1990,
+                    )
+                if "Uso y cobertura ESRI" in capas_activas:
+                    anio_esri_capa = panel_capas.selectbox(
+                        "Año de la capa ESRI:",
+                        list(range(ANO_ESRI_MIN, ANO_ESRI_MAX + 1)),
+                        index=ANO_ESRI_MAX - ANO_ESRI_MIN,
+                    )
+                if "Vegetación NDVI" in capas_activas:
+                    anio_ndvi_capa = panel_capas.selectbox(
+                        "Año de la capa NDVI:",
+                        list(range(2017, ANO_NDVI_MAX + 1)),
+                        index=ANO_NDVI_MAX - 2017,
+                    )
+                if "ΔNDVI" in capas_activas:
+                    anio_ndvi_inicial = panel_capas.selectbox(
+                        f"Año inicial del cambio NDVI (final {ANO_NDVI_MAX}):",
+                        list(range(2017, ANO_NDVI_MAX)),
+                        index=list(range(2017, ANO_NDVI_MAX)).index(2023),
+                    )
+            else:
+                capas_activas = []
+                orden_capas_mapa = []
+                capa_visible_inicial = None
+
+            if analiza_conectividad:
+                panel_capas.caption("Bosque y conectividad")
+                mostrar_fragmentos_bosque = panel_capas.checkbox(
+                    "Mostrar fragmentos clave para la conectividad",
+                    value=True,
+                )
+                mostrar_ruta_corredor = panel_capas.checkbox(
+                    "Mostrar conexión estructural potencial",
+                    value=True,
+                )
+                mostrar_corredores_mapa = panel_capas.checkbox(
+                    "Mostrar corredores estratégicos",
+                    value=True,
+                )
+                mostrar_bosque_contexto = panel_capas.checkbox(
+                    f"Mostrar bosque {ANO_BOSQUE_REFERENCIA} en el entorno",
+                    value=False,
+                    disabled=not bosque_automatico_disponible,
+                )
+                panel_capas.caption("Detalles técnicos opcionales")
+                mostrar_conexiones_bosque = panel_capas.checkbox(
+                    "Mostrar red técnica entre fragmentos",
+                    value=False,
+                    disabled=not bosque_automatico_disponible,
+                )
+                mostrar_brechas_bosque = panel_capas.checkbox(
+                    "Mostrar fragmentos aislados y distancia al vecino",
+                    value=False,
+                    disabled=not bosque_automatico_disponible,
+                )
+                mostrar_puntos_criticos_mapa = panel_capas.checkbox(
+                    "Mostrar puntos críticos de referencia (Almanaque Azul)",
+                    value=False,
+                    help=(
+                        "Son ubicaciones externas publicadas por Almanaque Azul. No son "
+                        "fragmentos calculados por la aplicación ni cambian la prioridad."
+                    ),
+                )
+
+            if not capas_activas and not analiza_conectividad:
+                panel_capas.warning("Seleccione al menos una capa temática.")
 
     firma_analisis_actual = (
         METHODOLOGY_VERSION,
@@ -4771,6 +4996,8 @@ try:
         st.subheader("Resultado principal")
         if modo_analisis == MODO_CORREDORES:
             mostrar_resumen_conectividad(resultados)
+        elif modo_analisis == MODO_INTEGRAL:
+            mostrar_resumen_integral(resultados)
         else:
             mostrar_resumen_ejecutivo(resultados)
 
@@ -4780,17 +5007,19 @@ try:
 
     if st.session_state.get("firma_analisis") == firma_analisis_actual:
         resultados = st.session_state["resultados_analisis"]
-        st.markdown("#### Profundizar en el resultado")
-        st.caption("Abra únicamente la información que necesite consultar.")
         ver_detalle_cambios = False
         ver_detalle_corredores = False
         ver_detalle_bosque = False
         if modo_analisis == MODO_TERRITORIAL:
+            st.markdown("#### Profundizar en el resultado")
+            st.caption("Abra únicamente la información que necesite consultar.")
             ver_detalle_cambios = st.checkbox(
                 "Ver cambios satelitales y superficies",
                 value=False,
             )
         elif modo_analisis == MODO_CORREDORES:
+            st.markdown("#### Profundizar en el resultado")
+            st.caption("Abra únicamente la información que necesite consultar.")
             columna_corredores, columna_bosque = st.columns(2)
             ver_detalle_corredores = columna_corredores.checkbox(
                 "Ver corredores ecológicos",
@@ -4801,19 +5030,24 @@ try:
                 value=False,
             )
         else:
-            columna_cambios, columna_corredores, columna_bosque = st.columns(3)
-            ver_detalle_cambios = columna_cambios.checkbox(
-                "Cambios satelitales",
-                value=False,
-            )
-            ver_detalle_corredores = columna_corredores.checkbox(
-                "Corredores ecológicos",
-                value=False,
-            )
-            ver_detalle_bosque = columna_bosque.checkbox(
-                "Bosque y conectividad",
-                value=False,
-            )
+            with st.expander("Ver detalles del análisis · opcional", expanded=False):
+                st.caption(
+                    "La conclusión anterior es suficiente para una lectura rápida. "
+                    "Abra solo el componente que necesite documentar."
+                )
+                columna_cambios, columna_corredores, columna_bosque = st.columns(3)
+                ver_detalle_cambios = columna_cambios.checkbox(
+                    "Evidencia satelital",
+                    value=False,
+                )
+                ver_detalle_corredores = columna_corredores.checkbox(
+                    "Corredores ecológicos",
+                    value=False,
+                )
+                ver_detalle_bosque = columna_bosque.checkbox(
+                    "Fragmentos y conectividad",
+                    value=False,
+                )
         if ver_detalle_cambios:
             mostrar_resultados(
                 resultados,
@@ -5027,10 +5261,16 @@ try:
         "Mapa del resultado" if analisis_actual else "Evidencia cartográfica"
     )
     if analisis_actual:
-        mapa_resultados_contenedor.caption(
-            "Use las capas del panel lateral para ubicar la evidencia. Los cálculos y "
-            "tablas detallados se mantienen cerrados hasta que decida consultarlos."
-        )
+        if modo_analisis == MODO_INTEGRAL:
+            mapa_resultados_contenedor.caption(
+                "Vista resumida preparada automáticamente. Muestra la evidencia principal "
+                "para ubicar dónde conviene revisar primero."
+            )
+        else:
+            mapa_resultados_contenedor.caption(
+                "Use las capas del panel lateral para ubicar la evidencia. Los cálculos y "
+                "tablas detallados se mantienen cerrados hasta que decida consultarlos."
+            )
 
     mapa = folium.Map(
         location=[8.7, -80.0],
@@ -5363,7 +5603,14 @@ try:
             "temporal para que ninguna capa temática la cubra."
         )
     else:
-        if analiza_conectividad:
+        if modo_analisis == MODO_INTEGRAL:
+            if not analisis_actual:
+                mapa_resultados_contenedor.caption(
+                    "Sectores de cambio, corredores y fragmentos clave se muestran de forma "
+                    "automática. La ruta naranja aparece únicamente cuando existe una conexión "
+                    "estructural potencial."
+                )
+        elif analiza_conectividad:
             mapa_resultados_contenedor.caption(
                 "Elija las capas desde el panel lateral. La ruta naranja, cuando existe, "
                 "muestra una conexión estructural potencial hacia un corredor de referencia."
@@ -5449,7 +5696,7 @@ try:
     ):
         st.caption(
             "La leyenda se mantiene fuera del mapa para no cubrir la información espacial. "
-            "Solo incluye las capas activadas en el panel lateral."
+            "Solo incluye la información visible en esta vista."
         )
         columnas_leyenda = st.columns(2)
         leyendas_activas = []

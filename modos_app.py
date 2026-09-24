@@ -27,9 +27,9 @@ MODOS_ANALISIS = {
         "titulo": "Evaluación integral",
         "pregunta": "¿Dónde conviene priorizar una visita considerando todo?",
         "descripcion": (
-            "Combina cambios territoriales, valor estratégico de corredores y "
-            "estructura del bosque en una lectura conjunta."
+            "Reúne cambios territoriales, corredores y estructura del bosque en una "
+            "conclusión breve, con un mapa preparado automáticamente."
         ),
-        "resultado": "Prioridad integrada, mapa completo e informe trazable.",
+        "resultado": "Prioridad integrada, mapa resumido y acción recomendada.",
     },
 }
