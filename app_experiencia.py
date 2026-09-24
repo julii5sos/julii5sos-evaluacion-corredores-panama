@@ -738,7 +738,7 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-2.1.1-SUBCUENCAS-COMPLETAS"
+APP_VERSION = "UX-2.1.2-FUENTES-SIN-COBERTURA"
 METHODOLOGY_VERSION = "MT-2026.11-RUTA-CORREDOR"
 PROYECTO_EE = secreto_opcional("EE_PROJECT", "ee-julissaguevaravega")
 FUENTE_BOSQUE_NOMBRE = "Bosque y otros usos"
@@ -1614,16 +1614,28 @@ def obtener_limites_geojson(contenido):
 
 
 def obtener_tmf(anio, geometria):
-    coleccion_tmf = ee.ImageCollection(TMF_ASSET).filterBounds(geometria)
+    nombre_banda = f"Dec{anio}"
+    coleccion_global_tmf = ee.ImageCollection(TMF_ASSET)
+    coleccion_tmf = (
+        coleccion_global_tmf
+        .filterBounds(geometria)
+        .select([nombre_banda], [nombre_banda])
+    )
     proyeccion_tmf = (
-        ee.Image(coleccion_tmf.first())
-        .select(f"Dec{anio}")
+        ee.Image(coleccion_global_tmf.first())
+        .select(nombre_banda)
         .projection()
+    )
+    respaldo = (
+        ee.Image.constant(0)
+        .rename(nombre_banda)
+        .updateMask(ee.Image(0))
+        .setDefaultProjection(proyeccion_tmf)
     )
     return (
         coleccion_tmf
+        .merge(ee.ImageCollection.fromImages([respaldo]))
         .mosaic()
-        .select(f"Dec{anio}")
         .setDefaultProjection(proyeccion_tmf)
         .rename(f"tmf_{anio}")
         .clip(geometria)
@@ -1632,18 +1644,33 @@ def obtener_tmf(anio, geometria):
 
 def obtener_esri(anio, geometria):
     anio_seguro = max(ANO_ESRI_MIN, min(ANO_ESRI_MAX, anio))
-    coleccion_esri = (
+    nombre_banda = f"esri_{anio_seguro}"
+    coleccion_anual_esri = (
         ee.ImageCollection(ESRI_ASSET)
-        .filterBounds(geometria)
         .filterDate(f"{anio_seguro}-01-01", f"{anio_seguro}-12-31")
     )
-    proyeccion_esri = ee.Image(coleccion_esri.first()).select(0).projection()
+    proyeccion_esri = (
+        ee.Image(coleccion_anual_esri.first())
+        .select(0)
+        .projection()
+    )
+    coleccion_esri = (
+        coleccion_anual_esri
+        .filterBounds(geometria)
+        .select([0], [nombre_banda])
+    )
+    respaldo = (
+        ee.Image.constant(0)
+        .rename(nombre_banda)
+        .updateMask(ee.Image(0))
+        .setDefaultProjection(proyeccion_esri)
+    )
     return (
         coleccion_esri
+        .merge(ee.ImageCollection.fromImages([respaldo]))
         .mosaic()
-        .select(0)
         .setDefaultProjection(proyeccion_esri)
-        .rename(f"esri_{anio_seguro}")
+        .rename(nombre_banda)
         .clip(geometria)
     )
 
@@ -1829,11 +1856,29 @@ def imagen_coincidencia_revision(
 
 
 def imagen_gedi(geometria):
-    return (
-        ee.ImageCollection(GEDI_ASSET)
-        .filterBounds(geometria)
-        .mosaic()
+    coleccion_global_gedi = ee.ImageCollection(GEDI_ASSET)
+    proyeccion_gedi = (
+        ee.Image(coleccion_global_gedi.first())
         .select(0)
+        .projection()
+    )
+    coleccion_gedi = (
+        coleccion_global_gedi
+        .filterBounds(geometria)
+        .select([0], ["altura_dosel"])
+    )
+    respaldo = (
+        ee.Image.constant(0)
+        .rename("altura_dosel")
+        .updateMask(ee.Image(0))
+        .toFloat()
+        .setDefaultProjection(proyeccion_gedi)
+    )
+    return (
+        coleccion_gedi
+        .merge(ee.ImageCollection.fromImages([respaldo]))
+        .mosaic()
+        .setDefaultProjection(proyeccion_gedi)
         .rename("altura_dosel")
         .clip(geometria)
     )
