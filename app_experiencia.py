@@ -738,7 +738,7 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-2.1.2-FUENTES-SIN-COBERTURA"
+APP_VERSION = "UX-2.1.3-MAPA-TOLERANTE"
 METHODOLOGY_VERSION = "MT-2026.11-RUTA-CORREDOR"
 PROYECTO_EE = secreto_opcional("EE_PROJECT", "ee-julissaguevaravega")
 FUENTE_BOSQUE_NOMBRE = "Bosque y otros usos"
@@ -5412,19 +5412,24 @@ try:
         for indice, nombre in enumerate(orden_capas_mapa)
     }
     capas_tematicas_mapa = []
+    errores_capas_tematicas = []
 
     def agregar_tematica(clave, imagen, visualizacion, nombre):
-        capa = capa_gee(
-            mapa,
-            imagen,
-            visualizacion,
-            nombre,
-            mostrar=(
-                modo_comparador == "Sin comparador"
-                and clave in capas_activas
-            ),
-            z_index=prioridades_capas.get(clave, 400),
-        )
+        try:
+            capa = capa_gee(
+                mapa,
+                imagen,
+                visualizacion,
+                nombre,
+                mostrar=(
+                    modo_comparador == "Sin comparador"
+                    and clave in capas_activas
+                ),
+                z_index=prioridades_capas.get(clave, 400),
+            )
+        except Exception:
+            errores_capas_tematicas.append(nombres_capas.get(clave, nombre))
+            return None
         capas_tematicas_mapa.append((clave, capa))
         return capa
 
@@ -5690,6 +5695,15 @@ try:
             ),
         )
 
+    if errores_capas_tematicas:
+        capas_no_disponibles = ", ".join(dict.fromkeys(errores_capas_tematicas))
+        mapa_resultados_contenedor.warning(
+            "El mapa principal continúa disponible, pero no fue posible dibujar esta "
+            f"evidencia sobre el área seleccionada: {capas_no_disponibles}. "
+            "Esto suele indicar que la fuente no tiene cobertura espacial en esa zona; "
+            "las demás capas y resultados permanecen disponibles."
+        )
+
     fragmentacion_actual = st.session_state.get("resultados_analisis", {}).get(
         "fragmentacion"
     )
@@ -5781,7 +5795,12 @@ try:
             )
         if modo_comparador in ("JRC TMF", "ESRI LULC", "NDVI Sentinel-2"):
             leyendas_activas.append((modo_comparador, LEYENDAS[modo_comparador]))
+        claves_tematicas_renderizadas = {
+            clave for clave, _ in capas_tematicas_mapa
+        }
         for nombre in capas_activas:
+            if nombre not in claves_tematicas_renderizadas:
+                continue
             if nombre in LEYENDAS:
                 leyendas_activas.append((nombres_capas.get(nombre, nombre), LEYENDAS[nombre]))
             elif nombre == "Estado forestal JRC":
