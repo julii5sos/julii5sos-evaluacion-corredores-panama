@@ -138,6 +138,26 @@ def _partes_poligonales(geometria, deps):
     return []
 
 
+def _normalizar_area_poligonal(geometria, deps):
+    """Convierte un área válida a Polygon/MultiPolygon sin perder sus partes."""
+
+    if geometria.is_empty:
+        raise ValueError("El área seleccionada no contiene una geometría utilizable.")
+    if not geometria.is_valid:
+        geometria = deps["make_valid"](geometria)
+    partes = _partes_poligonales(geometria, deps)
+    if not partes:
+        raise ValueError("El área seleccionada no contiene superficies poligonales.")
+    area = deps["unary_union"](partes)
+    if not area.is_valid:
+        area = deps["make_valid"](area)
+        partes = _partes_poligonales(area, deps)
+        area = deps["unary_union"](partes)
+    if area.is_empty or area.area <= 0:
+        raise ValueError("El área seleccionada no contiene una superficie válida.")
+    return area
+
+
 def _percentil(valores: list[float], proporcion: float) -> float:
     if not valores:
         return 0.0
@@ -889,11 +909,7 @@ def analizar_fragmentacion_conectividad(
     wgs_a_area = deps["Transformer"].from_crs("EPSG:4326", crs_area, always_xy=True)
     area_a_wgs = deps["Transformer"].from_crs(crs_area, "EPSG:4326", always_xy=True)
 
-    aoi = deps["shape"](aoi_geojson)
-    if aoi.is_empty:
-        raise ValueError("El área seleccionada no contiene una geometría utilizable.")
-    if not aoi.is_valid:
-        aoi = deps["make_valid"](aoi)
+    aoi = _normalizar_area_poligonal(deps["shape"](aoi_geojson), deps)
     aoi_m = deps["transform"](wgs_a_area.transform, aoi)
     area_paisaje_ha = aoi_m.area / 10_000
     valores_bosque = {str(valor) for valor in valores_bosque}
@@ -1107,11 +1123,7 @@ def analizar_fragmentacion_geojson(
     # No reconstruir el GeoJSON suponiendo que siempre posee ``coordinates``.
     # Las GeometryCollection legítimas usan ``geometries`` y pueden aparecer al
     # unir las partes de una subcuenca en Earth Engine.
-    aoi = deps["shape"](aoi_geojson)
-    if aoi.is_empty:
-        raise ValueError("El área seleccionada no contiene una geometría utilizable.")
-    if not aoi.is_valid:
-        aoi = deps["make_valid"](aoi)
+    aoi = _normalizar_area_poligonal(deps["shape"](aoi_geojson), deps)
     aoi_m = deps["transform"](wgs_a_area.transform, aoi)
     area_paisaje_ha = aoi_m.area / 10_000
     distancia_contexto_m = (

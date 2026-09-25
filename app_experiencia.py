@@ -4,6 +4,7 @@ import hmac
 import json
 import re
 import time
+import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date
 from io import BytesIO
@@ -738,7 +739,7 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-2.1.5-GEDI-HOMOGENEO"
+APP_VERSION = "UX-2.1.6-GEOMETRIA-POLIGONAL"
 METHODOLOGY_VERSION = "MT-2026.11-RUTA-CORREDOR"
 PROYECTO_EE = secreto_opcional("EE_PROJECT", "ee-julissaguevaravega")
 FUENTE_BOSQUE_NOMBRE = "Bosque y otros usos"
@@ -5982,4 +5983,4 @@ except Exception as error:
     mostrar_flujo(2)
     mostrar_error_amigable(error)
     with st.expander("Detalle técnico para soporte", expanded=False):
-        st.code(f"{type(error).__name__}: {error}")
+        st.code(traceback.format_exc())

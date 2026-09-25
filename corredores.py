@@ -199,6 +199,19 @@ def analizar_interseccion_corredores(aoi_geojson: dict[str, Any]) -> dict[str, A
         raise ValueError("El área seleccionada no contiene una geometría utilizable.")
     if not geometria_aoi.is_valid:
         geometria_aoi = make_valid(geometria_aoi)
+    partes_poligonales = []
+
+    def agregar_partes(geometria):
+        if geometria.geom_type == "Polygon":
+            partes_poligonales.append(geometria)
+        elif geometria.geom_type in {"MultiPolygon", "GeometryCollection"}:
+            for parte in geometria.geoms:
+                agregar_partes(parte)
+
+    agregar_partes(geometria_aoi)
+    if not partes_poligonales:
+        raise ValueError("El área seleccionada no contiene superficies poligonales.")
+    geometria_aoi = unary_union(partes_poligonales)
 
     # WGS 84 / Equal Earth Americas; evita medir areas en grados o Web Mercator.
     proyector = Transformer.from_crs("EPSG:4326", "EPSG:8857", always_xy=True)

@@ -187,7 +187,7 @@ class BosqueConectividadTests(unittest.TestCase):
         self.assertEqual(resultado["conexiones_geojson"]["features"], [])
         self.assertEqual(resultado["conexiones_potenciales_geojson"]["features"], [])
 
-    def test_area_geometry_collection_se_conserva_sin_fallar(self):
+    def test_area_geometry_collection_se_normaliza_sin_fallar(self):
         area_compuesta = {
             "type": "GeometryCollection",
             "geometries": [self.aoi_sintetico()],
@@ -202,8 +202,13 @@ class BosqueConectividadTests(unittest.TestCase):
         geometria_resultado = resultado["area_objetivo_geojson"]["features"][0][
             "geometry"
         ]
-        self.assertEqual(geometria_resultado["type"], "GeometryCollection")
-        self.assertEqual(len(geometria_resultado["geometries"]), 1)
+        self.assertIn(geometria_resultado["type"], {"Polygon", "MultiPolygon"})
+        self.assertIn("coordinates", geometria_resultado)
+
+        import folium
+
+        limites = folium.GeoJson(resultado["area_objetivo_geojson"]).get_bounds()
+        self.assertEqual(len(limites), 2)
 
     def test_resultado_considera_bosque_exterior_sin_dibujarlo(self):
         def poligono(oeste, sur, este, norte):
