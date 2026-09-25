@@ -74,6 +74,7 @@ from modos_app import (
     TIPO_AREA_DIBUJADA,
     TIPO_AREA_SUBCUENCA,
     aplicar_limite_cuenca,
+    area_debe_recortarse_a_cuenca,
 )
 from reporte_cartografico import crear_mapa_conectividad, crear_mapa_fragmentacion
 
@@ -739,7 +740,7 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-2.1.8-LIMITE-CUENCA"
+APP_VERSION = "UX-2.1.9-LIMITE-CUENCA"
 METHODOLOGY_VERSION = "MT-2026.12-LIMITE-CUENCA"
 PROYECTO_EE = secreto_opcional("EE_PROJECT", "ee-julissaguevaravega")
 FUENTE_BOSQUE_NOMBRE = "Bosque y otros usos"

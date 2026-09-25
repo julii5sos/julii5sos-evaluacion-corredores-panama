@@ -1,4 +1,6 @@
+import ast
 import unittest
+from pathlib import Path
 
 from streamlit.testing.v1 import AppTest
 
@@ -20,6 +22,19 @@ class GeometriaPrueba:
 
 
 class ModosInterfazTests(unittest.TestCase):
+    def test_aplicacion_importa_la_regla_de_recorte(self):
+        arbol = ast.parse(
+            Path("app_experiencia.py").read_text(encoding="utf-8")
+        )
+        importados = {
+            alias.name
+            for nodo in arbol.body
+            if isinstance(nodo, ast.ImportFrom) and nodo.module == "modos_app"
+            for alias in nodo.names
+        }
+
+        self.assertIn("area_debe_recortarse_a_cuenca", importados)
+
     def test_la_pantalla_inicial_ofrece_tres_analisis_separados(self):
         app = AppTest.from_file("app.py", default_timeout=30).run()
 
