@@ -9,13 +9,13 @@ TIPO_AREA_DIBUJADA = "Dibujar polígono en el mapa"
 
 
 def area_debe_recortarse_a_cuenca(tipo_area):
-    """Solo limita los polígonos creados por el usuario a la cuenca principal."""
+    """Limita toda unidad menor al polígono institucional de la cuenca."""
 
-    return tipo_area == TIPO_AREA_DIBUJADA
+    return tipo_area != "Toda la cuenca"
 
 
 def aplicar_limite_cuenca(tipo_area, geometria, geometria_cuenca):
-    """Conserva áreas institucionales completas y recorta únicamente dibujos."""
+    """Devuelve únicamente la parte de la unidad ubicada dentro de la cuenca."""
 
     if area_debe_recortarse_a_cuenca(tipo_area):
         return geometria.intersection(geometria_cuenca, 1)

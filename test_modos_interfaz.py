@@ -33,7 +33,7 @@ class ModosInterfazTests(unittest.TestCase):
             ],
         )
 
-    def test_subcuenca_se_conserva_completa_aunque_sobresalga(self):
+    def test_subcuenca_se_recorta_a_la_cuenca(self):
         geometria = GeometriaPrueba()
 
         resultado = aplicar_limite_cuenca(
@@ -42,9 +42,9 @@ class ModosInterfazTests(unittest.TestCase):
             "limite-cuenca",
         )
 
-        self.assertIs(resultado, geometria)
-        self.assertFalse(geometria.intersecciones)
-        self.assertFalse(area_debe_recortarse_a_cuenca(TIPO_AREA_SUBCUENCA))
+        self.assertEqual(resultado, "geometria-recortada")
+        self.assertEqual(geometria.intersecciones, [("limite-cuenca", 1)])
+        self.assertTrue(area_debe_recortarse_a_cuenca(TIPO_AREA_SUBCUENCA))
 
     def test_poligono_dibujado_se_recorta_a_la_cuenca(self):
         geometria = GeometriaPrueba()
@@ -58,6 +58,31 @@ class ModosInterfazTests(unittest.TestCase):
         self.assertEqual(resultado, "geometria-recortada")
         self.assertEqual(geometria.intersecciones, [("limite-cuenca", 1)])
         self.assertTrue(area_debe_recortarse_a_cuenca(TIPO_AREA_DIBUJADA))
+
+    def test_finca_se_recorta_a_la_cuenca(self):
+        geometria = GeometriaPrueba()
+
+        resultado = aplicar_limite_cuenca(
+            "Finca de monitoreo",
+            geometria,
+            "limite-cuenca",
+        )
+
+        self.assertEqual(resultado, "geometria-recortada")
+        self.assertTrue(area_debe_recortarse_a_cuenca("Finca de monitoreo"))
+
+    def test_cuenca_completa_no_se_recorta_contra_si_misma(self):
+        geometria = GeometriaPrueba()
+
+        resultado = aplicar_limite_cuenca(
+            "Toda la cuenca",
+            geometria,
+            "limite-cuenca",
+        )
+
+        self.assertIs(resultado, geometria)
+        self.assertFalse(geometria.intersecciones)
+        self.assertFalse(area_debe_recortarse_a_cuenca("Toda la cuenca"))
 
 
 if __name__ == "__main__":

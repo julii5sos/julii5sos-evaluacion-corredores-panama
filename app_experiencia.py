@@ -739,8 +739,8 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-2.1.7-FUENTES-CONDICIONALES"
-METHODOLOGY_VERSION = "MT-2026.11-RUTA-CORREDOR"
+APP_VERSION = "UX-2.1.8-LIMITE-CUENCA"
+METHODOLOGY_VERSION = "MT-2026.12-LIMITE-CUENCA"
 PROYECTO_EE = secreto_opcional("EE_PROJECT", "ee-julissaguevaravega")
 FUENTE_BOSQUE_NOMBRE = "Bosque y otros usos"
 FUENTE_BOSQUE_ORGANIZACION = "SINIA–MiAMBIENTE"
@@ -1095,6 +1095,7 @@ def construir_registro_metodologico(
             "identificador": str(finca_id),
             "geometria_vectorial_incluida": False,
             "fuente": "coleccion_privada_configurada_en_el_servidor",
+            "recorte": ASSET_CUENCA,
         }
     elif tipo_area == TIPO_AREA_SUBCUENCA:
         especificacion_area = {
@@ -1103,6 +1104,7 @@ def construir_registro_metodologico(
             "asset": ASSET_SUBCUENCAS,
             "campo_identificador": "SUBCUENC_2",
             "geometria_vectorial_incluida": False,
+            "recorte": ASSET_CUENCA,
         }
     elif tipo_area == TIPO_AREA_DIBUJADA:
         especificacion_area = {
@@ -1520,7 +1522,7 @@ def obtener_ids_subcuencas():
     )
 
 
-def obtener_area(
+def obtener_geometria_solicitada(
     tipo_area,
     finca_id=None,
     subcuenca_nombre=None,
@@ -1529,8 +1531,10 @@ def obtener_area(
     if tipo_area == "Finca de monitoreo":
         if not ASSET_FINCAS or not acceso_fincas_vigente():
             raise PermissionError("La finca privada requiere un acceso autorizado.")
-        return ee.FeatureCollection(ASSET_FINCAS).filter(
-            ee.Filter.eq("FincaID", finca_id)
+        return (
+            ee.FeatureCollection(ASSET_FINCAS)
+            .filter(ee.Filter.eq("FincaID", finca_id))
+            .geometry()
         )
 
     if tipo_area == TIPO_AREA_SUBCUENCA:
@@ -1538,10 +1542,10 @@ def obtener_area(
             raise PermissionError("La colección de subcuencas no está configurada.")
         if subcuenca_nombre is None:
             raise ValueError("Debe seleccionar una subcuenca antes de ejecutar el análisis.")
-        # Las subcuencas son unidades institucionales de análisis y se conservan
-        # completas aunque su geometría sobrepase el límite de la cuenca principal.
-        return ee.FeatureCollection(ASSET_SUBCUENCAS).filter(
-            ee.Filter.eq("SUBCUENC_2", subcuenca_nombre)
+        return (
+            ee.FeatureCollection(ASSET_SUBCUENCAS)
+            .filter(ee.Filter.eq("SUBCUENC_2", subcuenca_nombre))
+            .geometry()
         )
 
     if tipo_area == TIPO_AREA_DIBUJADA:
@@ -1552,18 +1556,33 @@ def obtener_area(
             if isinstance(geometria_geojson, str)
             else geometria_geojson
         )
-        geometria = ee.Geometry(datos_geometria)
-        geometria_cuenca = ee.FeatureCollection(ASSET_CUENCA).geometry()
-        geometria_recortada = aplicar_limite_cuenca(
-            tipo_area,
-            geometria,
-            geometria_cuenca,
-        )
-        return ee.FeatureCollection(
-            [ee.Feature(geometria_recortada, {"Origen": "Dibujo del usuario"})]
-        )
+        return ee.Geometry(datos_geometria)
 
-    return ee.FeatureCollection(ASSET_CUENCA)
+    return ee.FeatureCollection(ASSET_CUENCA).geometry()
+
+
+def obtener_area(
+    tipo_area,
+    finca_id=None,
+    subcuenca_nombre=None,
+    geometria_geojson=None,
+):
+    geometria_solicitada = obtener_geometria_solicitada(
+        tipo_area=tipo_area,
+        finca_id=finca_id,
+        subcuenca_nombre=subcuenca_nombre,
+        geometria_geojson=geometria_geojson,
+    )
+    geometria_cuenca = ee.FeatureCollection(ASSET_CUENCA).geometry()
+    geometria_analisis = aplicar_limite_cuenca(
+        tipo_area,
+        geometria_solicitada,
+        geometria_cuenca,
+    )
+    return ee.FeatureCollection(
+        [ee.Feature(geometria_analisis, {"Origen": tipo_area})]
+    )
+
 
 def serializar_poligono_dibujado(dibujo):
     geometria = dibujo.get("geometry", dibujo) if dibujo else None
@@ -4329,8 +4348,8 @@ try:
             "Opción más rápida. Seleccione una finca disponible después de autorizar el acceso."
         ),
         "Subcuenca": (
-            "La subcuenca se analiza completa, incluso cuando una parte sobrepasa el "
-            "límite de la cuenca principal."
+            "La subcuenca se recorta automáticamente al límite de la cuenca principal. "
+            "Las partes exteriores no participan en el análisis."
         ),
         "Dibujar polígono en el mapa": (
             "Úsela cuando el área no aparece en la lista. Cualquier parte dibujada fuera "
@@ -4479,26 +4498,37 @@ try:
         subcuenca_seleccionada,
         geometria_dibujada_json,
     )
+    geometria_solicitada = obtener_geometria_solicitada(
+        tipo_area,
+        finca_seleccionada,
+        subcuenca_seleccionada,
+        geometria_dibujada_json,
+    )
     geometria = area_seleccionada.geometry()
-    superficie_ha = float(geometria.area(1).divide(10000).getInfo())
-    if tipo_area == TIPO_AREA_DIBUJADA:
-        superficie_original_ha = float(
-            ee.Geometry(json.loads(geometria_dibujada_json))
-            .area(1)
-            .divide(10000)
-            .getInfo()
+    superficies = ee.Dictionary(
+        {
+            "analizada": geometria.area(1).divide(10000),
+            "solicitada": geometria_solicitada.area(1).divide(10000),
+        }
+    ).getInfo()
+    superficie_ha = float(superficies.get("analizada") or 0.0)
+    superficie_original_ha = float(superficies.get("solicitada") or 0.0)
+    if superficie_ha <= 0:
+        st.error(
+            "El área seleccionada no intersecta la cuenca. Seleccione otra unidad o "
+            "dibuje un polígono dentro del límite rojo."
         )
-        if superficie_ha <= 0:
-            st.error("El polígono no intersecta la cuenca. Bórrelo y dibuje uno dentro del límite rojo.")
-            st.stop()
-        if superficie_ha + 0.01 < superficie_original_ha:
-            st.warning(
-                "Una parte del polígono estaba fuera de la cuenca y fue excluida del análisis."
-            )
-    elif tipo_area == TIPO_AREA_SUBCUENCA:
+        st.stop()
+    superficie_excluida_ha = max(0.0, superficie_original_ha - superficie_ha)
+    if area_debe_recortarse_a_cuenca(tipo_area) and superficie_excluida_ha > 0.01:
+        st.warning(
+            f"El área seleccionada sobrepasa el límite rojo. Se excluyeron "
+            f"{superficie_excluida_ha:,.1f} ha; el análisis usará únicamente las "
+            f"{superficie_ha:,.1f} ha ubicadas dentro de la cuenca."
+        )
+    elif area_debe_recortarse_a_cuenca(tipo_area):
         st.caption(
-            "Se analizará la geometría completa de la subcuenca seleccionada. El límite "
-            "de la cuenca principal se muestra solo como referencia y no recorta el análisis."
+            "El análisis se limita al área ubicada dentro del límite rojo de la cuenca."
         )
 
     bosque_automatico_disponible = bool(ASSET_BOSQUE_2021)
