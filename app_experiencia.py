@@ -739,7 +739,7 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-2.1.6-GEOMETRIA-POLIGONAL"
+APP_VERSION = "UX-2.1.7-FUENTES-CONDICIONALES"
 METHODOLOGY_VERSION = "MT-2026.11-RUTA-CORREDOR"
 PROYECTO_EE = secreto_opcional("EE_PROJECT", "ee-julissaguevaravega")
 FUENTE_BOSQUE_NOMBRE = "Bosque y otros usos"
@@ -1616,28 +1616,26 @@ def obtener_limites_geojson(contenido):
 
 def obtener_tmf(anio, geometria):
     nombre_banda = f"Dec{anio}"
-    coleccion_global_tmf = ee.ImageCollection(TMF_ASSET)
     coleccion_tmf = (
-        coleccion_global_tmf
+        ee.ImageCollection(TMF_ASSET)
         .filterBounds(geometria)
         .select([nombre_banda], [nombre_banda])
-    )
-    proyeccion_tmf = (
-        ee.Image(coleccion_global_tmf.first())
-        .select(nombre_banda)
-        .projection()
     )
     respaldo = (
         ee.Image.constant(0)
         .rename(nombre_banda)
         .updateMask(ee.Image(0))
-        .setDefaultProjection(proyeccion_tmf)
+        .toByte()
+        .setDefaultProjection("EPSG:4326", None, 30)
     )
     return (
-        coleccion_tmf
-        .merge(ee.ImageCollection.fromImages([respaldo]))
-        .mosaic()
-        .setDefaultProjection(proyeccion_tmf)
+        ee.Image(
+            ee.Algorithms.If(
+                coleccion_tmf.size().gt(0),
+                coleccion_tmf.mosaic(),
+                respaldo,
+            )
+        )
         .rename(f"tmf_{anio}")
         .clip(geometria)
     )
@@ -1650,11 +1648,6 @@ def obtener_esri(anio, geometria):
         ee.ImageCollection(ESRI_ASSET)
         .filterDate(f"{anio_seguro}-01-01", f"{anio_seguro}-12-31")
     )
-    proyeccion_esri = (
-        ee.Image(coleccion_anual_esri.first())
-        .select(0)
-        .projection()
-    )
     coleccion_esri = (
         coleccion_anual_esri
         .filterBounds(geometria)
@@ -1664,13 +1657,17 @@ def obtener_esri(anio, geometria):
         ee.Image.constant(0)
         .rename(nombre_banda)
         .updateMask(ee.Image(0))
-        .setDefaultProjection(proyeccion_esri)
+        .toByte()
+        .setDefaultProjection("EPSG:4326", None, 10)
     )
     return (
-        coleccion_esri
-        .merge(ee.ImageCollection.fromImages([respaldo]))
-        .mosaic()
-        .setDefaultProjection(proyeccion_esri)
+        ee.Image(
+            ee.Algorithms.If(
+                coleccion_esri.size().gt(0),
+                coleccion_esri.mosaic(),
+                respaldo,
+            )
+        )
         .rename(nombre_banda)
         .clip(geometria)
     )
@@ -1863,14 +1860,8 @@ def convertir_altura_gedi_float(imagen):
 
 
 def imagen_gedi(geometria):
-    coleccion_global_gedi = ee.ImageCollection(GEDI_ASSET)
-    proyeccion_gedi = (
-        ee.Image(coleccion_global_gedi.first())
-        .select(0)
-        .projection()
-    )
     coleccion_gedi = (
-        coleccion_global_gedi
+        ee.ImageCollection(GEDI_ASSET)
         .filterBounds(geometria)
         .select([0], ["altura_dosel"])
         .map(convertir_altura_gedi_float)
@@ -1880,13 +1871,16 @@ def imagen_gedi(geometria):
         .rename("altura_dosel")
         .updateMask(ee.Image(0))
         .toFloat()
-        .setDefaultProjection(proyeccion_gedi)
+        .setDefaultProjection("EPSG:4326", None, 100)
     )
     return (
-        coleccion_gedi
-        .merge(ee.ImageCollection.fromImages([respaldo]))
-        .mosaic()
-        .setDefaultProjection(proyeccion_gedi)
+        ee.Image(
+            ee.Algorithms.If(
+                coleccion_gedi.size().gt(0),
+                coleccion_gedi.mosaic(),
+                respaldo,
+            )
+        )
         .rename("altura_dosel")
         .clip(geometria)
     )

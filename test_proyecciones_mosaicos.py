@@ -21,19 +21,25 @@ def llamadas_de_funcion(nombre_funcion):
 
 
 class ProyeccionesMosaicosTest(unittest.TestCase):
-    def test_mosaico_tmf_define_proyeccion_predeterminada(self):
+    def test_mosaico_tmf_usa_respaldo_solo_si_no_hay_cobertura(self):
         llamadas = llamadas_de_funcion("obtener_tmf")
         self.assertIn("setDefaultProjection", llamadas)
-        self.assertIn("merge", llamadas)
+        self.assertIn("If", llamadas)
+        self.assertIn("size", llamadas)
+        self.assertNotIn("merge", llamadas)
 
-    def test_mosaico_esri_define_proyeccion_predeterminada(self):
+    def test_mosaico_esri_usa_respaldo_solo_si_no_hay_cobertura(self):
         llamadas = llamadas_de_funcion("obtener_esri")
         self.assertIn("setDefaultProjection", llamadas)
-        self.assertIn("merge", llamadas)
+        self.assertIn("If", llamadas)
+        self.assertIn("size", llamadas)
+        self.assertNotIn("merge", llamadas)
 
     def test_gedi_sin_cobertura_usa_respaldo_enmascarado(self):
         llamadas = llamadas_de_funcion("imagen_gedi")
-        self.assertIn("merge", llamadas)
+        self.assertIn("If", llamadas)
+        self.assertIn("size", llamadas)
+        self.assertNotIn("merge", llamadas)
         self.assertIn("map", llamadas)
         self.assertIn("updateMask", llamadas)
         self.assertIn("setDefaultProjection", llamadas)
