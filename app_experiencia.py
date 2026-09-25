@@ -741,8 +741,8 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-2.1.10-ANALISIS-AGIL"
-METHODOLOGY_VERSION = "MT-2026.13-RECORTE-10M"
+APP_VERSION = "UX-2.1.11-PROYECCION-ESTABLE"
+METHODOLOGY_VERSION = "MT-2026.14-PROYECCION-ESTABLE"
 PROYECTO_EE = secreto_opcional("EE_PROJECT", "ee-julissaguevaravega")
 FUENTE_BOSQUE_NOMBRE = "Bosque y otros usos"
 FUENTE_BOSQUE_ORGANIZACION = "SINIA–MiAMBIENTE"
@@ -1692,6 +1692,7 @@ def obtener_tmf(anio, geometria):
         coleccion_tmf
         .merge(ee.ImageCollection.fromImages([respaldo]))
         .mosaic()
+        .setDefaultProjection("EPSG:4326", None, 30)
         .rename(f"tmf_{anio}")
         .clip(geometria)
     )
@@ -1721,6 +1722,7 @@ def obtener_esri(anio, geometria):
         coleccion_esri
         .merge(ee.ImageCollection.fromImages([respaldo]))
         .mosaic()
+        .setDefaultProjection("EPSG:4326", None, 10)
         .rename(nombre_banda)
         .clip(geometria)
     )
@@ -1930,6 +1932,7 @@ def imagen_gedi(geometria):
         coleccion_gedi
         .merge(ee.ImageCollection.fromImages([respaldo]))
         .mosaic()
+        .setDefaultProjection("EPSG:4326", None, 100)
         .rename("altura_dosel")
         .clip(geometria)
     )
