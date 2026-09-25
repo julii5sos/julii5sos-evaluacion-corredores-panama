@@ -34,8 +34,12 @@ class ProyeccionesMosaicosTest(unittest.TestCase):
     def test_gedi_sin_cobertura_usa_respaldo_enmascarado(self):
         llamadas = llamadas_de_funcion("imagen_gedi")
         self.assertIn("merge", llamadas)
+        self.assertIn("map", llamadas)
         self.assertIn("updateMask", llamadas)
         self.assertIn("setDefaultProjection", llamadas)
+
+        conversion = llamadas_de_funcion("convertir_altura_gedi_float")
+        self.assertIn("toFloat", conversion)
 
     def test_reduccion_esri_conserva_proyeccion_de_origen(self):
         llamadas = llamadas_de_funcion("imagen_coincidencia_revision")

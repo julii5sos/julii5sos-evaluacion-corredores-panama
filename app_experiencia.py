@@ -738,7 +738,7 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-2.1.4-GEOMETRIA-COMPUESTA"
+APP_VERSION = "UX-2.1.5-GEDI-HOMOGENEO"
 METHODOLOGY_VERSION = "MT-2026.11-RUTA-CORREDOR"
 PROYECTO_EE = secreto_opcional("EE_PROJECT", "ee-julissaguevaravega")
 FUENTE_BOSQUE_NOMBRE = "Bosque y otros usos"
@@ -1855,6 +1855,12 @@ def imagen_coincidencia_revision(
     )
 
 
+def convertir_altura_gedi_float(imagen):
+    """Uniforma el tipo de píxel antes de añadir el respaldo sin datos."""
+
+    return ee.Image(imagen).toFloat()
+
+
 def imagen_gedi(geometria):
     coleccion_global_gedi = ee.ImageCollection(GEDI_ASSET)
     proyeccion_gedi = (
@@ -1866,6 +1872,7 @@ def imagen_gedi(geometria):
         coleccion_global_gedi
         .filterBounds(geometria)
         .select([0], ["altura_dosel"])
+        .map(convertir_altura_gedi_float)
     )
     respaldo = (
         ee.Image.constant(0)
