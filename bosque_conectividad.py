@@ -889,9 +889,9 @@ def analizar_fragmentacion_conectividad(
     wgs_a_area = deps["Transformer"].from_crs("EPSG:4326", crs_area, always_xy=True)
     area_a_wgs = deps["Transformer"].from_crs(crs_area, "EPSG:4326", always_xy=True)
 
-    aoi = deps["shape"](
-        {"type": aoi_geojson["type"], "coordinates": aoi_geojson["coordinates"]}
-    )
+    aoi = deps["shape"](aoi_geojson)
+    if aoi.is_empty:
+        raise ValueError("El área seleccionada no contiene una geometría utilizable.")
     if not aoi.is_valid:
         aoi = deps["make_valid"](aoi)
     aoi_m = deps["transform"](wgs_a_area.transform, aoi)
@@ -1104,9 +1104,12 @@ def analizar_fragmentacion_geojson(
         crs_area, "EPSG:4326", always_xy=True
     )
 
-    aoi = deps["shape"](
-        {"type": aoi_geojson["type"], "coordinates": aoi_geojson["coordinates"]}
-    )
+    # No reconstruir el GeoJSON suponiendo que siempre posee ``coordinates``.
+    # Las GeometryCollection legítimas usan ``geometries`` y pueden aparecer al
+    # unir las partes de una subcuenca en Earth Engine.
+    aoi = deps["shape"](aoi_geojson)
+    if aoi.is_empty:
+        raise ValueError("El área seleccionada no contiene una geometría utilizable.")
     if not aoi.is_valid:
         aoi = deps["make_valid"](aoi)
     aoi_m = deps["transform"](wgs_a_area.transform, aoi)
@@ -1178,10 +1181,7 @@ def analizar_fragmentacion_geojson(
             {
                 "type": "Feature",
                 "properties": {"tipo": "Área evaluada"},
-                "geometry": {
-                    "type": aoi_geojson["type"],
-                    "coordinates": aoi_geojson["coordinates"],
-                },
+                "geometry": deps["mapping"](aoi),
             }
         ],
     }

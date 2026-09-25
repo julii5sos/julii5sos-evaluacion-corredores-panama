@@ -187,6 +187,24 @@ class BosqueConectividadTests(unittest.TestCase):
         self.assertEqual(resultado["conexiones_geojson"]["features"], [])
         self.assertEqual(resultado["conexiones_potenciales_geojson"]["features"], [])
 
+    def test_area_geometry_collection_se_conserva_sin_fallar(self):
+        area_compuesta = {
+            "type": "GeometryCollection",
+            "geometries": [self.aoi_sintetico()],
+        }
+
+        resultado = analizar_fragmentacion_geojson(
+            bosque_geojson={"type": "FeatureCollection", "features": []},
+            aoi_geojson=area_compuesta,
+        )
+
+        self.assertEqual(resultado["metricas_clase"]["numero_parches"], 0)
+        geometria_resultado = resultado["area_objetivo_geojson"]["features"][0][
+            "geometry"
+        ]
+        self.assertEqual(geometria_resultado["type"], "GeometryCollection")
+        self.assertEqual(len(geometria_resultado["geometries"]), 1)
+
     def test_resultado_considera_bosque_exterior_sin_dibujarlo(self):
         def poligono(oeste, sur, este, norte):
             return {

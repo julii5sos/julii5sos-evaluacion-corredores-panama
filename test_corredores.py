@@ -53,6 +53,26 @@ class CorredoresDatosTests(unittest.TestCase):
         self.assertFalse(resultado["participa_indice_prioridad"])
         self.assertTrue(resultado["participa_prioridad_visita"])
 
+    def test_acepta_area_como_geometry_collection(self):
+        poligono = {
+            "type": "Polygon",
+            "coordinates": [[
+                [-80.02, 8.98],
+                [-80.02, 9.02],
+                [-79.98, 9.02],
+                [-79.98, 8.98],
+                [-80.02, 8.98],
+            ]],
+        }
+        area_compuesta = {
+            "type": "GeometryCollection",
+            "geometries": [poligono],
+        }
+
+        resultado = analizar_interseccion_corredores(area_compuesta)
+
+        self.assertGreater(resultado["area_aoi_ha"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()

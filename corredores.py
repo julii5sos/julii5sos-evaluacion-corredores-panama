@@ -190,9 +190,13 @@ def analizar_interseccion_corredores(aoi_geojson: dict[str, Any]) -> dict[str, A
             "Faltan shapely o pyproj; instale las dependencias de requirements.txt."
         ) from exc
 
-    geometria_aoi = shape(
-        {"type": aoi_geojson["type"], "coordinates": aoi_geojson["coordinates"]}
-    )
+    # Conservar la estructura GeoJSON completa. Earth Engine puede devolver una
+    # GeometryCollection cuando una unidad territorial contiene varias piezas o
+    # geometrías reparadas; ese tipo usa ``geometries`` en lugar de
+    # ``coordinates``.
+    geometria_aoi = shape(aoi_geojson)
+    if geometria_aoi.is_empty:
+        raise ValueError("El área seleccionada no contiene una geometría utilizable.")
     if not geometria_aoi.is_valid:
         geometria_aoi = make_valid(geometria_aoi)
 
