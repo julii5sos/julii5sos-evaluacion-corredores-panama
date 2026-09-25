@@ -21,31 +21,36 @@ def llamadas_de_funcion(nombre_funcion):
 
 
 class ProyeccionesMosaicosTest(unittest.TestCase):
-    def test_mosaico_tmf_usa_respaldo_solo_si_no_hay_cobertura(self):
+    def test_mosaico_tmf_usa_respaldo_homogeneo_sin_consulta_adicional(self):
         llamadas = llamadas_de_funcion("obtener_tmf")
         self.assertIn("setDefaultProjection", llamadas)
-        self.assertIn("If", llamadas)
-        self.assertIn("size", llamadas)
-        self.assertNotIn("merge", llamadas)
+        self.assertIn("merge", llamadas)
+        self.assertIn("map", llamadas)
+        self.assertNotIn("If", llamadas)
+        self.assertNotIn("size", llamadas)
 
-    def test_mosaico_esri_usa_respaldo_solo_si_no_hay_cobertura(self):
+    def test_mosaico_esri_usa_respaldo_homogeneo_sin_consulta_adicional(self):
         llamadas = llamadas_de_funcion("obtener_esri")
         self.assertIn("setDefaultProjection", llamadas)
-        self.assertIn("If", llamadas)
-        self.assertIn("size", llamadas)
-        self.assertNotIn("merge", llamadas)
+        self.assertIn("merge", llamadas)
+        self.assertIn("map", llamadas)
+        self.assertNotIn("If", llamadas)
+        self.assertNotIn("size", llamadas)
 
     def test_gedi_sin_cobertura_usa_respaldo_enmascarado(self):
         llamadas = llamadas_de_funcion("imagen_gedi")
-        self.assertIn("If", llamadas)
-        self.assertIn("size", llamadas)
-        self.assertNotIn("merge", llamadas)
+        self.assertIn("merge", llamadas)
+        self.assertNotIn("If", llamadas)
+        self.assertNotIn("size", llamadas)
         self.assertIn("map", llamadas)
         self.assertIn("updateMask", llamadas)
         self.assertIn("setDefaultProjection", llamadas)
 
         conversion = llamadas_de_funcion("convertir_altura_gedi_float")
         self.assertIn("toFloat", conversion)
+
+        conversion_categorica = llamadas_de_funcion("convertir_imagen_byte")
+        self.assertIn("toByte", conversion_categorica)
 
     def test_reduccion_esri_conserva_proyeccion_de_origen(self):
         llamadas = llamadas_de_funcion("imagen_coincidencia_revision")

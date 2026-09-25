@@ -71,6 +71,7 @@ from modos_app import (
     MODO_INTEGRAL,
     MODO_TERRITORIAL,
     MODOS_ANALISIS,
+    TOLERANCIA_RECORTE_M,
     TIPO_AREA_DIBUJADA,
     TIPO_AREA_SUBCUENCA,
     aplicar_limite_cuenca,
@@ -740,8 +741,8 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-2.1.9-LIMITE-CUENCA"
-METHODOLOGY_VERSION = "MT-2026.12-LIMITE-CUENCA"
+APP_VERSION = "UX-2.1.10-ANALISIS-AGIL"
+METHODOLOGY_VERSION = "MT-2026.13-RECORTE-10M"
 PROYECTO_EE = secreto_opcional("EE_PROJECT", "ee-julissaguevaravega")
 FUENTE_BOSQUE_NOMBRE = "Bosque y otros usos"
 FUENTE_BOSQUE_ORGANIZACION = "SINIA–MiAMBIENTE"
@@ -1585,6 +1586,38 @@ def obtener_area(
     )
 
 
+@st.cache_data(ttl=3600, show_spinner=False)
+def obtener_superficies_area_cache(
+    tipo_area,
+    finca_id=None,
+    subcuenca_nombre=None,
+    geometria_geojson=None,
+):
+    area = obtener_area(
+        tipo_area=tipo_area,
+        finca_id=finca_id,
+        subcuenca_nombre=subcuenca_nombre,
+        geometria_geojson=geometria_geojson,
+    )
+    geometria_solicitada = obtener_geometria_solicitada(
+        tipo_area=tipo_area,
+        finca_id=finca_id,
+        subcuenca_nombre=subcuenca_nombre,
+        geometria_geojson=geometria_geojson,
+    )
+    geometria_analizada = area.geometry(TOLERANCIA_RECORTE_M)
+    superficies = ee.Dictionary(
+        {
+            "analizada": geometria_analizada.area(TOLERANCIA_RECORTE_M).divide(10000),
+            "solicitada": geometria_solicitada.area(TOLERANCIA_RECORTE_M).divide(10000),
+        }
+    ).getInfo()
+    return {
+        "analizada": float(superficies.get("analizada") or 0.0),
+        "solicitada": float(superficies.get("solicitada") or 0.0),
+    }
+
+
 def serializar_poligono_dibujado(dibujo):
     geometria = dibujo.get("geometry", dibujo) if dibujo else None
     if not isinstance(geometria, dict):
@@ -1634,12 +1667,19 @@ def obtener_limites_geojson(contenido):
     ]
 
 
+def convertir_imagen_byte(imagen):
+    """Uniforma las colecciones categóricas antes de añadir un respaldo."""
+
+    return ee.Image(imagen).toByte()
+
+
 def obtener_tmf(anio, geometria):
     nombre_banda = f"Dec{anio}"
     coleccion_tmf = (
         ee.ImageCollection(TMF_ASSET)
         .filterBounds(geometria)
         .select([nombre_banda], [nombre_banda])
+        .map(convertir_imagen_byte)
     )
     respaldo = (
         ee.Image.constant(0)
@@ -1649,13 +1689,9 @@ def obtener_tmf(anio, geometria):
         .setDefaultProjection("EPSG:4326", None, 30)
     )
     return (
-        ee.Image(
-            ee.Algorithms.If(
-                coleccion_tmf.size().gt(0),
-                coleccion_tmf.mosaic(),
-                respaldo,
-            )
-        )
+        coleccion_tmf
+        .merge(ee.ImageCollection.fromImages([respaldo]))
+        .mosaic()
         .rename(f"tmf_{anio}")
         .clip(geometria)
     )
@@ -1672,6 +1708,7 @@ def obtener_esri(anio, geometria):
         coleccion_anual_esri
         .filterBounds(geometria)
         .select([0], [nombre_banda])
+        .map(convertir_imagen_byte)
     )
     respaldo = (
         ee.Image.constant(0)
@@ -1681,13 +1718,9 @@ def obtener_esri(anio, geometria):
         .setDefaultProjection("EPSG:4326", None, 10)
     )
     return (
-        ee.Image(
-            ee.Algorithms.If(
-                coleccion_esri.size().gt(0),
-                coleccion_esri.mosaic(),
-                respaldo,
-            )
-        )
+        coleccion_esri
+        .merge(ee.ImageCollection.fromImages([respaldo]))
+        .mosaic()
         .rename(nombre_banda)
         .clip(geometria)
     )
@@ -1894,13 +1927,9 @@ def imagen_gedi(geometria):
         .setDefaultProjection("EPSG:4326", None, 100)
     )
     return (
-        ee.Image(
-            ee.Algorithms.If(
-                coleccion_gedi.size().gt(0),
-                coleccion_gedi.mosaic(),
-                respaldo,
-            )
-        )
+        coleccion_gedi
+        .merge(ee.ImageCollection.fromImages([respaldo]))
+        .mosaic()
         .rename("altura_dosel")
         .clip(geometria)
     )
@@ -2069,7 +2098,7 @@ def ejecutar_analisis(
         subcuenca_nombre=subcuenca_nombre,
         geometria_geojson=geometria_geojson,
     )
-    geometria = area_fc.geometry()
+    geometria = area_fc.geometry(TOLERANCIA_RECORTE_M)
 
     tmf = obtener_tmf(anio_tmf_diagnostico, geometria)
     esri_inicial = obtener_esri(anio_esri_inicial, geometria)
@@ -2417,7 +2446,7 @@ def generar_mapas_reporte(
         geometria_geojson=geometria_geojson,
     )
 
-    geometria = area_fc.geometry()
+    geometria = area_fc.geometry(TOLERANCIA_RECORTE_M)
     # El número de intento forma parte de la clave de caché y permite reintentar
     # si Earth Engine no entrega alguna miniatura temporalmente.
     tmf = obtener_tmf(anio_tmf_diagnostico, geometria)
@@ -4499,21 +4528,15 @@ try:
         subcuenca_seleccionada,
         geometria_dibujada_json,
     )
-    geometria_solicitada = obtener_geometria_solicitada(
+    superficies = obtener_superficies_area_cache(
         tipo_area,
         finca_seleccionada,
         subcuenca_seleccionada,
         geometria_dibujada_json,
     )
-    geometria = area_seleccionada.geometry()
-    superficies = ee.Dictionary(
-        {
-            "analizada": geometria.area(1).divide(10000),
-            "solicitada": geometria_solicitada.area(1).divide(10000),
-        }
-    ).getInfo()
-    superficie_ha = float(superficies.get("analizada") or 0.0)
-    superficie_original_ha = float(superficies.get("solicitada") or 0.0)
+    geometria = area_seleccionada.geometry(TOLERANCIA_RECORTE_M)
+    superficie_ha = superficies["analizada"]
+    superficie_original_ha = superficies["solicitada"]
     if superficie_ha <= 0:
         st.error(
             "El área seleccionada no intersecta la cuenca. Seleccione otra unidad o "

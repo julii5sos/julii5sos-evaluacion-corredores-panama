@@ -6,6 +6,7 @@ MODO_INTEGRAL = "integral"
 
 TIPO_AREA_SUBCUENCA = "Subcuenca"
 TIPO_AREA_DIBUJADA = "Dibujar polígono en el mapa"
+TOLERANCIA_RECORTE_M = 10
 
 
 def area_debe_recortarse_a_cuenca(tipo_area):
@@ -18,7 +19,7 @@ def aplicar_limite_cuenca(tipo_area, geometria, geometria_cuenca):
     """Devuelve únicamente la parte de la unidad ubicada dentro de la cuenca."""
 
     if area_debe_recortarse_a_cuenca(tipo_area):
-        return geometria.intersection(geometria_cuenca, 1)
+        return geometria.intersection(geometria_cuenca, TOLERANCIA_RECORTE_M)
     return geometria
 
 MODOS_ANALISIS = {

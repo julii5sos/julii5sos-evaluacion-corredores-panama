@@ -58,7 +58,7 @@ class ModosInterfazTests(unittest.TestCase):
         )
 
         self.assertEqual(resultado, "geometria-recortada")
-        self.assertEqual(geometria.intersecciones, [("limite-cuenca", 1)])
+        self.assertEqual(geometria.intersecciones, [("limite-cuenca", 10)])
         self.assertTrue(area_debe_recortarse_a_cuenca(TIPO_AREA_SUBCUENCA))
 
     def test_poligono_dibujado_se_recorta_a_la_cuenca(self):
@@ -71,7 +71,7 @@ class ModosInterfazTests(unittest.TestCase):
         )
 
         self.assertEqual(resultado, "geometria-recortada")
-        self.assertEqual(geometria.intersecciones, [("limite-cuenca", 1)])
+        self.assertEqual(geometria.intersecciones, [("limite-cuenca", 10)])
         self.assertTrue(area_debe_recortarse_a_cuenca(TIPO_AREA_DIBUJADA))
 
     def test_finca_se_recorta_a_la_cuenca(self):
