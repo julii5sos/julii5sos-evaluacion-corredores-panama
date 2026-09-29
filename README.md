@@ -41,8 +41,11 @@ La aplicación orienta revisiones territoriales. No es una certificación, no de
   la ruta potencial hacia un corredor de referencia. Las leyendas quedan fuera del
   mapa y la evidencia técnica permanece al final.
 
-El índice satelital de cambios no se altera. La prioridad de visita lo conserva
-como componente dominante y añade hasta 1.5 puntos de valor estratégico: hasta
+El índice satelital de cambios integra JRC, Hansen, ESRI, GEDI y una señal
+corroborativa de disminución NDVI 2020-2025, con un máximo de 6.5 puntos. NDVI
+aporta como máximo 0.5 y exige extensión, proporción y cobertura válida mínimas.
+La prioridad de visita conserva este índice como componente dominante y añade
+hasta 1.5 puntos de valor estratégico: hasta
 1.0 por la proporción del área dentro de corredores y 0.5 por pertenencia al
 Corredor Biológico Mesoamericano. Un corredor sin señales suficientes de cambio
 nunca genera por sí solo una prioridad alta. La fragmentación no recibe un peso

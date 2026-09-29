@@ -41,12 +41,13 @@ class IndicePrioridadTest(unittest.TestCase):
             contexto["conexion_corredor"] = conexion_corredor
         return contexto
 
-    def calcular(self, tmf=False, hansen=False, esri=False, gedi=False):
+    def calcular(self, tmf=False, hansen=False, esri=False, gedi=False, ndvi=False):
         return calcular_indice_prioridad(
             senal_tmf=tmf,
             senal_hansen=hansen,
             senal_esri=esri,
             senal_gedi=gedi,
+            senal_ndvi=ndvi,
         )
 
     def test_pesos_metodologicos(self):
@@ -54,8 +55,8 @@ class IndicePrioridadTest(unittest.TestCase):
         self.assertEqual(PESOS_INDICE["hansen"], 2.0)
         self.assertEqual(PESOS_INDICE["esri"], 1.5)
         self.assertEqual(PESOS_INDICE["gedi"], 0.5)
-        self.assertEqual(PESOS_INDICE["ndvi"], 0.0)
-        self.assertEqual(PUNTAJE_MAXIMO, 6.0)
+        self.assertEqual(PESOS_INDICE["ndvi"], 0.5)
+        self.assertEqual(PUNTAJE_MAXIMO, 6.5)
 
     def test_periodos_del_diagnostico_son_fijos(self):
         self.assertEqual(PERIODOS_ANALISIS["referencia"], 2025)
@@ -63,6 +64,8 @@ class IndicePrioridadTest(unittest.TestCase):
         self.assertEqual(PERIODOS_ANALISIS["hansen_diagnostico"], 2025)
         self.assertEqual(PERIODOS_ANALISIS["esri_inicial"], 2017)
         self.assertEqual(PERIODOS_ANALISIS["esri_final"], 2024)
+        self.assertEqual(PERIODOS_ANALISIS["ndvi_inicial"], 2020)
+        self.assertEqual(PERIODOS_ANALISIS["ndvi_final"], 2025)
         self.assertEqual(PERIODOS_ANALISIS["ndvi_final_visual"], 2025)
 
     def test_mapa_coincidencia_es_indicativo_y_no_cambia_indice(self):
@@ -80,7 +83,7 @@ class IndicePrioridadTest(unittest.TestCase):
             self.assertRegex(clase["color"], r"^#[0-9A-Fa-f]{6}$")
             self.assertTrue(clase["etiqueta"])
             self.assertTrue(clase["interpretacion"])
-        self.assertEqual(PUNTAJE_MAXIMO, 6.0)
+        self.assertEqual(PUNTAJE_MAXIMO, 6.5)
 
     def test_escala_ndvi_documenta_cinco_intervalos(self):
         self.assertEqual(len(CLASES_VIGOR_NDVI), 5)
@@ -117,14 +120,21 @@ class IndicePrioridadTest(unittest.TestCase):
             hansen=True,
             esri=True,
             gedi=True,
+            ndvi=True,
         )
 
         self.assertEqual(aportes, PESOS_INDICE)
-        self.assertEqual(puntaje, 6.0)
+        self.assertEqual(puntaje, 6.5)
         self.assertEqual(prioridad, "Alta")
 
     def test_gedi_solo_genera_prioridad_preventiva(self):
         _, puntaje, prioridad = self.calcular(gedi=True)
+        self.assertEqual(puntaje, 0.5)
+        self.assertEqual(prioridad, "Preventiva")
+
+    def test_ndvi_solo_genera_prioridad_preventiva(self):
+        aportes, puntaje, prioridad = self.calcular(ndvi=True)
+        self.assertEqual(aportes["ndvi"], 0.5)
         self.assertEqual(puntaje, 0.5)
         self.assertEqual(prioridad, "Preventiva")
 
@@ -290,6 +300,9 @@ class IndicePrioridadTest(unittest.TestCase):
             "gedi_altura_media_m": 20.0,
             "gedi_cobertura_valida_pct": 100.0,
             "linea_base_arborea_pct": 100.0,
+            "ndvi_disminucion_ha": 0.0,
+            "ndvi_disminucion_pct": 0.0,
+            "ndvi_cobertura_valida_pct": 100.0,
         }
         valores.update(cambios)
         return evaluar_senales(**valores)
@@ -321,21 +334,38 @@ class IndicePrioridadTest(unittest.TestCase):
         self.assertTrue(senales["tmf"])
 
     def test_gedi_requiere_los_tres_criterios(self):
-        senales, disponible = self.evaluar(
+        senales, disponibilidad = self.evaluar(
             gedi_altura_media_m=7.9,
             gedi_cobertura_valida_pct=20.0,
             linea_base_arborea_pct=10.0,
         )
-        self.assertTrue(disponible)
+        self.assertTrue(disponibilidad["gedi"])
         self.assertTrue(senales["gedi"])
 
-        senales, disponible = self.evaluar(
+        senales, disponibilidad = self.evaluar(
             gedi_altura_media_m=7.9,
             gedi_cobertura_valida_pct=19.9,
             linea_base_arborea_pct=10.0,
         )
-        self.assertFalse(disponible)
+        self.assertFalse(disponibilidad["gedi"])
         self.assertFalse(senales["gedi"])
+
+    def test_ndvi_exige_extension_porcentaje_y_cobertura(self):
+        senales, disponibilidad = self.evaluar(
+            ndvi_disminucion_ha=0.12,
+            ndvi_disminucion_pct=5.0,
+            ndvi_cobertura_valida_pct=70.0,
+        )
+        self.assertTrue(disponibilidad["ndvi"])
+        self.assertTrue(senales["ndvi"])
+
+        senales, disponibilidad = self.evaluar(
+            ndvi_disminucion_ha=0.12,
+            ndvi_disminucion_pct=5.0,
+            ndvi_cobertura_valida_pct=69.9,
+        )
+        self.assertFalse(disponibilidad["ndvi"])
+        self.assertFalse(senales["ndvi"])
 
     def consistencia(self, **cambios):
         valores = {

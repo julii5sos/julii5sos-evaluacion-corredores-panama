@@ -19,7 +19,7 @@ determinación de cumplimiento EUDR.
 | Hansen Global Forest Change 2025 | 30 m | Pérdida anual de cobertura arbórea |
 | ESRI Land Use/Land Cover | 10 m | Transición de la clase árboles a otra cobertura |
 | Altura de dosel GEDI / OpenForis | 100 m | Contexto estructural y cobertura válida |
-| Sentinel-2 SR Harmonized | 10 m | NDVI y cambio de vigor vegetal, solo visual |
+| Sentinel-2 SR Harmonized | 10 m; resumen a 20 m | NDVI y disminución significativa del vigor vegetal |
 | Corredores de Almanaque Azul, versión publicada 2024.05 | Vector | Valor estratégico y ubicación respecto a corredores |
 | SINIA–MiAMBIENTE, Bosque y otros usos 2021 | Vector aportado | Fragmentación, red de parches y foco espacial de la visita |
 
@@ -39,7 +39,7 @@ Para que todas las áreas sean comparables, el cálculo usa períodos fijos:
 - ESRI Land Use/Land Cover: transición 2017-2024, porque 2024 es la última
   anualidad disponible en la serie utilizada.
 - GEDI: producto estructural configurado en la metodología.
-- NDVI: evidencia visual hasta 2025 y aporte 0.0 al índice.
+- NDVI: comparación fija 2020-2025; la disminución significativa puede aportar 0.5 al índice.
 
 El valor inicial 2020 del comparador JRC corresponde al año del corte de referencia
 EUDR y 2025 al estado más reciente del producto; ese barrido es exclusivamente
@@ -100,8 +100,14 @@ con disponibilidad espacial insuficiente.
 ### NDVI de Sentinel-2
 
 Se calcula como `(B8 - B4) / (B8 + B4)` sobre compuestos anuales con máscara SCL.
-Se utiliza solo como evidencia visual porque puede responder a estacionalidad,
-humedad, cultivos, pastizales, nubes y sombras. Su aporte al índice es 0.0.
+El diagnóstico compara 2020 con 2025. La señal se activa cuando el NDVI disminuye
+al menos 0.15 desde píxeles con vigor inicial mayor o igual a 0.4, la superficie
+afectada alcanza simultáneamente 0.12 ha —tres celdas del resumen a 20 m— y 5% del área, y existen datos válidos en
+al menos 70% del territorio evaluado. El aporte máximo es 0.5.
+
+La regla es corroborativa: NDVI también puede responder a estacionalidad, humedad,
+cultivos, pastizales, nubes y sombras. Por ello recibe el menor peso y no se incorpora
+al mapa de coincidencia espacial de las tres fuentes principales.
 
 La clasificación visual utilizada en el mapa y el informe es:
 
@@ -128,14 +134,14 @@ Cada fuente puede sumar una sola vez:
 | Hansen GFC | 2.0 |
 | ESRI LULC | 1.5 |
 | GEDI | 0.5 |
-| NDVI | 0.0 |
+| NDVI | 0.5 |
 
 La fórmula es:
 
-`puntaje = 2·JRC + 2·Hansen + 1.5·ESRI + 0.5·GEDI`
+`puntaje = 2·JRC + 2·Hansen + 1.5·ESRI + 0.5·GEDI + 0.5·NDVI`
 
 donde cada variable vale `1` si su señal está activa y `0` en caso contrario. El
-puntaje máximo es 6.0. No se suman áreas, píxeles ni subcriterios adicionales al
+puntaje máximo es 6.5. No se suman áreas, píxeles ni subcriterios adicionales al
 peso de una misma fuente.
 
 ## Reglas de prioridad
@@ -188,16 +194,16 @@ Las tres imágenes binarias se suman y producen:
 | 2 | Coincidencia de dos fuentes | Sector de revisión prioritaria |
 | 3 | Coincidencia de tres fuentes | Sector con coincidencia espacial de JRC, Hansen y ESRI |
 
-GEDI y NDVI no participan en esta superposición porque son fuentes de contexto y
-apoyo visual, respectivamente. El mapa no agrega puntos, no modifica la prioridad,
-no demuestra causalidad y no sustituye la revisión documental, imágenes recientes
-o verificación de campo.
+GEDI y NDVI no participan en esta superposición: GEDI aporta contexto estructural y
+NDVI se evalúa por separado mediante su superficie de disminución. El mapa no agrega
+puntos, no modifica la prioridad, no demuestra causalidad y no sustituye la revisión
+documental, imágenes recientes o verificación de campo.
 
 ## Trazabilidad
 
 Las constantes y funciones se mantienen en `metodologia_indice.py`. Las pruebas de
 `test_metodologia_indice.py` verifican pesos, umbrales, suma única por fuente,
-clasificación, consistencia, exclusión de NDVI e integración estructural sin aumento
+clasificación, consistencia, señal conservadora de NDVI e integración estructural sin aumento
 del puntaje. El registro JSON conserva fuentes,
 períodos, umbrales, justificaciones, pesos, aportes efectivos, estadísticas y reglas
 de prioridad, consistencia y contexto estructural, además de la regla y las
@@ -224,7 +230,7 @@ conectividad funcional para una especie particular.
 La aplicación conserva tres dimensiones visibles para evitar que el contexto
 ecológico se confunda con evidencia de deterioro:
 
-1. **Urgencia por cambios:** el índice satelital original, de 0 a 6 puntos.
+1. **Urgencia por cambios:** el índice satelital, de 0 a 6.5 puntos.
 2. **Valor estratégico del corredor:** hasta 1.5 puntos adicionales.
 3. **Condición estructural 2021:** indica dónde focalizar la visita, sin sumar puntos.
 

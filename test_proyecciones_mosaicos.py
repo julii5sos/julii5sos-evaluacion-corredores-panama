@@ -91,6 +91,15 @@ class ProyeccionesMosaicosTest(unittest.TestCase):
         conversion_categorica = llamadas_de_funcion("convertir_imagen_byte")
         self.assertIn("toByte", conversion_categorica)
 
+    def test_mosaico_ndvi_conserva_proyeccion_valida(self):
+        llamadas = llamadas_de_funcion("obtener_ndvi")
+        self.assertIn("setDefaultProjection", llamadas)
+        self.assertTrue(
+            tiene_metodos_encadenados(
+                "obtener_ndvi", "mosaic", "setDefaultProjection"
+            )
+        )
+
     def test_reduccion_esri_conserva_proyeccion_de_origen(self):
         llamadas = llamadas_de_funcion("imagen_coincidencia_revision")
         self.assertIn("setDefaultProjection", llamadas)

@@ -11,6 +11,8 @@ PERIODOS_ANALISIS = {
     "hansen_diagnostico": 2025,
     "esri_inicial": 2017,
     "esri_final": 2024,
+    "ndvi_inicial": 2020,
+    "ndvi_final": 2025,
     "ndvi_final_visual": 2025,
 }
 
@@ -19,7 +21,7 @@ PESOS_INDICE = {
     "hansen": 2.0,
     "esri": 1.5,
     "gedi": 0.5,
-    "ndvi": 0.0,
+    "ndvi": 0.5,
 }
 
 PUNTAJE_MAXIMO = sum(PESOS_INDICE.values())
@@ -77,6 +79,11 @@ UMBRALES_INDICE = {
     "gedi_dosel_bajo_m": 8.0,
     "gedi_cobertura_minima_pct": 20.0,
     "gedi_linea_base_minima_pct": 10.0,
+    "ndvi_delta_disminucion": -0.15,
+    "ndvi_vigor_inicial_minimo": 0.4,
+    "ndvi_disminucion_ha": 0.12,
+    "ndvi_disminucion_pct": 5.0,
+    "ndvi_cobertura_minima_pct": 70.0,
 }
 
 JUSTIFICACION_UMBRALES = {
@@ -108,9 +115,12 @@ JUSTIFICACION_UMBRALES = {
         "cobertura arbórea previa o con muestreo insuficiente."
     ),
     "ndvi": (
-        "NDVI se mantiene fuera del puntaje porque responde también a "
-        "estacionalidad, humedad, cultivos, pastizales, nubes y sombras. Se usa "
-        "como evidencia visual para orientar la interpretación."
+        "La señal exige una disminución de al menos 0.15 entre los compuestos "
+        "anuales 2020 y 2025, partiendo de NDVI mayor o igual a 0.4. Debe ocupar "
+        "al menos 0.12 ha —tres celdas del resumen a 20 m— y 5% del área, con "
+        "datos válidos en 70% o más. Esta regla "
+        "reduce alertas por píxeles aislados, pero no elimina efectos de humedad, "
+        "estacionalidad, cultivos, pastizales, nubes o sombras."
     ),
 }
 
@@ -133,7 +143,9 @@ JUSTIFICACION_PESOS = {
         "espacial limitada; no se interpreta como detección directa de pérdida."
     ),
     "ndvi": (
-        "Peso 0.0: apoyo visual de vigor vegetal; no modifica el índice."
+        "Peso 0.5: señal corroborativa de disminución del vigor vegetal. Recibe "
+        "menos peso que ESRI y que los productos forestales porque NDVI no "
+        "identifica por sí solo bosque natural ni la causa del cambio."
     ),
 }
 
@@ -200,7 +212,7 @@ REGLAS_CONSISTENCIA = {
 }
 
 # La prioridad de visita es una capa de decisión separada del índice satelital.
-# El cambio observado mantiene el mayor peso (hasta 6 puntos), el corredor
+# El cambio observado mantiene el mayor peso (hasta 6.5 puntos), el corredor
 # aumenta el valor estratégico (hasta 1.5 puntos) y la condición estructural
 # orienta espacialmente la visita sin recibir un peso no calibrado.
 REGLAS_PRIORIDAD_VISITA = {
@@ -612,6 +624,9 @@ def evaluar_senales(
     gedi_altura_media_m,
     gedi_cobertura_valida_pct,
     linea_base_arborea_pct,
+    ndvi_disminucion_ha,
+    ndvi_disminucion_pct,
+    ndvi_cobertura_valida_pct,
 ):
     """Aplica los umbrales metodológicos sin asignar pesos todavía."""
     senal_tmf = (
@@ -639,12 +654,25 @@ def evaluar_senales(
         and linea_base_arborea_pct
         >= UMBRALES_INDICE["gedi_linea_base_minima_pct"]
     )
+    ndvi_disponible = (
+        ndvi_cobertura_valida_pct
+        >= UMBRALES_INDICE["ndvi_cobertura_minima_pct"]
+    )
+    senal_ndvi = (
+        ndvi_disponible
+        and ndvi_disminucion_ha >= UMBRALES_INDICE["ndvi_disminucion_ha"]
+        and ndvi_disminucion_pct >= UMBRALES_INDICE["ndvi_disminucion_pct"]
+    )
     return {
         "tmf": bool(senal_tmf),
         "hansen": bool(senal_hansen),
         "esri": bool(senal_esri),
         "gedi": bool(senal_gedi),
-    }, bool(gedi_disponible)
+        "ndvi": bool(senal_ndvi),
+    }, {
+        "gedi": bool(gedi_disponible),
+        "ndvi": bool(ndvi_disponible),
+    }
 
 
 def calcular_indice_prioridad(
@@ -653,6 +681,7 @@ def calcular_indice_prioridad(
     senal_hansen,
     senal_esri,
     senal_gedi,
+    senal_ndvi=False,
 ):
     """Suma una sola vez el peso de cada fuente cuya señal está activa."""
     senales = {
@@ -660,7 +689,7 @@ def calcular_indice_prioridad(
         "hansen": bool(senal_hansen),
         "esri": bool(senal_esri),
         "gedi": bool(senal_gedi),
-        "ndvi": False,
+        "ndvi": bool(senal_ndvi),
     }
     aportes = {
         fuente: PESOS_INDICE[fuente] if activa else 0.0

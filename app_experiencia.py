@@ -741,8 +741,8 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-2.1.11-PROYECCION-ESTABLE"
-METHODOLOGY_VERSION = "MT-2026.14-PROYECCION-ESTABLE"
+APP_VERSION = "UX-2.2.0-NDVI-PONDERADO"
+METHODOLOGY_VERSION = "MT-2026.15-NDVI-PONDERADO"
 PROYECTO_EE = secreto_opcional("EE_PROJECT", "ee-julissaguevaravega")
 FUENTE_BOSQUE_NOMBRE = "Bosque y otros usos"
 FUENTE_BOSQUE_ORGANIZACION = "SINIA–MiAMBIENTE"
@@ -782,7 +782,10 @@ ANO_TMF_MAX = PERIODOS_ANALISIS["jrc_diagnostico"]
 ANO_DIAG_TMF = PERIODOS_ANALISIS["jrc_diagnostico"]
 ANO_ESRI_MIN = PERIODOS_ANALISIS["esri_inicial"]
 ANO_ESRI_MAX = PERIODOS_ANALISIS["esri_final"]
+ANO_NDVI_INICIAL_ANALISIS = PERIODOS_ANALISIS["ndvi_inicial"]
+ANO_NDVI_FINAL_ANALISIS = PERIODOS_ANALISIS["ndvi_final"]
 ANO_NDVI_MAX = PERIODOS_ANALISIS["ndvi_final_visual"]
+ESCALA_ANALISIS_NDVI_M = 20
 CUTOFF_YEAR = 20
 CUTOFF_LABEL = "31/12/2020"
 
@@ -796,6 +799,8 @@ UMBRAL_ESRI_SALIDA_HA = UMBRALES_INDICE["esri_salida_arboles_ha"]
 UMBRAL_DOSEL_BAJO_M = UMBRALES_INDICE["gedi_dosel_bajo_m"]
 UMBRAL_COBERTURA_GEDI_PCT = UMBRALES_INDICE["gedi_cobertura_minima_pct"]
 UMBRAL_LINEA_BASE_GEDI_PCT = UMBRALES_INDICE["gedi_linea_base_minima_pct"]
+UMBRAL_DELTA_NDVI = UMBRALES_INDICE["ndvi_delta_disminucion"]
+UMBRAL_VIGOR_INICIAL_NDVI = UMBRALES_INDICE["ndvi_vigor_inicial_minimo"]
 
 ESRI_ORIG = [1, 2, 4, 5, 7, 8, 9, 10, 11]
 ESRI_VIS = [1, 2, 3, 4, 5, 6, 7, 8, 9]
@@ -1128,6 +1133,8 @@ def construir_registro_metodologico(
                 "hansen": ANO_HANSEN_MAX,
                 "esri_inicial": ANO_ESRI_MIN,
                 "esri_final": ANO_ESRI_MAX,
+                "ndvi_inicial": ANO_NDVI_INICIAL_ANALISIS,
+                "ndvi_final": ANO_NDVI_FINAL_ANALISIS,
             },
             "visualizacion": {
                 "comparador": modo_comparador,
@@ -1178,7 +1185,7 @@ def construir_registro_metodologico(
                 "asset": "COPERNICUS/S2_SR_HARMONIZED",
                 "bandas": ["B8", "B4", "SCL"],
                 "escala_m": 10,
-                "uso": "visual; no participa en el indice",
+                "uso": "diagnostico corroborativo de disminucion del vigor vegetal",
             },
             {
                 "nombre": "Mapa de conectividad ecologica de Panama",
@@ -1235,6 +1242,7 @@ def construir_registro_metodologico(
             "respuesta_earth_engine": "reducciones agrupadas en una sola respuesta",
             "ndvi": "mediana anual con mascara SCL y respaldo del ano anterior",
             "formula_ndvi": "(B8 - B4) / (B8 + B4)",
+            "ndvi_escala_resumen_m": ESCALA_ANALISIS_NDVI_M,
             "coincidencia_espacial": (
                 "JRC conserva su malla de 30 m; Hansen se reproyecta por vecino "
                 "más cercano y ESRI se agrega desde 10 m por presencia máxima "
@@ -1279,6 +1287,7 @@ def construir_registro_metodologico(
             "senal_hansen": resultados["senal_hansen"],
             "senal_esri": resultados["senal_esri"],
             "senal_gedi": resultados["senal_gedi"],
+            "senal_ndvi": resultados["senal_ndvi"],
             "aportes_indice": resultados["aportes_indice"],
             "consistencia": resultados["consistencia"],
             "corredores": resultados.get("corredores"),
@@ -1300,6 +1309,12 @@ def construir_registro_metodologico(
                 "esri_ganancia_arboles_ha": resultados["esri_ganancia"],
                 "gedi_altura_media_m": resultados["gedi_altura"],
                 "gedi_cobertura_valida_pct": resultados["gedi_cobertura_pct"],
+                "ndvi_inicial_medio": resultados["ndvi_inicial_medio"],
+                "ndvi_final_medio": resultados["ndvi_final_medio"],
+                "ndvi_delta_medio": resultados["ndvi_delta_medio"],
+                "ndvi_disminucion_ha": resultados["ndvi_disminucion"],
+                "ndvi_disminucion_pct": resultados["pct_ndvi_disminucion"],
+                "ndvi_cobertura_valida_pct": resultados["ndvi_cobertura_pct"],
                 "coincidencia_espacial_ha": {
                     "una_fuente": resultados["coincidencia_1_fuente"],
                     "dos_fuentes": resultados["coincidencia_2_fuentes"],
@@ -1798,7 +1813,7 @@ def obtener_ndvi(anio, geometria):
     anterior = mediana_con_fallback(coleccion(anio_respaldo))
     compuesto = ee.ImageCollection.fromImages(
         [fallback, anterior, actual]
-    ).mosaic()
+    ).mosaic().setDefaultProjection("EPSG:4326", None, 10)
 
     return (
         compuesto.normalizedDifference(["B8", "B4"])
@@ -2115,6 +2130,15 @@ def ejecutar_analisis(
         esri_final=esri_final,
     )
     gedi = imagen_gedi(geometria)
+    ndvi_inicial = obtener_ndvi(ANO_NDVI_INICIAL_ANALISIS, geometria)
+    ndvi_final = obtener_ndvi(ANO_NDVI_FINAL_ANALISIS, geometria)
+    delta_ndvi = ndvi_final.subtract(ndvi_inicial).rename("ndvi_delta")
+    mascara_ndvi_valida = ndvi_inicial.mask().And(ndvi_final.mask())
+    disminucion_ndvi = (
+        ndvi_inicial.gte(UMBRAL_VIGOR_INICIAL_NDVI)
+        .And(delta_ndvi.lte(UMBRAL_DELTA_NDVI))
+        .updateMask(mascara_ndvi_valida)
+    )
     pixel_ha = ee.Image.pixelArea().divide(10000)
 
     # Cada fuente se reduce en su propia resolución y proyección. Esto evita
@@ -2153,6 +2177,23 @@ def ejecutar_analisis(
             esri_inicial.eq(2).And(esri_final.eq(2)).unmask(0).multiply(pixel_ha).rename("esri_estable"),
         ]
     )
+    areas_ndvi = ee.Image.cat(
+        [
+            disminucion_ndvi.unmask(0)
+            .multiply(pixel_ha)
+            .rename("ndvi_disminucion"),
+            mascara_ndvi_valida.unmask(0)
+            .multiply(pixel_ha)
+            .rename("ndvi_area_datos"),
+        ]
+    )
+    estadisticas_ndvi = ee.Image.cat(
+        [
+            ndvi_inicial.rename("ndvi_inicial_medio"),
+            ndvi_final.rename("ndvi_final_medio"),
+            delta_ndvi.rename("ndvi_delta_medio"),
+        ]
+    ).updateMask(mascara_ndvi_valida)
 
     # Las reducciones conservan la escala y proyección de cada fuente, pero se
     # agrupan en una sola respuesta para evitar varios viajes de red consecutivos.
@@ -2173,6 +2214,28 @@ def ejecutar_analisis(
                 geometria,
                 10,
                 esri_final.projection(),
+            ),
+            True,
+        )
+        .combine(
+            reducir_superficies(
+                areas_ndvi,
+                geometria,
+                ESCALA_ANALISIS_NDVI_M,
+                ndvi_final.projection(),
+            ),
+            True,
+        )
+        .combine(
+            ee.Dictionary(
+                estadisticas_ndvi.reduceRegion(
+                    reducer=ee.Reducer.mean(),
+                    geometry=geometria,
+                    scale=ESCALA_ANALISIS_NDVI_M,
+                    bestEffort=True,
+                    maxPixels=1e9,
+                    tileScale=4,
+                )
             ),
             True,
         )
@@ -2223,6 +2286,8 @@ def ejecutar_analisis(
         "esri_salida",
         "esri_ganancia",
         "esri_estable",
+        "ndvi_disminucion",
+        "ndvi_area_datos",
     ]
     resultados = {clave: numero(resumen, clave) for clave in claves_areas}
     area_ha = numero(resumen, "area_ha")
@@ -2231,6 +2296,12 @@ def ejecutar_analisis(
     resultados["gedi_area_datos"] = numero(resumen, "gedi_area_datos")
     resultados["gedi_cobertura_pct"] = (
         resultados["gedi_area_datos"] / area_ha * 100 if area_ha else 0
+    )
+    resultados["ndvi_inicial_medio"] = numero(resumen, "ndvi_inicial_medio")
+    resultados["ndvi_final_medio"] = numero(resumen, "ndvi_final_medio")
+    resultados["ndvi_delta_medio"] = numero(resumen, "ndvi_delta_medio")
+    resultados["ndvi_cobertura_pct"] = (
+        resultados["ndvi_area_datos"] / area_ha * 100 if area_ha else 0
     )
     resultados["coincidencia_varias_fuentes"] = (
         resultados["coincidencia_2_fuentes"]
@@ -2252,8 +2323,11 @@ def ejecutar_analisis(
         resultados["esri_ganancia"] / area_ha * 100 if area_ha else 0
     )
     pct_linea_base = resultados["linea_base"] / area_ha * 100 if area_ha else 0
+    pct_ndvi_disminucion = (
+        resultados["ndvi_disminucion"] / area_ha * 100 if area_ha else 0
+    )
 
-    senales, gedi_disponible = evaluar_senales(
+    senales, disponibilidad = evaluar_senales(
         tmf_deforestacion_ha=resultados["tmf_deforestacion"],
         tmf_deforestacion_pct=pct_tmf_defor,
         tmf_degradacion_ha=resultados["tmf_degradacion"],
@@ -2264,17 +2338,22 @@ def ejecutar_analisis(
         gedi_altura_media_m=resultados["gedi_altura"],
         gedi_cobertura_valida_pct=resultados["gedi_cobertura_pct"],
         linea_base_arborea_pct=pct_linea_base,
+        ndvi_disminucion_ha=resultados["ndvi_disminucion"],
+        ndvi_disminucion_pct=pct_ndvi_disminucion,
+        ndvi_cobertura_valida_pct=resultados["ndvi_cobertura_pct"],
     )
     senal_tmf = senales["tmf"]
     senal_hansen = senales["hansen"]
     senal_esri = senales["esri"]
     senal_gedi = senales["gedi"]
+    senal_ndvi = senales["ndvi"]
 
     aportes_indice, puntaje, prioridad = calcular_indice_prioridad(
         senal_tmf=senal_tmf,
         senal_hansen=senal_hansen,
         senal_esri=senal_esri,
         senal_gedi=senal_gedi,
+        senal_ndvi=senal_ndvi,
     )
     consistencia = evaluar_consistencia(
         senal_tmf=senal_tmf,
@@ -2294,11 +2373,14 @@ def ejecutar_analisis(
             "pct_esri_salida": pct_esri_salida,
             "pct_esri_ganancia": pct_esri_ganancia,
             "pct_linea_base": pct_linea_base,
+            "pct_ndvi_disminucion": pct_ndvi_disminucion,
             "senal_tmf": senal_tmf,
             "senal_hansen": senal_hansen,
             "senal_esri": senal_esri,
             "senal_gedi": senal_gedi,
-            "gedi_disponible": gedi_disponible,
+            "senal_ndvi": senal_ndvi,
+            "gedi_disponible": disponibilidad["gedi"],
+            "ndvi_disponible": disponibilidad["ndvi"],
             "aportes_indice": aportes_indice,
             "puntaje": puntaje,
             "prioridad": prioridad,
@@ -2525,7 +2607,8 @@ def generar_mapas_reporte(
                 "Amarillo: señal de 1 fuente | Naranja: coincidencia de 2 fuentes | "
                 "Rojo oscuro: coincidencia de 3 fuentes. Integra JRC TMF 2025, "
                 "Hansen posterior a 2020 y ESRI 2017-2024 en una malla común de "
-                "30 m. GEDI y NDVI no participan; el mapa no modifica el índice."
+                "30 m. GEDI y NDVI no participan en esta suma espacial; el aporte "
+                "NDVI se calcula por separado y este mapa no modifica el índice."
             ),
         ),
     ]
@@ -2728,7 +2811,13 @@ def generar_pdf(
     )
     fuentes = sum(
         bool(valor)
-        for valor in (r["senal_tmf"], r["senal_esri"], r["senal_hansen"], r["senal_gedi"])
+        for valor in (
+            r["senal_tmf"],
+            r["senal_esri"],
+            r["senal_hansen"],
+            r["senal_gedi"],
+            r["senal_ndvi"],
+        )
     )
     resultado_general = (
         "varias señales de cambio que justifican una revisión prioritaria"
@@ -2793,13 +2882,17 @@ def generar_pdf(
         ["Hansen GFC", "Señal" if r["senal_hansen"] else "Sin señal", f"{aportes['hansen']:.1f} / {PESOS_INDICE['hansen']:.1f}"],
         [f"ESRI {anio_esri_inicial}-{anio_esri_final}", "Señal" if r["senal_esri"] else "Sin señal", f"{aportes['esri']:.1f} / {PESOS_INDICE['esri']:.1f}"],
         ["GEDI · altura del dosel", "Contexto" if r["senal_gedi"] else "Sin aporte", f"{aportes['gedi']:.1f} / {PESOS_INDICE['gedi']:.1f}"],
-        [f"NDVI {anio_ndvi_inicial}-{ANO_NDVI_MAX}", "Apoyo visual", "0.0 / 0.0"],
+        [
+            f"NDVI {anio_ndvi_inicial}-{ANO_NDVI_FINAL_ANALISIS}",
+            "Disminución significativa" if r["senal_ndvi"] else "Sin señal",
+            f"{aportes['ndvi']:.1f} / {PESOS_INDICE['ndvi']:.1f}",
+        ],
     ]
     if visita:
         filas_puntaje.append(["Valor estratégico de corredores", "Aporta al total de visita", f"{aporte_corredor:.2f} / 1.5"])
     filas_puntaje.extend(
         [
-            ["Subtotal de cambios", "Suma de JRC + Hansen + ESRI + GEDI", f"{puntaje_cambios:.2f} / {PUNTAJE_MAXIMO:.1f}"],
+            ["Subtotal de cambios", "Suma de JRC + Hansen + ESRI + GEDI + NDVI", f"{puntaje_cambios:.2f} / {PUNTAJE_MAXIMO:.1f}"],
             ["TOTAL INTEGRADO", "Cambios + valor del corredor" if visita else "Índice de cambios", f"{puntaje_integrado:.2f} / {maximo_integrado:.1f}"],
         ]
     )
@@ -3065,7 +3158,14 @@ def generar_pdf(
         ["Hansen GFC", f"Pérdida 2001-2020: {r['hansen_pre']:.2f} ha; posterior al {CUTOFF_LABEL}: {r['hansen_post']:.2f} ha", f"{aportes['hansen']:.1f}/{PESOS_INDICE['hansen']:.1f}"],
         [f"ESRI {anio_esri_inicial}-{anio_esri_final}", f"Árboles finales {r['esri_arboles_final']:.1f} ha; salida {r['esri_salida']:.1f} ha ({r['pct_esri_salida']:.1f}%); ganancia {r['esri_ganancia']:.1f} ha ({pct_ganancia:.1f}%)", f"{aportes['esri']:.1f}/{PESOS_INDICE['esri']:.1f}"],
         ["GEDI", f"Dosel {r['gedi_altura']:.1f} m; datos válidos en {r['gedi_cobertura_pct']:.0f}% del área" if r["gedi_disponible"] else "Datos insuficientes", f"{aportes['gedi']:.1f}/{PESOS_INDICE['gedi']:.1f}"],
-        [f"NDVI {anio_ndvi_inicial}-{ANO_NDVI_MAX}", "Apoyo visual; no modifica el puntaje", "0.0/0.0"],
+        [
+            f"NDVI {anio_ndvi_inicial}-{ANO_NDVI_FINAL_ANALISIS}",
+            f"Media {r['ndvi_inicial_medio']:.3f} → {r['ndvi_final_medio']:.3f}; "
+            f"Δ medio {r['ndvi_delta_medio']:+.3f}; disminución significativa "
+            f"{r['ndvi_disminucion']:.2f} ha ({r['pct_ndvi_disminucion']:.1f}%); "
+            f"datos válidos {r['ndvi_cobertura_pct']:.0f}%",
+            f"{aportes['ndvi']:.1f}/{PESOS_INDICE['ndvi']:.1f}",
+        ],
     ]
     historia.extend(
         [
@@ -3107,7 +3207,7 @@ def generar_pdf(
         [
             Paragraph("Cómo se interpreta", estilos["SeccionFicha"]),
             Paragraph(
-                f"<b>Consistencia entre fuentes.</b> {coincidencia} La superposición espacial se calcula en una malla común de 30 m con JRC, Hansen y ESRI; GEDI y NDVI no participan y el resultado no modifica el puntaje.",
+                f"<b>Consistencia entre fuentes.</b> {coincidencia} La superposición espacial se calcula en una malla común de 30 m con JRC, Hansen y ESRI. GEDI y NDVI no se suman a ese mapa; NDVI aporta de forma separada al índice cuando supera sus umbrales.",
                 estilos["CuerpoFicha"],
             ),
             Paragraph(
@@ -3664,7 +3764,18 @@ def mostrar_resultados(
         bool(resultados[clave])
         for clave in ("senal_tmf", "senal_hansen", "senal_esri")
     )
-    if fuentes_principales == 0:
+    if fuentes_principales == 0 and resultados["senal_ndvi"]:
+        titulo_hallazgo = "NDVI presenta una disminución significativa"
+        detalle_hallazgo = (
+            f"La disminución ocupa {resultados['ndvi_disminucion']:.2f} ha "
+            f"({resultados['pct_ndvi_disminucion']:.1f}% del área). Es una señal "
+            "corroborativa que requiere contraste con cobertura, clima e imágenes recientes."
+        )
+        titulo_ubicacion = "Revise la capa de cambio del vigor vegetal"
+        detalle_ubicacion = (
+            "Una señal NDVI aislada no confirma pérdida de bosque ni identifica su causa."
+        )
+    elif fuentes_principales == 0:
         titulo_hallazgo = "Sin señales principales que eleven la prioridad"
         detalle_hallazgo = (
             "JRC, ESRI y Hansen no superaron los umbrales operativos definidos para esta área."
@@ -3707,6 +3818,12 @@ def mostrar_resultados(
         detalle_ubicacion = (
             "El séptimo mapa las muestra en amarillo como señales de una sola "
             "fuente. Revise cada producto y mantenga una interpretación cautelosa."
+        )
+    elif resultados["senal_ndvi"]:
+        titulo_ubicacion = "La señal NDVI se consulta en su mapa específico"
+        detalle_ubicacion = (
+            "No aparece en el mapa de coincidencia JRC–Hansen–ESRI. Consulte ΔNDVI "
+            "para localizar la disminución y contrastarla con imágenes recientes."
         )
     else:
         titulo_ubicacion = "No se delimitaron sectores en el mapa de coincidencia"
@@ -3788,14 +3905,15 @@ def mostrar_resultados(
         )
     aportes = resultados["aportes_indice"]
     st.markdown("#### Evidencia de cambio territorial")
-    c1, c2, c3, c4 = st.columns(4)
+    c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric("JRC TMF", f"{aportes['tmf']:.1f} / {PESOS_INDICE['tmf']:.1f}")
     c2.metric("Hansen GFC", f"{aportes['hansen']:.1f} / {PESOS_INDICE['hansen']:.1f}")
     c3.metric("ESRI LULC", f"{aportes['esri']:.1f} / {PESOS_INDICE['esri']:.1f}")
     c4.metric("GEDI", f"{aportes['gedi']:.1f} / {PESOS_INDICE['gedi']:.1f}")
+    c5.metric("NDVI", f"{aportes['ndvi']:.1f} / {PESOS_INDICE['ndvi']:.1f}")
     st.caption(
         "Cada fuente puede sumar una sola vez. JRC y Hansen tienen el mayor peso "
-        "(2.0 cada uno); ESRI aporta como máximo 1.5, GEDI 0.5 y NDVI 0.0."
+        "(2.0 cada uno); ESRI aporta como máximo 1.5, GEDI 0.5 y NDVI 0.5."
     )
     consistencia = resultados["consistencia"]
     fuentes_deterioro = ", ".join(consistencia["fuentes_deterioro"]) or "ninguna"
@@ -3860,6 +3978,21 @@ def mostrar_resultados(
                 else "Datos insuficientes"
             ),
         )
+        c1, c2, c3 = st.columns(3)
+        c1.metric(
+            "Disminución significativa NDVI",
+            f"{resultados['ndvi_disminucion']:.2f} ha",
+            f"{resultados['pct_ndvi_disminucion']:.1f}% del área",
+            delta_color="off",
+        )
+        c2.metric(
+            f"ΔNDVI medio {ANO_NDVI_INICIAL_ANALISIS}-{ANO_NDVI_FINAL_ANALISIS}",
+            f"{resultados['ndvi_delta_medio']:+.3f}",
+        )
+        c3.metric(
+            "Cobertura válida NDVI",
+            f"{resultados['ndvi_cobertura_pct']:.0f}%",
+        )
         st.info(
             f"Mapa «Sectores que requieren revisión»: "
             f"{resultados['coincidencia_1_fuente']:.2f} ha con señal de una fuente; "
@@ -3904,8 +4037,12 @@ def mostrar_resultados(
         ),
         (
             "ΔNDVI Sentinel-2",
-            "Solo visualización; aporte 0.0 al índice",
-            False,
+            f"Disminución desde vegetación inicial moderada: "
+            f"{resultados['ndvi_disminucion']:.2f} ha "
+            f"({resultados['pct_ndvi_disminucion']:.1f}%) · "
+            f"Δ medio {resultados['ndvi_delta_medio']:+.3f} · "
+            f"aporte {aportes['ndvi']:.1f}/{PESOS_INDICE['ndvi']:.1f}",
+            resultados["senal_ndvi"],
         ),
     ]
     with detalle:
@@ -3993,7 +4130,8 @@ def mostrar_resultados(
         )
         st.caption(
             "El gráfico representa aportes ponderados, no superficies comparables "
-            "píxel a píxel. NDVI permanece en 0 porque es exclusivamente visual."
+            "píxel a píxel. NDVI es una señal corroborativa y no identifica por sí solo "
+            "bosque natural ni la causa del cambio."
         )
 
 
@@ -4762,7 +4900,8 @@ try:
                 index=len(opciones_final_ndvi) - 1,
             )
             st.sidebar.caption(
-                "Comparación visual de vigor vegetal. NDVI no suma puntos al índice de prioridad."
+                "Comparación visual de vigor vegetal. El período elegido aquí no cambia "
+                f"la señal ponderada, que utiliza {ANO_NDVI_INICIAL_ANALISIS}-{ANO_NDVI_FINAL_ANALISIS}."
             )
     else:
         modo_comparador = "Sin comparador"
@@ -5010,7 +5149,7 @@ try:
             st.markdown(
                 f"- Cambios territoriales con JRC {ANO_DIAG_TMF}, Hansen 2021-{ANO_HANSEN_MAX} "
                 f"y ESRI {ANO_ESRI_MIN}-{ANO_ESRI_MAX}.\n"
-                "- NDVI y GEDI como información complementaria."
+                "- NDVI como señal corroborativa y GEDI como contexto estructural."
             )
         if analiza_conectividad:
             st.markdown(
@@ -5241,7 +5380,7 @@ try:
                             anio_tmf_diagnostico=ANO_DIAG_TMF,
                             anio_esri_inicial=anio_esri_inicial,
                             anio_esri_final=anio_esri_final,
-                            anio_ndvi_inicial=anio_ndvi_inicial,
+                            anio_ndvi_inicial=ANO_NDVI_INICIAL_ANALISIS,
                             intento_cache=intento_informe,
                             _mapas_existentes=(
                                 st.session_state.get("mapas_reporte")
@@ -5265,7 +5404,7 @@ try:
                                 ANO_DIAG_TMF,
                                 ANO_ESRI_MIN,
                                 ANO_ESRI_MAX,
-                                anio_ndvi_inicial,
+                                ANO_NDVI_INICIAL_ANALISIS,
                                 mapas_reporte,
                             )
                             estado_informe.update(
@@ -5753,7 +5892,6 @@ try:
                 f"{hash(geometria_dibujada_json or '')}"
             ),
         )
-
     if errores_capas_tematicas:
         capas_no_disponibles = ", ".join(dict.fromkeys(errores_capas_tematicas))
         mapa_resultados_contenedor.warning(
@@ -5897,7 +6035,7 @@ try:
                 | Hansen Global Forest Change | 2001-{ANO_HANSEN_MAX}; corte {CUTOFF_LABEL} | 30 m | Pérdida de cobertura arbórea |
                 | ESRI Land Use/Land Cover | Diagnóstico {ANO_ESRI_MIN}-{ANO_ESRI_MAX} | 10 m | Transiciones de la clase árboles |
                 | GEDI / OpenForis | Producto disponible | 100 m | Altura y cobertura válida del dosel |
-                | Sentinel-2 SR Harmonized | {periodo_ndvi_visual} | 10 m | Vigor vegetal; apoyo visual |
+                | Sentinel-2 SR Harmonized | Diagnóstico {ANO_NDVI_INICIAL_ANALISIS}-{ANO_NDVI_FINAL_ANALISIS}; mapa {periodo_ndvi_visual} | 10 m; resumen a {ESCALA_ANALISIS_NDVI_M} m | Disminución del vigor vegetal; señal corroborativa |
                 | Almanaque Azul | {catalogo_corredores['version_publicada']} | Vector interpretado | Valor estratégico para planificar visitas |
                 | SINIA–MiAMBIENTE · Bosque y otros usos | {ANO_BOSQUE_REFERENCIA if bosque_automatico_disponible else 'Pendiente de configuración'} | Vector institucional en Earth Engine | Fragmentación y red de parches; contexto |
                 """
@@ -5912,6 +6050,8 @@ try:
                   2021-{ANO_HANSEN_MAX}.
                 - ESRI compara la clase árboles entre **{ANO_ESRI_MIN} y {ANO_ESRI_MAX}**,
                   los extremos de la serie utilizada por el análisis.
+                - NDVI compara compuestos anuales **{ANO_NDVI_INICIAL_ANALISIS}-{ANO_NDVI_FINAL_ANALISIS}**
+                  para medir disminución significativa del vigor vegetal.
                 - Los años seleccionables del mapa son parámetros de visualización y no
                   cambian el índice de prioridad.
                 """
@@ -5927,9 +6067,9 @@ try:
                 f"""
                 1. Cada fuente se procesa en su propia resolución y proyección.
                 2. Las superficies se expresan en hectáreas dentro del área seleccionada.
-                3. Las señales se activan con umbrales documentados: JRC, Hansen, ESRI y GEDI.
+                3. Las señales se activan con umbrales documentados: JRC, Hansen, ESRI, GEDI y NDVI.
                 4. El índice suma cada fuente una sola vez: **JRC 2.0**, **Hansen 2.0**,
-                   **ESRI 1.5**, **GEDI 0.5** y **NDVI 0.0**.
+                   **ESRI 1.5**, **GEDI 0.5** y **NDVI 0.5**.
                 5. La prioridad es **alta desde 3.0**, **media desde 1.5**, **preventiva desde 0.5** y **baja por debajo de 0.5**.
                 6. El mapa **Sectores que requieren revisión** suma, en una malla común
                    de 30 m, las señales binarias de JRC, Hansen y ESRI. Muestra una,
@@ -5951,8 +6091,9 @@ try:
                     puntos hasta contar con umbrales calibrados para el territorio y las
                     especies objetivo.
 
-                El NDVI se calcula como `(B8 - B4) / (B8 + B4)` y se utiliza únicamente
-                como apoyo visual. No modifica el índice de prioridad.
+                El NDVI se calcula como `(B8 - B4) / (B8 + B4)`. Aporta 0.5 cuando
+                la disminución supera conjuntamente los umbrales de magnitud, superficie,
+                proporción y cobertura válida; no identifica por sí solo bosque natural.
                 """
             )
             mostrar_escala_ndvi_metodologia()
@@ -5964,7 +6105,7 @@ try:
                         f"- **Hansen GFC · 2.0:** {JUSTIFICACION_PESOS['hansen']}",
                         f"- **ESRI LULC · 1.5:** {JUSTIFICACION_PESOS['esri']}",
                         f"- **GEDI · 0.5:** {JUSTIFICACION_PESOS['gedi']}",
-                        f"- **NDVI · 0.0:** {JUSTIFICACION_PESOS['ndvi']}",
+                        f"- **NDVI · 0.5:** {JUSTIFICACION_PESOS['ndvi']}",
                     ]
                 )
             )
@@ -5984,7 +6125,8 @@ try:
             st.caption(
                 "Todos los años seleccionables cambian únicamente la visualización. "
                 f"El diagnóstico conserva JRC {ANO_DIAG_TMF}, Hansen 2021-{ANO_HANSEN_MAX} "
-                f"posterior al corte {CUTOFF_LABEL} y ESRI {ANO_ESRI_MIN}-{ANO_ESRI_MAX}."
+                f"posterior al corte {CUTOFF_LABEL}, ESRI {ANO_ESRI_MIN}-{ANO_ESRI_MAX} "
+                f"y NDVI {ANO_NDVI_INICIAL_ANALISIS}-{ANO_NDVI_FINAL_ANALISIS}."
             )
             st.markdown("**Lectura de consistencia entre fuentes**")
             st.markdown(

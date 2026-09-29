@@ -4,7 +4,21 @@ Este historial documenta la evolución de la aplicación UX. Las versiones sigue
 el formato `MAJOR.MINOR.PATCH`: una versión principal, mejoras compatibles y
 correcciones compatibles, respectivamente.
 
-## [1.0.0] - 2026-09-11 — versión actual
+## [2.2.0] - 2026-09-29 — versión actual
+
+### NDVI integrado al índice territorial
+
+- Compara compuestos Sentinel-2 de 2020 y 2025 con máscara SCL.
+- Identifica disminución desde vegetación inicialmente moderada cuando ΔNDVI es
+  menor o igual a -0.15.
+- Exige simultáneamente 0.12 ha, 5% del área y 70% de cobertura válida antes de
+  activar la señal.
+- Incorpora un peso corroborativo de 0.5; el índice satelital pasa a un máximo de
+  6.5 puntos sin modificar el mapa espacial JRC–Hansen–ESRI.
+- Muestra NDVI inicial y final medios, cambio medio, superficie, porcentaje,
+  cobertura válida y aporte en la aplicación, el PDF y el registro metodológico.
+
+## [1.0.0] - 2026-09-11
 
 ### Ficha ejecutiva con cartografía explicativa
 
