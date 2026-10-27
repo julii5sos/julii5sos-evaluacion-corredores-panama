@@ -8,13 +8,15 @@ correcciones compatibles, respectivamente.
 
 ### Navegación por mapa, fuentes y análisis
 
-- Separa la experiencia en **Mapa**, **Análisis**, **Metodología y ayuda** y
-  **Acerca del visor**, manteniendo accesibles las cuatro secciones después de elegir
-  el enfoque.
+- Simplifica la navegación superior a **Mapa**, **Metodología y ayuda** y **Acerca del
+  visor**. Los resultados se abren de forma contextual después de crear la
+  preevaluación, evitando que «Mapa» y «Análisis» muestren la misma portada.
 - Reemplaza el selector genérico de capas por bloques reconocibles para JRC TMF,
   Hansen, ESRI, Sentinel-2/NDVI y GEDI, además de las fuentes de conectividad.
 - Lleva **Crear análisis** al panel lateral y evita volver a construir el mapa cuando
   la persona consulta los resultados.
+- Añade **Ver resultados** y **Volver al mapa** como acciones contextuales; al terminar
+  el cálculo se abre automáticamente la lectura del resultado.
 - Organiza los resultados completos en pestañas y permite preparar una gráfica por
   fuente bajo demanda para reducir el tiempo de carga.
 - Presenta series anuales únicamente cuando tienen sentido metodológico: cambio JRC,

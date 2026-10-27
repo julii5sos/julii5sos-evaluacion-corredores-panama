@@ -23,12 +23,10 @@ st.set_page_config(
 st.session_state["_pagina_configurada"] = True
 
 SECCION_MAPA = "Mapa"
-SECCION_ANALISIS = "Análisis"
 SECCION_METODO = "Metodología y ayuda"
 SECCION_ACERCA = "Acerca del visor"
 SECCIONES_PRINCIPALES = (
     SECCION_MAPA,
-    SECCION_ANALISIS,
     SECCION_METODO,
     SECCION_ACERCA,
 )
@@ -100,10 +98,13 @@ st.markdown(
 def elegir_modo(modo):
     st.session_state["modo_analisis"] = modo
     st.session_state["seccion_tablero"] = SECCION_MAPA
+    st.session_state["mostrar_resultados"] = False
 
 
 def abrir_vista(vista):
     st.session_state["seccion_tablero"] = vista
+    if vista == SECCION_MAPA:
+        st.session_state["mostrar_resultados"] = False
 
 
 def mostrar_cabecera(titulo, subtitulo, descripcion, alcance=None):
@@ -354,6 +355,10 @@ def mostrar_acerca():
     )
 
 
+if st.session_state.get("seccion_tablero") == "Análisis":
+    # Migra sesiones abiertas con la navegación anterior.
+    st.session_state["seccion_tablero"] = SECCION_MAPA
+
 seccion_tablero = st.segmented_control(
     "Navegación principal",
     SECCIONES_PRINCIPALES,
@@ -362,6 +367,14 @@ seccion_tablero = st.segmented_control(
     label_visibility="collapsed",
     width="stretch",
 )
+
+seccion_anterior = st.session_state.get("_seccion_publica_anterior")
+if (
+    seccion_tablero == SECCION_MAPA
+    and seccion_anterior in (SECCION_METODO, SECCION_ACERCA)
+):
+    st.session_state["mostrar_resultados"] = False
+st.session_state["_seccion_publica_anterior"] = seccion_tablero
 
 if seccion_tablero == SECCION_METODO:
     mostrar_metodo()

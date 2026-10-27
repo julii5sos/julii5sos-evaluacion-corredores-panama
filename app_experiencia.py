@@ -3827,8 +3827,17 @@ def mostrar_grafica_por_fuente(
 def establecer_modo_analisis(modo):
     limpiar_estado_resultados()
     st.session_state["modo_analisis"] = modo
+    st.session_state["mostrar_resultados"] = False
     st.session_state.pop("orden_capas_personalizado", None)
     st.session_state.pop("capa_a_reordenar", None)
+
+
+def abrir_resultados_contextuales():
+    st.session_state["mostrar_resultados"] = True
+
+
+def volver_al_mapa():
+    st.session_state["mostrar_resultados"] = False
 
 
 def mostrar_selector_modos():
@@ -4993,7 +5002,9 @@ def mostrar_resultados_fragmentacion(resultados):
 # -----------------------------------------------------------------------------
 
 modo_analisis = st.session_state.get("modo_analisis")
-seccion_tablero = st.session_state.get("seccion_tablero", "Mapa")
+seccion_tablero = (
+    "Análisis" if st.session_state.get("mostrar_resultados", False) else "Mapa"
+)
 if modo_analisis not in MODOS_ANALISIS:
     st.session_state.pop("modo_analisis", None)
     modo_analisis = None
@@ -5021,13 +5032,23 @@ contenido_modo = MODOS_ANALISIS[modo_analisis]
 analiza_cambios = modo_analisis in (MODO_TERRITORIAL, MODO_INTEGRAL)
 analiza_conectividad = modo_analisis in (MODO_CORREDORES, MODO_INTEGRAL)
 mostrar_barra_visor(contenido_modo)
-columna_contexto, columna_cambiar = st.columns([5, 1])
+if seccion_tablero == "Análisis":
+    columna_contexto, columna_volver, columna_cambiar = st.columns([4, 1, 1])
+    columna_volver.button(
+        "Volver al mapa",
+        use_container_width=True,
+        on_click=volver_al_mapa,
+        key="volver_mapa_resultados",
+    )
+else:
+    columna_contexto, columna_cambiar = st.columns([5, 1])
 columna_contexto.caption(
     f"{contenido_modo['pregunta']} · {contenido_modo['resultado']}"
 )
 if columna_cambiar.button("Cambiar análisis", use_container_width=True):
     limpiar_estado_resultados()
     st.session_state.pop("modo_analisis", None)
+    st.session_state["mostrar_resultados"] = False
     st.rerun()
 
 try:
@@ -5643,18 +5664,38 @@ try:
     analisis_actual = (
         st.session_state.get("firma_analisis") == firma_analisis_actual
     )
-    st.sidebar.markdown("## Crear análisis")
-    st.sidebar.caption(
-        "Los controles anteriores cambian la vista. Este botón ejecuta los cálculos "
-        "para el área seleccionada."
-    )
-    solicitar_analisis = st.sidebar.button(
-        "Actualizar análisis" if analisis_actual else "Crear análisis",
-        type="primary",
-        use_container_width=True,
-        key="crear_analisis_panel",
-        help=f"Procesa únicamente la información de {contenido_modo['titulo'].lower()}.",
-    )
+    if seccion_tablero == "Análisis":
+        st.sidebar.markdown("## Resultados")
+        st.sidebar.caption(
+            "Está consultando el resultado preparado para el área seleccionada."
+        )
+        st.sidebar.button(
+            "Volver al mapa",
+            use_container_width=True,
+            key="volver_mapa_sidebar",
+            on_click=volver_al_mapa,
+        )
+        solicitar_analisis = False
+    else:
+        st.sidebar.markdown("## Crear análisis")
+        st.sidebar.caption(
+            "Los controles anteriores cambian la vista. Este botón ejecuta los cálculos "
+            "para el área seleccionada."
+        )
+        solicitar_analisis = st.sidebar.button(
+            "Actualizar análisis" if analisis_actual else "Crear análisis",
+            type="primary",
+            use_container_width=True,
+            key="crear_analisis_panel",
+            help=f"Procesa únicamente la información de {contenido_modo['titulo'].lower()}.",
+        )
+        if analisis_actual:
+            st.sidebar.button(
+                "Ver resultados",
+                use_container_width=True,
+                key="abrir_resultados_sidebar",
+                on_click=abrir_resultados_contextuales,
+            )
 
     if seccion_tablero == "Análisis":
         st.markdown("### Análisis del área seleccionada")
@@ -5768,6 +5809,7 @@ try:
                 resultados_nuevos["modo_analisis"] = modo_analisis
                 st.session_state["resultados_analisis"] = resultados_nuevos
                 st.session_state["firma_analisis"] = firma_analisis_actual
+                st.session_state["mostrar_resultados"] = True
                 if firma_anterior != firma_analisis_actual:
                     st.session_state.pop("pdf_analisis", None)
                     st.session_state.pop("firma_informe", None)

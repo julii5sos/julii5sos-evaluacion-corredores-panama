@@ -53,7 +53,7 @@ class ModosInterfazTests(unittest.TestCase):
 
         self.assertEqual(
             app.segmented_control[0].options,
-            ["Mapa", "Análisis", "Metodología y ayuda", "Acerca del visor"],
+            ["Mapa", "Metodología y ayuda", "Acerca del visor"],
         )
 
         app.segmented_control[0].set_value("Metodología y ayuda").run()
@@ -76,6 +76,7 @@ class ModosInterfazTests(unittest.TestCase):
     def test_la_navegacion_principal_permanece_antes_del_selector_de_enfoque(self):
         codigo = Path("app.py").read_text(encoding="utf-8")
 
+        self.assertNotIn('SECCION_ANALISIS = "Análisis"', codigo)
         bloque_navegacion = codigo.index('seccion_tablero = st.segmented_control(')
         bloque_modo = codigo.index('if modo_analisis is None:')
         bloque_aplicacion = codigo.index('APLICACION_ACTIVA =', bloque_modo)
@@ -91,6 +92,9 @@ class ModosInterfazTests(unittest.TestCase):
         self.assertIn("Área y resultado", codigo)
         self.assertIn("Resultados completos", codigo)
         self.assertIn("Crear análisis", codigo)
+        self.assertIn("Ver resultados", codigo)
+        self.assertIn("Volver al mapa", codigo)
+        self.assertIn('st.session_state["mostrar_resultados"] = True', codigo)
         self.assertIn("Evolución por fuente", codigo)
         self.assertIn("JRC Tropical Moist Forest", codigo)
         self.assertIn("Hansen Global Forest Change", codigo)
