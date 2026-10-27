@@ -42,11 +42,29 @@ class ModosInterfazTests(unittest.TestCase):
         self.assertEqual(
             [boton.label for boton in app.button],
             [
-                "Elegir evaluación territorial",
+                "Elegir preevaluación territorial",
                 "Elegir corredores y conectividad",
-                "Elegir evaluación integral",
+                "Elegir preevaluación integral",
             ],
         )
+
+    def test_navegacion_explica_objetivo_y_metodo_sin_iniciar_el_motor(self):
+        app = AppTest.from_file("app.py", default_timeout=30).run()
+
+        self.assertEqual(
+            app.segmented_control[0].options,
+            ["Preevaluar un área", "Objetivo y alcance", "Método y fuentes"],
+        )
+
+        app.segmented_control[0].set_value("Objetivo y alcance").run()
+        self.assertFalse(app.exception)
+        self.assertIn("¿Para qué sirve esta preevaluación?", app.markdown[1].value)
+        self.assertTrue(any(boton.label == "Comenzar una preevaluación" for boton in app.button))
+
+        app.segmented_control[0].set_value("Método y fuentes").run()
+        self.assertFalse(app.exception)
+        self.assertIn("Cómo se construye la preevaluación", app.markdown[1].value)
+        self.assertTrue(any(boton.label == "Ir a la preevaluación" for boton in app.button))
 
     def test_subcuenca_se_recorta_a_la_cuenca(self):
         geometria = GeometriaPrueba()

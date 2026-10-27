@@ -1,22 +1,30 @@
-# Evaluación territorial y corredores ecológicos de Panamá
+# Preevaluación territorial y corredores ecológicos de Panamá
 
 Aplicación Streamlit con tres rutas de trabajo independientes para que cada
 persona empiece por su pregunta y vea únicamente los controles necesarios:
 
-1. **Evaluación territorial:** señales satelitales de cambio forestal y prioridad de revisión.
+1. **Preevaluación territorial:** indicios satelitales de cambio forestal y atención sugerida.
 2. **Corredores y conectividad:** corredores publicados, fragmentación y conectividad estructural.
-3. **Evaluación integral:** reúne las dos lecturas anteriores para priorizar una visita,
+3. **Preevaluación integral:** reúne las dos lecturas anteriores para orientar una visita,
    sin confundir el cambio territorial con el valor estratégico de los corredores.
 
 Después de elegir la ruta, el área puede ser una finca registrada, una subcuenca
 consultada directamente desde Earth Engine, un polígono dibujado o toda la cuenca.
 
-La aplicación orienta revisiones territoriales. No es una certificación, no determina cumplimiento EUDR y no demuestra por sí sola conectividad funcional para una especie.
+La aplicación produce una **preevaluación indicativa**: ayuda a justificar por qué un
+área merece una revisión más detallada y dónde conviene mirar primero. No confirma
+hallazgos en campo, no es una certificación, no determina cumplimiento EUDR y no
+demuestra por sí sola conectividad funcional para una especie.
 
 ## Qué se añadió en este repositorio
 
-- Pantalla inicial con tres opciones: evaluación territorial, corredores y conectividad,
-  o evaluación integral.
+- Navegación principal con acceso inmediato a **Preevaluar un área**, **Objetivo y
+  alcance** y **Método y fuentes**. Las páginas explicativas no inician Earth Engine.
+- Pantalla inicial con tres opciones: preevaluación territorial, corredores y conectividad,
+  o preevaluación integral.
+- Explicación diferenciada para dos niveles de lectura: recorrido breve y lenguaje
+  cotidiano para personas no especialistas; fuentes, pesos, umbrales y limitaciones
+  bajo demanda para usuarios geoespaciales.
 - Selección de subcuencas desde la colección configurada en Earth Engine, además de
   fincas, polígonos dibujados y la cuenca completa.
 - 22 polígonos de corredores y 14 puntos críticos publicados por Almanaque Azul.
@@ -54,23 +62,24 @@ conectores, separaciones y componentes aislados.
 
 ## Flujo de uso
 
-1. Elija **Evaluación territorial**, **Corredores y conectividad** o **Evaluación integral**.
-2. Seleccione una finca, una subcuenca, dibuje un polígono o use toda la cuenca configurada.
-3. Ejecute el análisis. La aplicación procesa solo las fuentes necesarias y muestra
+1. Si lo necesita, consulte **Objetivo y alcance** o **Método y fuentes** antes de conectarse a los datos.
+2. Elija **Preevaluación territorial**, **Corredores y conectividad** o **Preevaluación integral**.
+3. Seleccione una finca, una subcuenca, dibuje un polígono o use toda la cuenca configurada.
+4. Genere la preevaluación. La aplicación procesa solo las fuentes necesarias y muestra
    primero una conclusión breve, los indicadores principales y el mapa.
-4. En las opciones con conectividad, la aplicación conserva el área elegida para las hectáreas, pero revisa también un
+5. En las opciones con conectividad, la aplicación conserva el área elegida para las hectáreas, pero revisa también un
    entorno exterior de hasta 5 km para evitar falsos aislamientos y buscar una cadena
    estructural hacia un corredor publicado.
-5. Use **Capas disponibles en el mapa** para encender o apagar por separado la
+6. Use **Capas disponibles en el mapa** para encender o apagar por separado la
    cobertura completa de bosque del área y su entorno, los fragmentos evaluados,
    la estructura esencial, la ruta potencial hacia un corredor y las separaciones.
    La ruta naranja es una orientación estructural para revisar, no un corredor nuevo
    ni evidencia de movimiento de fauna. El bosque exterior que se muestre no se suma
    a las hectáreas informadas para el polígono.
-6. Abra, solo si los necesita, los detalles de **Cambios satelitales**, **Corredores
+7. Abra, solo si los necesita, los detalles de **Cambios satelitales**, **Corredores
    ecológicos** o **Bosque y conectividad**. Allí se conservan las métricas, gráficos,
    tablas y archivos descargables del análisis completo.
-7. En la evaluación territorial o integral, prepare la ficha PDF. La primera página explica el puntaje y la acción; las dos
+8. En la preevaluación territorial o integral, prepare la ficha PDF. La primera página explica el puntaje y la acción; las dos
    siguientes separan fragmentación y conectividad para evitar que las líneas oculten
    el patrón del bosque.
 

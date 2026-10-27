@@ -24,30 +24,30 @@ def aplicar_limite_cuenca(tipo_area, geometria, geometria_cuenca):
 
 MODOS_ANALISIS = {
     MODO_TERRITORIAL: {
-        "titulo": "Evaluación territorial",
-        "pregunta": "¿Existen cambios que requieren revisión?",
+        "titulo": "Preevaluación territorial",
+        "pregunta": "¿Qué señales justifican revisar el área?",
         "descripcion": (
-            "Examina señales satelitales de cambio del bosque y genera una prioridad "
-            "territorial sin sumar el valor de los corredores."
+            "Identifica indicios satelitales de cambio del bosque y propone un nivel "
+            "inicial de atención, sin sumar el valor de los corredores."
         ),
-        "resultado": "Prioridad territorial, mapa de cambios y evidencia por fuente.",
+        "resultado": "Atención sugerida, mapa de indicios y evidencia por fuente.",
     },
     MODO_CORREDORES: {
         "titulo": "Corredores y conectividad",
-        "pregunta": "¿Cómo está conectado o fragmentado el bosque?",
+        "pregunta": "¿Qué elementos sostienen o limitan la conectividad?",
         "descripcion": (
             "Revisa corredores publicados, fragmentos de bosque, conexiones, "
-            "separaciones y rutas estructurales potenciales."
+            "separaciones y rutas estructurales potenciales, sin afirmar movimiento de fauna."
         ),
         "resultado": "Lectura de conectividad, mapa de fragmentos y descargas geográficas.",
     },
     MODO_INTEGRAL: {
-        "titulo": "Evaluación integral",
-        "pregunta": "¿Dónde conviene priorizar una visita considerando todo?",
+        "titulo": "Preevaluación integral",
+        "pregunta": "¿Dónde conviene enfocar una revisión considerando ambas lecturas?",
         "descripcion": (
-            "Reúne cambios territoriales, corredores y estructura del bosque en una "
-            "conclusión breve, con un mapa preparado automáticamente."
+            "Reúne indicios territoriales, corredores y estructura del bosque en una "
+            "orientación inicial, con un mapa preparado automáticamente."
         ),
-        "resultado": "Prioridad integrada, mapa resumido y acción recomendada.",
+        "resultado": "Atención integrada sugerida, mapa resumido y siguiente paso.",
     },
 }

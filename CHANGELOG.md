@@ -4,7 +4,25 @@ Este historial documenta la evolución de la aplicación UX. Las versiones sigue
 el formato `MAJOR.MINOR.PATCH`: una versión principal, mejoras compatibles y
 correcciones compatibles, respectivamente.
 
-## [2.2.0] - 2026-09-29 — versión actual
+## [2.3.0] - 2026-10-27 — versión actual
+
+### Preevaluación guiada y alcance explícito
+
+- Sustituye los títulos **Evaluación territorial** y **Evaluación integral** por
+  **Preevaluación territorial** y **Preevaluación integral** para evitar que el
+  resultado se interprete como un hallazgo ya verificado en campo.
+- Añade navegación persistente entre **Preevaluar un área**, **Objetivo y alcance**
+  y **Método y fuentes**.
+- Explica que el producto sirve para justificar una revisión posterior, ubicar dónde
+  conviene mirar y documentar los indicios que respaldan esa orientación.
+- Separa explícitamente lo que la aplicación puede orientar de lo que requiere
+  conocimiento local, documentos, imágenes recientes o validación de campo.
+- Ofrece una lectura sencilla de cinco pasos y conserva pesos, umbrales, fuentes y
+  limitaciones en secciones opcionales para usuarios técnicos.
+- Las páginas explicativas se muestran sin iniciar Earth Engine, reduciendo la espera
+  para quienes solo necesitan comprender el objetivo o el método.
+
+## [2.2.0] - 2026-09-29
 
 ### NDVI integrado al índice territorial
 

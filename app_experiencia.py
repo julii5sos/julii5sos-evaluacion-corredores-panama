@@ -82,7 +82,7 @@ from reporte_cartografico import crear_mapa_conectividad, crear_mapa_fragmentaci
 
 if not st.session_state.get("_pagina_configurada"):
     st.set_page_config(
-        page_title="Evaluación territorial y corredores | Panamá",
+        page_title="Preevaluación territorial y corredores | Panamá",
         page_icon=":material/map:",
         layout="wide",
         initial_sidebar_state="expanded",
@@ -741,7 +741,7 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-2.2.0-NDVI-PONDERADO"
+APP_VERSION = "UX-2.3.0-PREEVALUACION-GUIADA"
 METHODOLOGY_VERSION = "MT-2026.15-NDVI-PONDERADO"
 PROYECTO_EE = secreto_opcional("EE_PROJECT", "ee-julissaguevaravega")
 FUENTE_BOSQUE_NOMBRE = "Bosque y otros usos"
@@ -2637,8 +2637,8 @@ def generar_pdf(
         leftMargin=1.45 * cm,
         topMargin=1.35 * cm,
         bottomMargin=1.55 * cm,
-        title="Ficha ejecutiva de evaluación territorial y conectividad",
-        author="Aplicación de evaluación territorial y corredores",
+        title="Ficha ejecutiva de preevaluación territorial y conectividad",
+        author="Aplicación de preevaluación territorial y corredores",
     )
 
     tinta = colors.HexColor("#123b45")
@@ -3278,8 +3278,8 @@ def mostrar_selector_modos():
     st.markdown(
         """
         <div class="selector-modos-intro">
-          <h2>¿Qué desea analizar?</h2>
-          <p>Elija una opción. Solo verá los controles y resultados necesarios para esa pregunta.</p>
+          <h2>¿Qué desea preevaluar?</h2>
+          <p>Elija un enfoque. Solo verá los controles y resultados necesarios para esa pregunta.</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -3315,9 +3315,9 @@ def mostrar_selector_modos():
 
 def mostrar_flujo(paso_actual, contenedor=None):
     pasos = [
-        ("Objetivo", "Elija el tipo de análisis."),
+        ("Objetivo", "Elija qué desea preevaluar."),
         ("Área", "Seleccione la unidad territorial."),
-        ("Analizar", "Procese únicamente la información necesaria."),
+        ("Preevaluar", "Procese únicamente la información necesaria."),
         ("Revisar", "Consulte la conclusión, el mapa y los detalles."),
     ]
     tarjetas = []
@@ -3342,7 +3342,7 @@ def mostrar_flujo(paso_actual, contenedor=None):
         )
     destino = contenedor if contenedor is not None else st
     destino.markdown(
-        '<div class="flujo-pasos" aria-label="Progreso del análisis">'
+        '<div class="flujo-pasos" aria-label="Progreso de la preevaluación">'
         + "".join(tarjetas)
         + "</div>",
         unsafe_allow_html=True,
@@ -3391,7 +3391,7 @@ def mostrar_error_amigable(error):
             "La aplicación no pudo completar la conexión inicial con las fuentes territoriales. "
             "Sus datos y selecciones no causaron este problema."
         )
-    st.error("El visor no pudo iniciar el análisis seleccionado.")
+    st.error("El visor no pudo iniciar la preevaluación seleccionada.")
     st.markdown(f"**Qué ocurrió:** {explicacion}")
     st.markdown(
         """
@@ -4444,8 +4444,8 @@ if modo_analisis is None:
     st.markdown(
         """
         <div class="cabecera-app">
-          <h1>Evaluación territorial y corredores</h1>
-          <div class="subtitulo-app">Una entrada sencilla para tres preguntas distintas</div>
+          <h1>Preevaluación territorial y corredores</h1>
+          <div class="subtitulo-app">Evidencia inicial para orientar dónde conviene revisar</div>
           <p>Primero elija qué necesita conocer. Después seleccione una finca, una
           subcuenca, un polígono o toda la cuenca.</p>
           <div class="alcance-app">Resultado indicativo · requiere interpretación y
@@ -4456,7 +4456,7 @@ if modo_analisis is None:
     )
     mostrar_flujo(1)
     mostrar_selector_modos()
-    st.sidebar.info("Empiece eligiendo el tipo de análisis en la página principal.")
+    st.sidebar.info("Empiece eligiendo el enfoque de preevaluación en la página principal.")
     st.stop()
 
 contenido_modo = MODOS_ANALISIS[modo_analisis]
@@ -4481,7 +4481,7 @@ columna_modo.markdown(
     f'{html_lib.escape(contenido_modo["resultado"])}</div>',
     unsafe_allow_html=True,
 )
-if columna_cambiar.button("Cambiar análisis", use_container_width=True):
+if columna_cambiar.button("Cambiar enfoque", use_container_width=True):
     limpiar_estado_resultados()
     st.session_state.pop("modo_analisis", None)
     st.rerun()
@@ -4568,7 +4568,7 @@ try:
             help="Seleccione la subcuenca que desea evaluar.",
         )
     elif tipo_area == TIPO_AREA_DIBUJADA:
-        st.subheader("1. Dibuje el área que desea evaluar")
+        st.subheader("1. Dibuje el área que desea preevaluar")
         st.markdown(
             "Seleccione la herramienta de polígono en el mapa, marque los vértices y "
             "haga clic en el primer punto para cerrar la figura. El área se limitará "
@@ -5125,13 +5125,13 @@ try:
     )
     flujo_contenedor = st.empty()
 
-    st.markdown("### Área lista para analizar")
+    st.markdown("### Área lista para preevaluar")
     st.markdown(
         f"""
         <div class="contexto-analisis">
           <div class="contexto-item"><small>Área</small><strong>{html_lib.escape(nombre_area)}</strong></div>
           <div class="contexto-item"><small>Superficie</small><strong>{superficie_ha:,.1f} ha</strong></div>
-          <div class="contexto-item"><small>Análisis</small><strong>{html_lib.escape(contenido_modo['titulo'])}</strong></div>
+          <div class="contexto-item"><small>Enfoque</small><strong>{html_lib.escape(contenido_modo['titulo'])}</strong></div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -5161,18 +5161,18 @@ try:
             "permanecen disponibles después de ejecutar."
         )
 
-    st.subheader("Analizar esta área")
+    st.subheader("Preparar la preevaluación")
     st.caption(
         f"{contenido_modo['resultado']}. El mapa y los detalles se preparan al finalizar."
     )
     if st.button(
-        "Ejecutar análisis",
+        "Generar preevaluación",
         type="primary",
         use_container_width=True,
-        help=f"Ejecuta únicamente el análisis de {contenido_modo['titulo'].lower()}.",
+        help=f"Procesa únicamente la información de {contenido_modo['titulo'].lower()}.",
     ):
         firma_anterior = st.session_state.get("firma_analisis")
-        with st.spinner(f"Calculando {contenido_modo['titulo'].lower()}..."):
+        with st.spinner(f"Preparando {contenido_modo['titulo'].lower()}..."):
             if analiza_cambios:
                 resultados_nuevos = ejecutar_analisis(
                     tipo_area=tipo_area,
@@ -5497,12 +5497,12 @@ try:
         )
     else:
         st.info(
-            "Cuando ejecute el análisis aparecerán el resumen, el detalle por fuente y los archivos de respaldo."
+            "Cuando genere la preevaluación aparecerán el resumen, el detalle por fuente y los archivos de respaldo."
         )
 
     mapa_resultados_contenedor.divider()
     mapa_resultados_contenedor.subheader(
-        "Mapa del resultado" if analisis_actual else "Evidencia cartográfica"
+        "Evidencia para orientar la decisión" if analisis_actual else "Evidencia cartográfica"
     )
     if analisis_actual:
         if modo_analisis == MODO_INTEGRAL:
