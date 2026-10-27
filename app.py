@@ -22,10 +22,16 @@ st.set_page_config(
 )
 st.session_state["_pagina_configurada"] = True
 
-VISTA_PREEVALUAR = "Preevaluar un área"
-VISTA_OBJETIVO = "Objetivo y alcance"
-VISTA_METODO = "Método y fuentes"
-VISTAS_PRINCIPALES = (VISTA_PREEVALUAR, VISTA_OBJETIVO, VISTA_METODO)
+SECCION_MAPA = "Mapa"
+SECCION_ANALISIS = "Análisis"
+SECCION_METODO = "Metodología y ayuda"
+SECCION_ACERCA = "Acerca del visor"
+SECCIONES_PRINCIPALES = (
+    SECCION_MAPA,
+    SECCION_ANALISIS,
+    SECCION_METODO,
+    SECCION_ACERCA,
+)
 
 
 st.markdown(
@@ -93,11 +99,11 @@ st.markdown(
 
 def elegir_modo(modo):
     st.session_state["modo_analisis"] = modo
-    st.session_state["vista_principal"] = VISTA_PREEVALUAR
+    st.session_state["seccion_tablero"] = SECCION_MAPA
 
 
 def abrir_vista(vista):
-    st.session_state["vista_principal"] = vista
+    st.session_state["seccion_tablero"] = vista
 
 
 def mostrar_cabecera(titulo, subtitulo, descripcion, alcance=None):
@@ -170,11 +176,11 @@ def mostrar_objetivo():
         unsafe_allow_html=True,
     )
     st.button(
-        "Comenzar una preevaluación",
+        "Abrir el mapa",
         type="primary",
         width="stretch",
         on_click=abrir_vista,
-        args=(VISTA_PREEVALUAR,),
+        args=(SECCION_MAPA,),
     )
 
 
@@ -289,12 +295,80 @@ def mostrar_metodo():
         )
 
     st.button(
-        "Ir a la preevaluación",
+        "Abrir el mapa",
         type="primary",
         width="stretch",
         on_click=abrir_vista,
-        args=(VISTA_PREEVALUAR,),
+        args=(SECCION_MAPA,),
     )
+
+
+def mostrar_acerca():
+    mostrar_cabecera(
+        "Acerca del visor",
+        "Una herramienta para preparar y documentar revisiones territoriales.",
+        "El visor reúne evidencia satelital, corredores publicados y estructura del bosque "
+        "para ayudar a decidir dónde conviene profundizar, sin sustituir la verificación de campo.",
+        "Preevaluación indicativa · no constituye certificación ni determinación legal",
+    )
+    st.markdown("## Qué problema ayuda a resolver")
+    st.markdown(
+        """
+        <div class="alcance-grid">
+          <section class="alcance-card">
+            <h3>Para personas usuarias</h3>
+            <ul>
+              <li>seleccionar una finca, subcuenca, polígono o la cuenca completa;</li>
+              <li>consultar capas sin necesitar experiencia previa en teledetección;</li>
+              <li>obtener una lectura resumida y evidencia descargable;</li>
+              <li>reconocer qué información debe confirmarse con campo o documentos.</li>
+            </ul>
+          </section>
+          <section class="alcance-card">
+            <h3>Para equipos técnicos</h3>
+            <ul>
+              <li>revisar fuentes, períodos, pesos, umbrales y parámetros;</li>
+              <li>comparar años y consultar capas por fuente;</li>
+              <li>descargar resultados metodológicos y geográficos;</li>
+              <li>reproducir y documentar la preevaluación.</li>
+            </ul>
+          </section>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        """
+        <div class="nota-alcance"><b>Alcance:</b> los resultados orientan una revisión.
+        No confirman causas de pérdida, movimiento de fauna, cumplimiento normativo ni
+        condiciones verificadas en campo.</div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.button(
+        "Abrir el mapa",
+        type="primary",
+        width="stretch",
+        on_click=abrir_vista,
+        args=(SECCION_MAPA,),
+    )
+
+
+seccion_tablero = st.segmented_control(
+    "Navegación principal",
+    SECCIONES_PRINCIPALES,
+    default=SECCION_MAPA,
+    key="seccion_tablero",
+    label_visibility="collapsed",
+    width="stretch",
+)
+
+if seccion_tablero == SECCION_METODO:
+    mostrar_metodo()
+    st.stop()
+if seccion_tablero == SECCION_ACERCA:
+    mostrar_acerca()
+    st.stop()
 
 
 modo_analisis = st.session_state.get("modo_analisis")
@@ -303,27 +377,12 @@ if modo_analisis not in MODOS_ANALISIS:
     modo_analisis = None
 
 if modo_analisis is None:
-    vista_principal = st.segmented_control(
-        "Secciones principales",
-        VISTAS_PRINCIPALES,
-        default=VISTA_PREEVALUAR,
-        key="vista_principal",
-        label_visibility="collapsed",
-        width="stretch",
-    )
-
-    if vista_principal == VISTA_OBJETIVO:
-        mostrar_objetivo()
-        st.stop()
-    if vista_principal == VISTA_METODO:
-        mostrar_metodo()
-        st.stop()
 
     mostrar_cabecera(
-        "Preevaluación territorial y corredores",
-        "Evidencia inicial para orientar dónde conviene revisar.",
-        "Elija una pregunta y un área. Las fuentes cartográficas se cargarán después, "
-        "únicamente para preparar la preevaluación seleccionada.",
+        "Visor territorial y de conectividad",
+        "Seleccione el análisis que desea abrir en el tablero cartográfico.",
+        "Después podrá elegir el área, activar capas por fuente, crear el análisis y "
+        "consultar los resultados sin recorrer una guía extensa.",
         "Resultado indicativo · requiere interpretación y verificación de campo",
     )
     st.markdown('<h2 class="pregunta">¿Qué desea preevaluar?</h2>', unsafe_allow_html=True)
@@ -351,7 +410,7 @@ if modo_analisis is None:
                     args=(modo,),
                 )
     st.info(
-        "Puede consultar primero «Objetivo y alcance» o «Método y fuentes». "
+        "Puede consultar «Metodología y ayuda» o «Acerca del visor» sin iniciar el motor. "
         "Earth Engine se conectará solo después de elegir una preevaluación."
     )
     st.stop()

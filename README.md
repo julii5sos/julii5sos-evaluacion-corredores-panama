@@ -18,8 +18,17 @@ demuestra por sí sola conectividad funcional para una especie.
 
 ## Qué se añadió en este repositorio
 
-- Navegación principal con acceso inmediato a **Preevaluar un área**, **Objetivo y
-  alcance** y **Método y fuentes**. Las páginas explicativas no inician Earth Engine.
+- Navegación principal persistente entre **Mapa**, **Análisis**, **Metodología y ayuda**
+  y **Acerca del visor**. Las páginas explicativas no inician Earth Engine.
+- Panel de fuentes inspirado en visores ambientales: JRC TMF, Hansen, ESRI, NDVI y
+  GEDI conservan controles independientes, además de los bloques de corredores y
+  bosque/conectividad.
+- Vista **Mapa** para seleccionar el área, activar capas y crear el análisis; vista
+  **Análisis** para consultar la lectura rápida, las pestañas temáticas, descargas y
+  gráficas por fuente sin reconstruir el mapa.
+- Gráficas temporales solicitadas bajo demanda para JRC, Hansen, ESRI y NDVI. GEDI se
+  presenta como distribución de altura del dosel, porque no constituye una serie anual
+  comparable.
 - Pantalla inicial con tres opciones: preevaluación territorial, corredores y conectividad,
   o preevaluación integral.
 - Explicación diferenciada para dos niveles de lectura: recorrido breve y lenguaje
@@ -65,10 +74,10 @@ conectores, separaciones y componentes aislados.
 
 ## Flujo de uso
 
-1. Si lo necesita, consulte **Objetivo y alcance** o **Método y fuentes** antes de conectarse a los datos.
+1. Si lo necesita, consulte **Metodología y ayuda** o **Acerca del visor** antes de conectarse a los datos.
 2. Elija **Preevaluación territorial**, **Corredores y conectividad** o **Preevaluación integral**.
 3. Seleccione una finca, una subcuenca, dibuje un polígono o use toda la cuenca configurada.
-4. Genere la preevaluación. La aplicación procesa solo las fuentes necesarias y muestra
+4. En **Mapa**, active únicamente las capas que necesita y pulse **Crear análisis**. La aplicación procesa solo las fuentes necesarias y muestra
    primero una conclusión breve, los indicadores principales y el mapa.
 5. En las opciones con conectividad, la aplicación conserva el área elegida para las hectáreas, pero revisa también un
    entorno exterior de hasta 5 km para evitar falsos aislamientos y buscar una cadena
@@ -79,9 +88,10 @@ conectores, separaciones y componentes aislados.
    La ruta naranja es una orientación estructural para revisar, no un corredor nuevo
    ni evidencia de movimiento de fauna. El bosque exterior que se muestre no se suma
    a las hectáreas informadas para el polígono.
-7. Abra, solo si los necesita, los detalles de **Cambios satelitales**, **Corredores
-   ecológicos** o **Bosque y conectividad**. Allí se conservan las métricas, gráficos,
-   tablas y archivos descargables del análisis completo.
+7. Abra **Análisis** para consultar por pestañas **Resumen**, **Cambios territoriales**,
+   **Corredores** o **Bosque y conectividad**. Allí se conservan las métricas, gráficos,
+   tablas y archivos descargables del análisis completo. Las gráficas anuales se preparan
+   una por vez para no ralentizar la carga inicial.
 8. En la preevaluación territorial o integral, prepare la ficha PDF. La primera página explica el puntaje y la acción; las dos
    siguientes separan fragmentación y conectividad para evitar que las líneas oculten
    el patrón del bosque.
@@ -108,6 +118,25 @@ python -m venv .venv
 python -m pip install -r requirements.txt
 streamlit run app.py
 ```
+
+## Crear una nueva app en Streamlit Community Cloud
+
+Esta versión se mantiene separada de la aplicación estable en la rama
+`version/3.0-tablero-cartografico`. Para probarla como una aplicación nueva sin
+modificar la actual:
+
+1. En Streamlit Community Cloud elija **Create app**.
+2. Use el repositorio `julii5sos/julii5sos-evaluacion-corredores-panama`.
+3. En **Branch** seleccione `version/3.0-tablero-cartografico`.
+4. En **Main file path** escriba `app.py`.
+5. Elija un nombre distinto, por ejemplo `visor-chcp-tablero`.
+6. Copie en **App settings > Secrets** los mismos secretos de la aplicación estable y
+   verifique que la cuenta de servicio tenga acceso a los assets privados.
+7. Despliegue y pruebe primero las cuatro áreas disponibles, la subcuenca Lago
+   Miraflores, un polígono recortado y cada una de las tres rutas de preevaluación.
+
+La aplicación estable continúa apuntando a `main`; publicar esta rama como una app
+nueva no reemplaza ni altera su URL.
 
 ## Configuración de Earth Engine
 
