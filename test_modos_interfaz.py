@@ -75,6 +75,14 @@ class ModosInterfazTests(unittest.TestCase):
         self.assertIn("Cómo se construye la preevaluación", app.markdown[1].value)
         self.assertTrue(any(boton.label == "Ir a la preevaluación" for boton in app.button))
 
+    def test_navegacion_explicativa_desaparece_al_elegir_un_enfoque(self):
+        app = AppTest.from_file("app.py", default_timeout=30).run()
+
+        app.button[0].click().run()
+
+        self.assertEqual(len(app.segmented_control), 0)
+        self.assertTrue(any(boton.label == "Cambiar enfoque" for boton in app.button))
+
     def test_subcuenca_se_recorta_a_la_cuenca(self):
         geometria = GeometriaPrueba()
 
