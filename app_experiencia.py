@@ -108,7 +108,10 @@ st.markdown(
     }
     .stApp {background: var(--institucional-fondo); color: var(--institucional-tinta);}
     html {color-scheme: light;}
-    .block-container {padding-top: 4rem; padding-bottom: 2.5rem; max-width: 1440px;}
+    .block-container {
+        padding: 1rem 1.15rem 2.5rem;
+        max-width: none;
+    }
     .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6,
     .stApp p, .stApp label, .stApp li, .stApp small, .stApp summary,
     .stApp legend, .stApp th, .stApp td,
@@ -169,8 +172,12 @@ st.markdown(
         color: #ffffff !important;
         -webkit-text-fill-color: #ffffff !important;
     }
-    [data-testid="stSidebar"] {border-right: 1px solid var(--institucional-borde);}
-    [data-testid="stSidebar"] > div:first-child {background: #ffffff;}
+    [data-testid="stSidebar"] {
+        border-right: 1px solid var(--institucional-borde);
+        min-width: 350px;
+        max-width: 350px;
+    }
+    [data-testid="stSidebar"] > div:first-child {background: #ffffff; padding-top: .75rem;}
     [data-testid="stSidebar"] * {overflow-wrap: anywhere;}
     #MainMenu, footer {visibility: hidden;}
     iframe {max-width: 100% !important;}
@@ -703,12 +710,137 @@ st.markdown(
         font-size: .86rem;
         font-weight: 700;
     }
+    .visor-barra {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        min-height: 66px;
+        margin: 0 0 .8rem;
+        padding: .72rem 1rem;
+        border: 1px solid var(--institucional-borde);
+        border-top: 4px solid var(--institucional-verde);
+        border-radius: .35rem;
+        background: #ffffff;
+    }
+    .visor-marca {min-width: 0;}
+    .visor-marca small {
+        display: block;
+        margin-bottom: .12rem;
+        color: var(--institucional-suave);
+        font-size: .74rem;
+        font-weight: 750;
+        letter-spacing: .055em;
+        text-transform: uppercase;
+    }
+    .visor-marca strong {
+        display: block;
+        color: var(--institucional-verde);
+        font-size: clamp(1.08rem, 1.7vw, 1.45rem);
+        line-height: 1.2;
+    }
+    .visor-contexto {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: .4rem;
+    }
+    .visor-etiqueta {
+        display: inline-flex;
+        align-items: center;
+        min-height: 32px;
+        padding: .25rem .68rem;
+        border: 1px solid var(--institucional-borde);
+        border-radius: 999px;
+        background: var(--institucional-verde-claro);
+        color: var(--institucional-verde);
+        font-size: .82rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+    .panel-titulo {
+        margin: .15rem 0 .7rem;
+        color: var(--institucional-verde);
+        font-size: 1.05rem;
+        font-weight: 750;
+        letter-spacing: .01em;
+    }
+    .panel-ayuda {
+        margin: -.35rem 0 .8rem;
+        color: var(--institucional-suave);
+        font-size: .9rem;
+        line-height: 1.5;
+    }
+    .dashboard-area {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1px;
+        margin: .25rem 0 .85rem;
+        border: 1px solid var(--institucional-borde);
+        border-radius: .35rem;
+        overflow: hidden;
+        background: var(--institucional-borde);
+    }
+    .dashboard-area > div {
+        min-width: 0;
+        padding: .68rem .75rem;
+        background: #ffffff;
+    }
+    .dashboard-area small {
+        display: block;
+        margin-bottom: .15rem;
+        color: var(--institucional-suave);
+        font-size: .74rem;
+        font-weight: 700;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+    }
+    .dashboard-area strong {
+        display: block;
+        color: var(--institucional-tinta);
+        line-height: 1.35;
+        overflow-wrap: anywhere;
+    }
+    .dashboard-estado {
+        margin: .65rem 0 .85rem;
+        padding: .75rem .85rem;
+        border-left: 4px solid var(--institucional-verde-acento);
+        background: #f4f9ee;
+        color: var(--institucional-tinta);
+        font-size: .9rem;
+        line-height: 1.5;
+    }
+    [data-testid="stMetric"] {
+        min-height: 104px;
+        padding: .72rem .8rem;
+        border: 1px solid var(--institucional-borde);
+        border-radius: .35rem;
+        background: #ffffff;
+    }
+    [data-testid="stMetric"] [data-testid="stMetricLabel"] {font-weight: 650;}
+    [data-testid="stTabs"] [data-baseweb="tab-list"] {
+        gap: .15rem;
+        border-bottom: 1px solid var(--institucional-borde);
+    }
+    [data-testid="stTabs"] button[role="tab"] {min-height: 46px;}
+    [data-testid="stVerticalBlockBorderWrapper"] {
+        border-color: var(--institucional-borde) !important;
+        background: #ffffff;
+    }
+    iframe[title="streamlit_folium.st_folium"] {
+        border: 1px solid var(--institucional-borde);
+        border-radius: .25rem;
+        background: #eef4f1;
+    }
     @media (max-width: 760px) {
         .flujo-pasos, .contexto-analisis, .entregables, .resumen-principiante,
         .lectura-rapida, .recuperacion-error {grid-template-columns: 1fr 1fr;}
-        .block-container {padding-top: 3.5rem;}
+        .block-container {padding: 3.5rem .75rem 2rem;}
+        [data-testid="stSidebar"] {min-width: auto; max-width: none;}
         .cabecera-app {padding: 1.2rem;}
         .cabecera-app h1 {font-size: 2rem; line-height: 1.15;}
+        .visor-barra {align-items: flex-start; flex-direction: column;}
+        .visor-contexto {justify-content: flex-start;}
     }
     @media (max-width: 480px) {
         .flujo-pasos, .contexto-analisis, .entregables, .resumen-principiante,
@@ -745,7 +877,7 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-2.3.1-COMPARADOR-SINCRONIZADO"
+APP_VERSION = "UX-2.4.0-TABLERO-CARTOGRAFICO"
 METHODOLOGY_VERSION = "MT-2026.15-NDVI-PONDERADO"
 PROYECTO_EE = secreto_opcional("EE_PROJECT", "ee-julissaguevaravega")
 FUENTE_BOSQUE_NOMBRE = "Bosque y otros usos"
@@ -3271,6 +3403,147 @@ def limpiar_estado_resultados():
         st.session_state.pop(clave, None)
 
 
+def mostrar_barra_visor(contenido_modo):
+    """Cabecera compacta para que el mapa, no una guía, domine la pantalla."""
+
+    st.markdown(
+        f"""
+        <header class="visor-barra" aria-label="Identificación del visor">
+          <div class="visor-marca">
+            <small>Cuenca Hidrográfica del Canal de Panamá</small>
+            <strong>Visor de preevaluación territorial y conectividad</strong>
+          </div>
+          <div class="visor-contexto">
+            <span class="visor-etiqueta">{html_lib.escape(contenido_modo['titulo'])}</span>
+            <span class="visor-etiqueta">Resultado indicativo</span>
+          </div>
+        </header>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def mostrar_panel_dashboard(resultados, modo_analisis):
+    """Resume la decisión junto al mapa y deja el desglose completo en pestañas."""
+
+    st.markdown('<div class="panel-titulo">Lectura rápida</div>', unsafe_allow_html=True)
+    if modo_analisis == MODO_CORREDORES:
+        corredores = resultados.get("corredores") or {}
+        fragmentacion = resultados.get("fragmentacion") or {}
+        clase = fragmentacion.get("metricas_clase") or {}
+        red = fragmentacion.get("metricas_red") or {}
+        conexion = fragmentacion.get("conexion_corredor") or {}
+        if conexion.get("conecta"):
+            titulo = "Conexión estructural potencial identificada"
+            detalle = "Revise en el mapa la cadena de fragmentos y el corredor de referencia."
+        elif corredores.get("intersecta"):
+            titulo = "El área coincide con corredores publicados"
+            detalle = "La coincidencia aporta contexto estratégico, no prueba conectividad funcional."
+        else:
+            titulo = "Sin contacto directo con los corredores publicados"
+            detalle = "Revise los fragmentos separados y el bosque del entorno."
+        color = "#00544d"
+        st.markdown(
+            f"""
+            <div class="resultado-prioridad" style="--prioridad-color:{color};">
+              <small>Resultado de conectividad</small>
+              <strong>{html_lib.escape(titulo)}</strong>
+              <p>{html_lib.escape(detalle)}</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        izquierda, derecha = st.columns(2)
+        izquierda.metric(
+            "Área en corredores",
+            f"{float(corredores.get('area_en_corredores_ha', 0) or 0):,.1f} ha",
+            f"{float(corredores.get('porcentaje_aoi_en_corredores', 0) or 0):.1f}% del área",
+            delta_color="off",
+        )
+        derecha.metric(
+            "Bosque 2021",
+            f"{float(clase.get('area_total_bosque_ha', 0) or 0):,.1f} ha"
+            if fragmentacion
+            else "No disponible",
+        )
+        izquierda, derecha = st.columns(2)
+        izquierda.metric("Fragmentos", f"{int(clase.get('numero_parches', 0) or 0):,}")
+        derecha.metric(
+            "Separados",
+            f"{int(red.get('numero_parches_aislados', 0) or 0):,}",
+        )
+        return
+
+    visita = resultados.get("prioridad_visita")
+    prioridad = visita["prioridad_visita"] if visita else resultados["prioridad"]
+    color = {
+        "Muy alta": "#7f0000",
+        "Alta": "#b71c1c",
+        "Media": "#a33a00",
+        "Preventiva": "#8a5b00",
+        "Baja": "#2e7d32",
+    }[prioridad]
+    recomendacion = (
+        texto_recomendacion_visita(prioridad)
+        if visita
+        else texto_recomendacion(prioridad)
+    )
+    st.markdown(
+        f"""
+        <div class="resultado-prioridad" style="--prioridad-color:{color};">
+          <small>Orientación para la revisión</small>
+          <strong>Prioridad {html_lib.escape(prioridad.lower())}</strong>
+          <p>{html_lib.escape(recomendacion)}</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    if modo_analisis == MODO_INTEGRAL and visita:
+        corredores = resultados.get("corredores") or {}
+        fragmentacion = resultados.get("fragmentacion") or {}
+        clase = fragmentacion.get("metricas_clase") or {}
+        izquierda, derecha = st.columns(2)
+        izquierda.metric("Urgencia por cambios", resultados["prioridad"])
+        derecha.metric("Valor del corredor", visita["valor_corredor"])
+        izquierda, derecha = st.columns(2)
+        izquierda.metric(
+            "Área en corredores",
+            f"{float(corredores.get('area_en_corredores_ha', 0) or 0):,.1f} ha",
+        )
+        derecha.metric(
+            "Bosque 2021",
+            f"{float(clase.get('area_total_bosque_ha', 0) or 0):,.1f} ha"
+            if fragmentacion
+            else "No disponible",
+        )
+        st.markdown(
+            f'<div class="dashboard-estado"><b>Dónde empezar:</b> '
+            f'{html_lib.escape(visita["foco_visita"])}</div>',
+            unsafe_allow_html=True,
+        )
+    else:
+        senales = sum(
+            bool(resultados.get(clave))
+            for clave in ("senal_tmf", "senal_hansen", "senal_esri", "senal_ndvi")
+        )
+        izquierda, derecha = st.columns(2)
+        izquierda.metric(
+            "Índice de indicios",
+            f"{float(resultados.get('puntaje', 0) or 0):.1f}/{PUNTAJE_MAXIMO:.1f}",
+        )
+        derecha.metric("Fuentes con señal", f"{senales} de 4")
+        izquierda, derecha = st.columns(2)
+        izquierda.metric(
+            "Deforestación JRC",
+            f"{float(resultados.get('tmf_deforestacion', 0) or 0):,.1f} ha",
+        )
+        derecha.metric(
+            "Pérdida post-2020",
+            f"{float(resultados.get('hansen_post', 0) or 0):,.2f} ha",
+        )
+
+
 def establecer_modo_analisis(modo):
     limpiar_estado_resultados()
     st.session_state["modo_analisis"] = modo
@@ -4466,52 +4739,21 @@ if modo_analisis is None:
 contenido_modo = MODOS_ANALISIS[modo_analisis]
 analiza_cambios = modo_analisis in (MODO_TERRITORIAL, MODO_INTEGRAL)
 analiza_conectividad = modo_analisis in (MODO_CORREDORES, MODO_INTEGRAL)
-st.markdown(
-    f"""
-    <div class="cabecera-app">
-      <h1>{html_lib.escape(contenido_modo['titulo'])}</h1>
-      <div class="subtitulo-app">{html_lib.escape(contenido_modo['pregunta'])}</div>
-      <p>{html_lib.escape(contenido_modo['descripcion'])}</p>
-      <div class="alcance-app">Resultado indicativo · requiere interpretación y
-      verificación de campo · no determina cumplimiento EUDR</div>
-    </div>
-    """,
-    unsafe_allow_html=True,
+mostrar_barra_visor(contenido_modo)
+columna_contexto, columna_cambiar = st.columns([5, 1])
+columna_contexto.caption(
+    f"{contenido_modo['pregunta']} · {contenido_modo['resultado']}"
 )
-columna_modo, columna_cambiar = st.columns([3, 1])
-columna_modo.markdown(
-    f'<div class="modo-activo"><b>Opción elegida:</b> '
-    f'{html_lib.escape(contenido_modo["titulo"])} · '
-    f'{html_lib.escape(contenido_modo["resultado"])}</div>',
-    unsafe_allow_html=True,
-)
-if columna_cambiar.button("Cambiar enfoque", use_container_width=True):
+if columna_cambiar.button("Cambiar análisis", use_container_width=True):
     limpiar_estado_resultados()
     st.session_state.pop("modo_analisis", None)
     st.rerun()
 
-with st.expander("Qué incluye esta opción", expanded=False):
-    if modo_analisis == MODO_TERRITORIAL:
-        st.markdown(
-            "Revisa cambios del bosque, pérdida de cobertura, uso del suelo, altura "
-            "del dosel y vigor vegetal. No calcula conectividad."
-        )
-    elif modo_analisis == MODO_CORREDORES:
-        st.markdown(
-            "Revisa la relación del área con corredores, puntos críticos, fragmentos "
-            "de bosque y conexiones potenciales. No calcula prioridad por pérdida."
-        )
-    else:
-        st.markdown(
-            "Combina las señales de cambio territorial con corredores y estructura "
-            "del bosque, manteniendo separadas sus conclusiones."
-        )
-
 try:
     iniciar_earth_engine()
 
-    st.sidebar.markdown(f"## {contenido_modo['titulo']}")
-    st.sidebar.caption("Paso 2 de 4 · Seleccione la unidad territorial")
+    st.sidebar.markdown("## Área de análisis")
+    st.sidebar.caption(f"{contenido_modo['titulo']} · seleccione la unidad territorial")
     etiquetas_area = {
         "Finca de monitoreo": "Finca registrada (recomendado)",
         "Subcuenca": "Subcuenca de la CHCP",
@@ -5127,193 +5369,174 @@ try:
     analisis_actual = (
         st.session_state.get("firma_analisis") == firma_analisis_actual
     )
-    flujo_contenedor = st.empty()
-
-    st.markdown("### Área lista para preevaluar")
-    st.markdown(
-        f"""
-        <div class="contexto-analisis">
-          <div class="contexto-item"><small>Área</small><strong>{html_lib.escape(nombre_area)}</strong></div>
-          <div class="contexto-item"><small>Superficie</small><strong>{superficie_ha:,.1f} ha</strong></div>
-          <div class="contexto-item"><small>Enfoque</small><strong>{html_lib.escape(contenido_modo['titulo'])}</strong></div>
-        </div>
-        """,
+    st.markdown("### Visor cartográfico")
+    columna_mapa, columna_panel = st.columns([1.85, 1], gap="medium")
+    columna_mapa.markdown(
+        '<div class="panel-titulo">Mapa y evidencia espacial</div>',
         unsafe_allow_html=True,
     )
+    mapa_resultados_contenedor = columna_mapa.container(border=True)
 
-    if tipo_area == "Toda la cuenca":
-        st.warning(
-            "El análisis regional puede tardar varios minutos. Para una revisión rápida y "
-            "más detallada se recomienda seleccionar una finca."
+    with columna_panel:
+        st.markdown('<div class="panel-titulo">Área y resultado</div>', unsafe_allow_html=True)
+        st.markdown(
+            f"""
+            <div class="dashboard-area">
+              <div><small>Área seleccionada</small><strong>{html_lib.escape(nombre_area)}</strong></div>
+              <div><small>Superficie analizada</small><strong>{superficie_ha:,.1f} ha</strong></div>
+              <div><small>Análisis</small><strong>{html_lib.escape(contenido_modo['titulo'])}</strong></div>
+              <div><small>Estado</small><strong>{'Resultado listo' if analisis_actual else 'Pendiente de generar'}</strong></div>
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
 
-    with st.expander("Ver qué se calculará", expanded=False):
-        st.markdown(f"**Resultado esperado:** {contenido_modo['resultado']}")
-        if analiza_cambios:
-            st.markdown(
-                f"- Cambios territoriales con JRC {ANO_DIAG_TMF}, Hansen 2021-{ANO_HANSEN_MAX} "
-                f"y ESRI {ANO_ESRI_MIN}-{ANO_ESRI_MAX}.\n"
-                "- NDVI como señal corroborativa y GEDI como contexto estructural."
-            )
-        if analiza_conectividad:
-            st.markdown(
-                f"- Corredores de Almanaque Azul {catalogo_corredores['version_publicada']}.\n"
-                f"- Fragmentos y conexiones del bosque {ANO_BOSQUE_REFERENCIA}."
-            )
-        st.caption(
-            "Las opciones del mapa no cambian el método de cálculo. Los detalles técnicos "
-            "permanecen disponibles después de ejecutar."
-        )
-
-    st.subheader("Preparar la preevaluación")
-    st.caption(
-        f"{contenido_modo['resultado']}. El mapa y los detalles se preparan al finalizar."
-    )
-    if st.button(
-        "Generar preevaluación",
-        type="primary",
-        use_container_width=True,
-        help=f"Procesa únicamente la información de {contenido_modo['titulo'].lower()}.",
-    ):
-        firma_anterior = st.session_state.get("firma_analisis")
-        with st.spinner(f"Preparando {contenido_modo['titulo'].lower()}..."):
-            if analiza_cambios:
-                resultados_nuevos = ejecutar_analisis(
-                    tipo_area=tipo_area,
-                    finca_id=finca_seleccionada,
-                    subcuenca_nombre=subcuenca_seleccionada,
-                    geometria_geojson=geometria_dibujada_json,
-                    anio_tmf_diagnostico=ANO_DIAG_TMF,
-                    anio_esri_inicial=ANO_ESRI_MIN,
-                    anio_esri_final=ANO_ESRI_MAX,
-                )
-            else:
-                resultados_nuevos = {"area_ha": superficie_ha}
-
-            if analiza_conectividad:
-                aoi_geojson_serializado = json.dumps(
-                    geometria.getInfo(),
-                    ensure_ascii=False,
-                    sort_keys=True,
-                )
-                resultados_nuevos["corredores"] = analizar_corredores_cache(
-                    aoi_geojson_serializado
-                )
-                if bosque_automatico_disponible:
-                    try:
-                        resultados_nuevos["fragmentacion"] = analizar_bosque_asset_cache(
-                            ASSET_BOSQUE_2021,
-                            CAMPO_COBERTURA_BOSQUE_2021,
-                            VALOR_COBERTURA_BOSQUE_2021,
-                            aoi_geojson_serializado,
-                            umbral_conectividad_m,
-                            area_min_parche_ha,
-                        )
-                        resultados_nuevos["fragmentacion"][
-                            "fuente_cobertura"
-                        ] = FUENTE_BOSQUE_CORTA
-                        resultados_nuevos["fragmentacion"][
-                            "ano_referencia_cobertura"
-                        ] = ANO_BOSQUE_REFERENCIA
-                    except Exception as error:
-                        resultados_nuevos["fragmentacion_error"] = str(error)
-
-            if modo_analisis == MODO_INTEGRAL:
-                resultados_nuevos["prioridad_visita"] = calcular_prioridad_visita(
-                    puntaje_cambios=resultados_nuevos["puntaje"],
-                    contexto_corredores=resultados_nuevos["corredores"],
-                    contexto_fragmentacion=resultados_nuevos.get("fragmentacion"),
-                )
-            resultados_nuevos["modo_analisis"] = modo_analisis
-            st.session_state["resultados_analisis"] = resultados_nuevos
-            st.session_state["firma_analisis"] = firma_analisis_actual
-            if firma_anterior != firma_analisis_actual:
-                st.session_state.pop("pdf_analisis", None)
-                st.session_state.pop("firma_informe", None)
-                st.session_state.pop("errores_mapas", None)
-                st.session_state.pop("intento_informe", None)
-                st.session_state.pop("mapas_reporte", None)
-
-    analisis_actual = (
-        st.session_state.get("firma_analisis") == firma_analisis_actual
-    )
-    mostrar_flujo(4 if analisis_actual else 3, flujo_contenedor)
-
-    if st.session_state.get("firma_analisis") == firma_analisis_actual:
-        resultados = st.session_state["resultados_analisis"]
-        st.subheader("Resultado principal")
-        if modo_analisis == MODO_CORREDORES:
-            mostrar_resumen_conectividad(resultados)
-        elif modo_analisis == MODO_INTEGRAL:
-            mostrar_resumen_integral(resultados)
-        else:
-            mostrar_resumen_ejecutivo(resultados)
-
-    # El mapa aparece después de la decisión principal y antes de los detalles.
-    # Se completa más abajo, cuando todas las capas ya están construidas.
-    mapa_resultados_contenedor = st.container()
-
-    if st.session_state.get("firma_analisis") == firma_analisis_actual:
-        resultados = st.session_state["resultados_analisis"]
-        ver_detalle_cambios = False
-        ver_detalle_corredores = False
-        ver_detalle_bosque = False
-        if modo_analisis == MODO_TERRITORIAL:
-            st.markdown("#### Profundizar en el resultado")
-            st.caption("Abra únicamente la información que necesite consultar.")
-            ver_detalle_cambios = st.checkbox(
-                "Ver cambios satelitales y superficies",
-                value=False,
-            )
-        elif modo_analisis == MODO_CORREDORES:
-            st.markdown("#### Profundizar en el resultado")
-            st.caption("Abra únicamente la información que necesite consultar.")
-            columna_corredores, columna_bosque = st.columns(2)
-            ver_detalle_corredores = columna_corredores.checkbox(
-                "Ver corredores ecológicos",
-                value=False,
-            )
-            ver_detalle_bosque = columna_bosque.checkbox(
-                "Ver bosque y conectividad",
-                value=False,
-            )
-        else:
-            with st.expander("Ver detalles del análisis · opcional", expanded=False):
-                st.caption(
-                    "La conclusión anterior es suficiente para una lectura rápida. "
-                    "Abra solo el componente que necesite documentar."
-                )
-                columna_cambios, columna_corredores, columna_bosque = st.columns(3)
-                ver_detalle_cambios = columna_cambios.checkbox(
-                    "Evidencia satelital",
-                    value=False,
-                )
-                ver_detalle_corredores = columna_corredores.checkbox(
-                    "Corredores ecológicos",
-                    value=False,
-                )
-                ver_detalle_bosque = columna_bosque.checkbox(
-                    "Fragmentos y conectividad",
-                    value=False,
-                )
-        if ver_detalle_cambios:
-            mostrar_resultados(
-                resultados,
-                ANO_DIAG_TMF,
-                ANO_ESRI_MIN,
-                ANO_ESRI_MAX,
-            )
-        if ver_detalle_corredores and resultados.get("corredores"):
-            mostrar_resultados_corredores(resultados["corredores"])
-        if ver_detalle_bosque and resultados.get("fragmentacion"):
-            mostrar_resultados_fragmentacion(resultados["fragmentacion"])
-        elif ver_detalle_bosque and resultados.get("fragmentacion_error"):
+        if tipo_area == "Toda la cuenca":
             st.warning(
-                "El componente de bosque y conectividad no estuvo disponible en esta ejecución. "
-                "Los demás resultados permanecen disponibles."
+                "El análisis regional puede tardar varios minutos. Para una revisión rápida "
+                "se recomienda seleccionar una finca o subcuenca."
             )
-            with st.expander("Detalle para soporte de bosque y conectividad", expanded=False):
-                st.code(resultados["fragmentacion_error"])
+
+        if not analisis_actual:
+            st.markdown(
+                '<div class="dashboard-estado"><b>Mapa listo.</b> Revise el área y genere '
+                'la preevaluación para ver la conclusión y todos los indicadores.</div>',
+                unsafe_allow_html=True,
+            )
+            with st.expander("Información que se calculará", expanded=False):
+                st.markdown(f"**Resultado esperado:** {contenido_modo['resultado']}")
+                if analiza_cambios:
+                    st.markdown(
+                        f"- JRC {ANO_DIAG_TMF}, Hansen 2021-{ANO_HANSEN_MAX}, "
+                        f"ESRI {ANO_ESRI_MIN}-{ANO_ESRI_MAX}, GEDI y NDVI."
+                    )
+                if analiza_conectividad:
+                    st.markdown(
+                        f"- Corredores de Almanaque Azul y estructura del bosque "
+                        f"{ANO_BOSQUE_REFERENCIA}."
+                    )
+        else:
+            resultados = st.session_state["resultados_analisis"]
+            mostrar_panel_dashboard(resultados, modo_analisis)
+
+        if st.button(
+            "Actualizar preevaluación" if analisis_actual else "Generar preevaluación",
+            type="primary",
+            use_container_width=True,
+            help=f"Procesa únicamente la información de {contenido_modo['titulo'].lower()}.",
+        ):
+            firma_anterior = st.session_state.get("firma_analisis")
+            with st.spinner(f"Preparando {contenido_modo['titulo'].lower()}..."):
+                if analiza_cambios:
+                    resultados_nuevos = ejecutar_analisis(
+                        tipo_area=tipo_area,
+                        finca_id=finca_seleccionada,
+                        subcuenca_nombre=subcuenca_seleccionada,
+                        geometria_geojson=geometria_dibujada_json,
+                        anio_tmf_diagnostico=ANO_DIAG_TMF,
+                        anio_esri_inicial=ANO_ESRI_MIN,
+                        anio_esri_final=ANO_ESRI_MAX,
+                    )
+                else:
+                    resultados_nuevos = {"area_ha": superficie_ha}
+
+                if analiza_conectividad:
+                    aoi_geojson_serializado = json.dumps(
+                        geometria.getInfo(),
+                        ensure_ascii=False,
+                        sort_keys=True,
+                    )
+                    resultados_nuevos["corredores"] = analizar_corredores_cache(
+                        aoi_geojson_serializado
+                    )
+                    if bosque_automatico_disponible:
+                        try:
+                            resultados_nuevos["fragmentacion"] = analizar_bosque_asset_cache(
+                                ASSET_BOSQUE_2021,
+                                CAMPO_COBERTURA_BOSQUE_2021,
+                                VALOR_COBERTURA_BOSQUE_2021,
+                                aoi_geojson_serializado,
+                                umbral_conectividad_m,
+                                area_min_parche_ha,
+                            )
+                            resultados_nuevos["fragmentacion"][
+                                "fuente_cobertura"
+                            ] = FUENTE_BOSQUE_CORTA
+                            resultados_nuevos["fragmentacion"][
+                                "ano_referencia_cobertura"
+                            ] = ANO_BOSQUE_REFERENCIA
+                        except Exception as error:
+                            resultados_nuevos["fragmentacion_error"] = str(error)
+
+                if modo_analisis == MODO_INTEGRAL:
+                    resultados_nuevos["prioridad_visita"] = calcular_prioridad_visita(
+                        puntaje_cambios=resultados_nuevos["puntaje"],
+                        contexto_corredores=resultados_nuevos["corredores"],
+                        contexto_fragmentacion=resultados_nuevos.get("fragmentacion"),
+                    )
+                resultados_nuevos["modo_analisis"] = modo_analisis
+                st.session_state["resultados_analisis"] = resultados_nuevos
+                st.session_state["firma_analisis"] = firma_analisis_actual
+                if firma_anterior != firma_analisis_actual:
+                    st.session_state.pop("pdf_analisis", None)
+                    st.session_state.pop("firma_informe", None)
+                    st.session_state.pop("errores_mapas", None)
+                    st.session_state.pop("intento_informe", None)
+                    st.session_state.pop("mapas_reporte", None)
+            st.rerun()
+
+        analisis_actual = (
+            st.session_state.get("firma_analisis") == firma_analisis_actual
+        )
+
+    if analisis_actual:
+        resultados = st.session_state["resultados_analisis"]
+        st.markdown("### Resultados completos")
+        st.caption(
+            "Toda la información permanece disponible, organizada por tema para evitar "
+            "una pantalla extensa y difícil de interpretar."
+        )
+        nombres_pestanas = ["Resumen"]
+        if analiza_cambios:
+            nombres_pestanas.append("Cambios territoriales")
+        if analiza_conectividad:
+            nombres_pestanas.extend(["Corredores", "Bosque y conectividad"])
+        pestanas = st.tabs(nombres_pestanas)
+        indice_pestana = 0
+        with pestanas[indice_pestana]:
+            if modo_analisis == MODO_CORREDORES:
+                mostrar_resumen_conectividad(resultados)
+            elif modo_analisis == MODO_INTEGRAL:
+                mostrar_resumen_integral(resultados)
+            else:
+                mostrar_resumen_ejecutivo(resultados)
+        indice_pestana += 1
+        if analiza_cambios:
+            with pestanas[indice_pestana]:
+                mostrar_resultados(
+                    resultados,
+                    ANO_DIAG_TMF,
+                    ANO_ESRI_MIN,
+                    ANO_ESRI_MAX,
+                )
+            indice_pestana += 1
+        if analiza_conectividad:
+            with pestanas[indice_pestana]:
+                mostrar_resultados_corredores(resultados["corredores"])
+            indice_pestana += 1
+            with pestanas[indice_pestana]:
+                if resultados.get("fragmentacion"):
+                    mostrar_resultados_fragmentacion(resultados["fragmentacion"])
+                elif resultados.get("fragmentacion_error"):
+                    st.warning(
+                        "El componente de bosque y conectividad no estuvo disponible en esta "
+                        "ejecución. Los demás resultados permanecen disponibles."
+                    )
+                    with st.expander(
+                        "Detalle para soporte de bosque y conectividad",
+                        expanded=False,
+                    ):
+                        st.code(resultados["fragmentacion_error"])
         registro_resultados = construir_registro_metodologico(
             tipo_area=tipo_area,
             finca_id=finca_seleccionada,
@@ -6179,7 +6402,6 @@ try:
             )
 
 except Exception as error:
-    mostrar_flujo(2)
     mostrar_error_amigable(error)
     with st.expander("Detalle técnico para soporte", expanded=False):
         st.code(traceback.format_exc())

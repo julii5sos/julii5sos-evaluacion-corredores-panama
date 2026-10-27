@@ -4,7 +4,10 @@ Este archivo adapta las recomendaciones de UI/UX al sistema institucional ya est
 
 ## Principios
 
-- Interfaz científica y guiada, con divulgación progresiva.
+- Interfaz científica de tipo tablero cartográfico, con divulgación progresiva.
+- Una vez elegido el análisis, la pantalla se organiza como visor: controles del área y
+  capas a la izquierda, mapa como elemento dominante y lectura rápida a la derecha.
+- La explicación inicial desaparece durante el trabajo para no competir con el mapa.
 - La ruta principal prioriza acción y decisión: configurar el área, ejecutar, leer la
   conclusión y revisar el mapa. La explicación técnica aparece únicamente cuando se solicita.
 - Separar visualmente evidencia satelital, fuente cartográfica externa y cálculo propio.
@@ -40,6 +43,12 @@ Los colores originales de Almanaque Azul (`#345a01`, `#a1d303`, `#e0c504`) solo 
 
 ## Componentes
 
+- Barra superior compacta: identifica la cuenca, el tipo de preevaluación y su carácter
+  indicativo sin repetir una portada extensa.
+- Tablero principal: mapa ancho acompañado por una columna de resultado con la unidad,
+  superficie, conclusión y cuatro indicadores clave.
+- Resultados completos: pestañas visibles por tema —resumen, cambios territoriales,
+  corredores y bosque/conectividad—; no se eliminan datos ni se esconden tras casillas.
 - Botón primario: fondo `#00544d`, texto blanco y foco de 3 px.
 - Botón secundario: superficie blanca, borde `#00544d` y texto del mismo color.
 - Resultados: métricas en cuadrícula adaptable; tablas con encabezados explícitos.
@@ -61,6 +70,8 @@ Los colores originales de Almanaque Azul (`#345a01`, `#a1d303`, `#e0c504`) solo 
 - Antes de ejecutar solo se muestran área, superficie y vista; períodos, fuentes y entregables permanecen en un desplegable cerrado.
 - Después de ejecutar, los bloques completos de cambios, corredores y conectividad se activan por separado y comienzan cerrados.
 - Ninguna métrica, gráfico, tabla o descarga se elimina para reducir la densidad visual; solo cambia el momento en que se presenta.
+- Los controles del mapa permanecen en el panel lateral y los resultados se consultan por
+  pestañas, siguiendo el patrón de los visores ambientales profesionales.
 - La conectividad se presenta con parches, estructura esencial, ruta potencial al corredor y separaciones en capas independientes.
 - La lectura principal usa «fragmentos cercanos o separados»; nodo, arista, componente y densidad quedan reservados para el detalle técnico opcional.
 - Los fragmentos se muestran por defecto. La red completa nunca se dibuja: la capa técnica usa el árbol mínimo de cada grupo, con trazo verde oscuro y halo blanco.

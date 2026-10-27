@@ -4,7 +4,23 @@ Este historial documenta la evolución de la aplicación UX. Las versiones sigue
 el formato `MAJOR.MINOR.PATCH`: una versión principal, mejoras compatibles y
 correcciones compatibles, respectivamente.
 
-## [2.3.1] - 2026-10-27 — versión actual
+## [2.4.0] - 2026-10-27 — versión actual
+
+### Tablero cartográfico profesional
+
+- Reorganiza la vista de trabajo con controles a la izquierda, mapa dominante en el
+  centro y lectura rápida del resultado a la derecha.
+- Sustituye la cabecera extensa por una barra institucional compacta después de
+  elegir el análisis.
+- Retira el indicador de pasos durante el trabajo para que la interfaz se comporte
+  como visor y no como una guía lineal.
+- Presenta toda la evidencia en pestañas visibles de resumen, cambios territoriales,
+  corredores y bosque/conectividad, sin eliminar métricas, gráficos ni tablas.
+- Mantiene metodología, informes y descargas, pero los separa de la lectura principal.
+- Amplía el área útil del mapa y conserva una composición adaptable para pantallas
+  pequeñas.
+
+## [2.3.1] - 2026-10-27
 
 ### Comparador temporal sincronizado
 

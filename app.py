@@ -93,6 +93,7 @@ st.markdown(
 
 def elegir_modo(modo):
     st.session_state["modo_analisis"] = modo
+    st.session_state["vista_principal"] = VISTA_PREEVALUAR
 
 
 def abrir_vista(vista):
@@ -296,29 +297,28 @@ def mostrar_metodo():
     )
 
 
-vista_principal = st.segmented_control(
-    "Secciones principales",
-    VISTAS_PRINCIPALES,
-    default=VISTA_PREEVALUAR,
-    key="vista_principal",
-    label_visibility="collapsed",
-    width="stretch",
-)
-
-if vista_principal == VISTA_OBJETIVO:
-    mostrar_objetivo()
-    st.stop()
-if vista_principal == VISTA_METODO:
-    mostrar_metodo()
-    st.stop()
-
-
 modo_analisis = st.session_state.get("modo_analisis")
 if modo_analisis not in MODOS_ANALISIS:
     st.session_state.pop("modo_analisis", None)
     modo_analisis = None
 
 if modo_analisis is None:
+    vista_principal = st.segmented_control(
+        "Secciones principales",
+        VISTAS_PRINCIPALES,
+        default=VISTA_PREEVALUAR,
+        key="vista_principal",
+        label_visibility="collapsed",
+        width="stretch",
+    )
+
+    if vista_principal == VISTA_OBJETIVO:
+        mostrar_objetivo()
+        st.stop()
+    if vista_principal == VISTA_METODO:
+        mostrar_metodo()
+        st.stop()
+
     mostrar_cabecera(
         "Preevaluación territorial y corredores",
         "Evidencia inicial para orientar dónde conviene revisar.",

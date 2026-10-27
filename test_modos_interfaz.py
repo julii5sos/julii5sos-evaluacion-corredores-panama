@@ -75,6 +75,27 @@ class ModosInterfazTests(unittest.TestCase):
         self.assertIn("Cómo se construye la preevaluación", app.markdown[1].value)
         self.assertTrue(any(boton.label == "Ir a la preevaluación" for boton in app.button))
 
+    def test_la_navegacion_introductoria_desaparece_al_elegir_un_enfoque(self):
+        codigo = Path("app.py").read_text(encoding="utf-8")
+
+        bloque_modo = codigo.index('if modo_analisis is None:')
+        bloque_navegacion = codigo.index('vista_principal = st.segmented_control(', bloque_modo)
+        bloque_aplicacion = codigo.index('APLICACION_ACTIVA =', bloque_navegacion)
+
+        self.assertLess(bloque_modo, bloque_navegacion)
+        self.assertLess(bloque_navegacion, bloque_aplicacion)
+
+    def test_el_analisis_se_presenta_como_tablero_cartografico(self):
+        codigo = Path("app_experiencia.py").read_text(encoding="utf-8")
+
+        self.assertIn("Visor cartográfico", codigo)
+        self.assertIn("Mapa y evidencia espacial", codigo)
+        self.assertIn("Área y resultado", codigo)
+        self.assertIn("Resultados completos", codigo)
+        self.assertIn('["Resumen"]', codigo)
+        self.assertNotIn("mostrar_flujo(2)", codigo)
+        self.assertNotIn("Ver detalles del análisis · opcional", codigo)
+
     def test_subcuenca_se_recorta_a_la_cuenca(self):
         geometria = GeometriaPrueba()
 
