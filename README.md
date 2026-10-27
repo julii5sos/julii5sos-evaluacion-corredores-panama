@@ -44,6 +44,9 @@ demuestra por sí sola conectividad funcional para una especie.
 - Experiencia con divulgación progresiva: muestra primero la acción, la conclusión y el
   mapa; los cálculos, gráficos, tablas, fuentes y descargas permanecen disponibles como
   detalles opcionales, sin eliminar información del análisis.
+- Comparador temporal con un divisor de 44 px que puede arrastrarse con mouse o
+  pantalla táctil y mantiene ambos años sincronizados al acercar, alejar, mover o
+  ampliar el mapa a pantalla completa.
 - Ficha PDF ejecutiva con puntaje desglosado y dos mapas sin fondo satelital: uno
   para explicar la fragmentación y otro para mostrar la conectividad estructural y
   la ruta potencial hacia un corredor de referencia. Las leyendas quedan fuera del

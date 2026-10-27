@@ -4,7 +4,21 @@ Este historial documenta la evolución de la aplicación UX. Las versiones sigue
 el formato `MAJOR.MINOR.PATCH`: una versión principal, mejoras compatibles y
 correcciones compatibles, respectivamente.
 
-## [2.3.0] - 2026-10-27 — versión actual
+## [2.3.1] - 2026-10-27 — versión actual
+
+### Comparador temporal sincronizado
+
+- Fuerza la actualización del recorte de ambos años durante el zoom, el
+  desplazamiento, la carga de mosaicos, el cambio de tamaño y la pantalla completa.
+- Desactiva las transformaciones animadas únicamente en la vista comparativa para
+  evitar que una mitad parezca quedar fija mientras cambia la escala.
+- Conserva la posición elegida del divisor y aclara que las dos imágenes deben
+  permanecer en la misma ubicación y escala al navegar.
+- Amplía la compatibilidad del divisor con teclado, mouse y pantalla táctil mediante
+  una etiqueta accesible y un área real de arrastre de 44 px, independiente del
+  desplazamiento del mapa.
+
+## [2.3.0] - 2026-10-27
 
 ### Preevaluación guiada y alcance explícito
 

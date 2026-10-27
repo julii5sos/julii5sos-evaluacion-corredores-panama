@@ -14,7 +14,7 @@ import folium
 import requests
 import streamlit as st
 from streamlit.errors import StreamlitSecretNotFoundError
-from folium.plugins import Draw, Fullscreen, SideBySideLayers
+from folium.plugins import Draw, Fullscreen
 from google.oauth2 import service_account
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER
@@ -36,6 +36,10 @@ from streamlit_folium import st_folium
 from bosque_conectividad import (
     agregar_resultados_fragmentacion,
     analizar_fragmentacion_geojson,
+)
+from comparador_mapa import (
+    ComparadorCapasSincronizadas,
+    opciones_interaccion_mapa,
 )
 from corredores import (
     FUENTE_CORTA as FUENTE_CORREDORES,
@@ -741,7 +745,7 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-2.3.0-PREEVALUACION-GUIADA"
+APP_VERSION = "UX-2.3.1-COMPARADOR-SINCRONIZADO"
 METHODOLOGY_VERSION = "MT-2026.15-NDVI-PONDERADO"
 PROYECTO_EE = secreto_opcional("EE_PROJECT", "ee-julissaguevaravega")
 FUENTE_BOSQUE_NOMBRE = "Bosque y otros usos"
@@ -5522,6 +5526,7 @@ try:
         tiles=None,
         control_scale=True,
         prefer_canvas=True,
+        **opciones_interaccion_mapa(modo_comparador != "Sin comparador"),
     )
     folium.TileLayer(
         tiles=(
@@ -5598,7 +5603,7 @@ try:
             z_index=200,
         )
     if capa_izquierda is not None and capa_derecha is not None:
-        SideBySideLayers(
+        ComparadorCapasSincronizadas(
             layer_left=capa_izquierda,
             layer_right=capa_derecha,
         ).add_to(mapa)
@@ -5848,8 +5853,9 @@ try:
         )
         mapa_resultados_contenedor.caption(
             "Arrastre el control circular del divisor vertical. El lado izquierdo muestra el "
-            "año inicial y el derecho el año final. Este modo muestra únicamente la comparación "
-            "temporal para que ninguna capa temática la cubra."
+            "año inicial y el derecho el año final. Al acercar, alejar o mover el mapa, ambas "
+            "imágenes deben permanecer en la misma ubicación y escala. La línea queda donde "
+            "usted la deje para facilitar la comparación."
         )
     else:
         if modo_analisis == MODO_INTEGRAL:
