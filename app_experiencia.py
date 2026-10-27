@@ -39,8 +39,6 @@ from bosque_conectividad import (
 )
 from comparador_mapa import (
     ComparadorCapasSincronizadas,
-    NavegacionAcotadaAlArea,
-    RotulosComparadorFijos,
     opciones_interaccion_mapa,
 )
 from corredores import (
@@ -747,7 +745,7 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-2.3.2-FOCO-AREA"
+APP_VERSION = "UX-2.3.1-COMPARADOR-SINCRONIZADO"
 METHODOLOGY_VERSION = "MT-2026.15-NDVI-PONDERADO"
 PROYECTO_EE = secreto_opcional("EE_PROJECT", "ee-julissaguevaravega")
 FUENTE_BOSQUE_NOMBRE = "Bosque y otros usos"
@@ -2004,8 +2002,42 @@ def imagen_bosque_contexto(geometria, distancia_m=RADIO_BUSQUEDA_CORREDOR_M):
     return ee.Image(0).byte().paint(bosque, 1).selfMask().clip(limite_contexto)
 
 
-def agregar_rotulos_comparador(mapa, _limites, etiqueta_inicial, etiqueta_final):
-    RotulosComparadorFijos(etiqueta_inicial, etiqueta_final).add_to(mapa)
+def agregar_rotulos_comparador(mapa, limites, etiqueta_inicial, etiqueta_final):
+    (sur, oeste), (norte, este) = limites
+    margen_latitud = (norte - sur) * 0.045
+    margen_longitud = (este - oeste) * 0.035
+    latitud = norte - margen_latitud
+    estilo = (
+        "background:rgba(17,50,74,.92);color:white;padding:7px 10px;"
+        "border:2px solid white;border-radius:6px;box-shadow:0 2px 7px rgba(0,0,0,.35);"
+        "font:12px Arial,sans-serif;line-height:1.25;white-space:nowrap;"
+    )
+    folium.Marker(
+        location=[latitud, oeste + margen_longitud],
+        icon=folium.DivIcon(
+            class_name="rotulo-comparador-mapa",
+            icon_size=(185, 48),
+            icon_anchor=(0, 0),
+            html=(
+                f'<div style="{estilo}"><span style="font-size:10px;">◀ AÑO INICIAL</span>'
+                f'<br><b>{etiqueta_inicial}</b></div>'
+            ),
+        ),
+        z_index_offset=1000,
+    ).add_to(mapa)
+    folium.Marker(
+        location=[latitud, este - margen_longitud],
+        icon=folium.DivIcon(
+            class_name="rotulo-comparador-mapa",
+            icon_size=(185, 48),
+            icon_anchor=(185, 0),
+            html=(
+                f'<div style="{estilo}text-align:right;"><span style="font-size:10px;">'
+                f'AÑO FINAL ▶</span><br><b>{etiqueta_final}</b></div>'
+            ),
+        ),
+        z_index_offset=1000,
+    ).add_to(mapa)
 
 
 # -----------------------------------------------------------------------------
@@ -4683,8 +4715,8 @@ try:
     )
     catalogo_corredores = cargar_catalogo_corredores()
 
+    st.sidebar.markdown("---")
     if analiza_conectividad:
-        st.sidebar.markdown("---")
         with st.sidebar.expander("Fuentes de conectividad", expanded=False):
             st.caption(
                 f"Corredores públicos: {catalogo_corredores['corredores_poligonos']} "
@@ -5808,7 +5840,6 @@ try:
                 ],
             ]
     mapa.fit_bounds(limites_mapa)
-    NavegacionAcotadaAlArea(limites_mapa, margen=0.5).add_to(mapa)
 
     if etiqueta_inicial and etiqueta_final:
         mapa_resultados_contenedor.markdown(
@@ -5823,9 +5854,8 @@ try:
         mapa_resultados_contenedor.caption(
             "Arrastre el control circular del divisor vertical. El lado izquierdo muestra el "
             "año inicial y el derecho el año final. Al acercar, alejar o mover el mapa, ambas "
-            "imágenes permanecen en la misma ubicación y escala. La navegación se mantiene "
-            "dentro del área seleccionada y su margen inmediato; la línea queda donde usted "
-            "la deje para facilitar la comparación."
+            "imágenes deben permanecer en la misma ubicación y escala. La línea queda donde "
+            "usted la deje para facilitar la comparación."
         )
     else:
         if modo_analisis == MODO_INTEGRAL:

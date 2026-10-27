@@ -4,8 +4,6 @@ import folium
 
 from comparador_mapa import (
     ComparadorCapasSincronizadas,
-    NavegacionAcotadaAlArea,
-    RotulosComparadorFijos,
     opciones_interaccion_mapa,
 )
 
@@ -69,31 +67,6 @@ class ComparadorMapaTests(unittest.TestCase):
                 "marker_zoom_animation": True,
             },
         )
-
-    def test_rotulos_permanecen_fijos_durante_la_navegacion(self):
-        mapa = self.crear_mapa()
-        RotulosComparadorFijos("JRC TMF 2020", "JRC TMF 2025").add_to(mapa)
-
-        html = mapa.get_root().render()
-
-        self.assertIn("rotulos-comparador-fijos", html)
-        self.assertIn("position: 'absolute'", html)
-        self.assertIn("JRC TMF 2020", html)
-        self.assertIn("JRC TMF 2025", html)
-
-    def test_navegacion_se_mantiene_alrededor_del_area_seleccionada(self):
-        mapa = self.crear_mapa()
-        NavegacionAcotadaAlArea(
-            [[8.8, -79.8], [9.0, -79.5]],
-            margen=0.5,
-        ).add_to(mapa)
-
-        html = mapa.get_root().render()
-
-        self.assertIn("setMaxBounds", html)
-        self.assertIn("maxBoundsViscosity = 0.9", html)
-        self.assertIn("panInsideBounds", html)
-        self.assertIn("zoomend resize", html)
 
 
 if __name__ == "__main__":

@@ -4,20 +4,7 @@ Este historial documenta la evolución de la aplicación UX. Las versiones sigue
 el formato `MAJOR.MINOR.PATCH`: una versión principal, mejoras compatibles y
 correcciones compatibles, respectivamente.
 
-## [2.3.2] - 2026-10-27 — versión actual
-
-### Foco cartográfico y flujo más limpio
-
-- Oculta la navegación explicativa después de elegir una preevaluación y conserva
-  **Cambiar enfoque** como regreso explícito al selector principal.
-- Elimina el espacio vacío que producían dos separadores consecutivos en el panel
-  lateral de la preevaluación territorial.
-- Mantiene el desplazamiento y el zoom dentro del área seleccionada y su margen
-  inmediato para evitar que el polígono de interés se pierda durante la navegación.
-- Fija los rótulos de año inicial y final al visor para que sigan visibles al acercar,
-  alejar o recorrer el polígono.
-
-## [2.3.1] - 2026-10-27
+## [2.3.1] - 2026-10-27 — versión actual
 
 ### Comparador temporal sincronizado
 
