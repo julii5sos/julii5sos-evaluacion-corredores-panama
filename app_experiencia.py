@@ -877,7 +877,7 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-2.4.0-TABLERO-CARTOGRAFICO"
+APP_VERSION = "UX-3.0.0-TABLERO-POR-FUENTES"
 METHODOLOGY_VERSION = "MT-2026.15-NDVI-PONDERADO"
 PROYECTO_EE = secreto_opcional("EE_PROJECT", "ee-julissaguevaravega")
 FUENTE_BOSQUE_NOMBRE = "Bosque y otros usos"
@@ -2195,6 +2195,181 @@ def reducir_superficies(imagen, geometria, escala, proyeccion=None):
     return ee.Dictionary(imagen.reduceRegion(**parametros))
 
 
+def normalizar_histograma_gedi(histograma):
+    """Convierte los intervalos devueltos por Earth Engine en columnas graficables."""
+
+    intervalos = histograma or []
+    return {
+        "Altura (m)": [round((float(fila[0]) + float(fila[1])) / 2, 1) for fila in intervalos],
+        "Observaciones": [int(round(float(fila[2]))) for fila in intervalos],
+    }
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def calcular_serie_fuente(
+    tipo_area,
+    finca_id,
+    subcuenca_nombre,
+    geometria_geojson,
+    fuente,
+):
+    """Calcula una sola gráfica por solicitud para no sobrecargar Earth Engine."""
+
+    area_fc = obtener_area(
+        tipo_area=tipo_area,
+        finca_id=finca_id,
+        subcuenca_nombre=subcuenca_nombre,
+        geometria_geojson=geometria_geojson,
+    )
+    geometria = area_fc.geometry(TOLERANCIA_RECORTE_M)
+    pixel_ha = ee.Image.pixelArea().divide(10000)
+
+    if fuente == "JRC Tropical Moist Forest":
+        anios = list(range(2000, ANO_TMF_MAX + 1))
+        bandas = []
+        for anio in anios:
+            tmf = obtener_tmf(anio, geometria)
+            bandas.extend(
+                [
+                    tmf.eq(3).unmask(0).multiply(pixel_ha).rename(f"def_{anio}"),
+                    tmf.eq(2).unmask(0).multiply(pixel_ha).rename(f"deg_{anio}"),
+                ]
+            )
+        resumen = reducir_superficies(
+            ee.Image.cat(bandas),
+            geometria,
+            30,
+            obtener_tmf(ANO_TMF_MAX, geometria).projection(),
+        ).getInfo()
+        return {
+            "titulo": "Cambio forestal anual según JRC TMF",
+            "descripcion": (
+                "Superficie clasificada cada año como deforestación o degradación. "
+                "Las dos series pertenecen a la misma fuente y sí pueden compararse."
+            ),
+            "tipo": "lineas",
+            "columnas": {
+                "Año": anios,
+                "Deforestación (ha)": [numero(resumen, f"def_{anio}") for anio in anios],
+                "Degradación (ha)": [numero(resumen, f"deg_{anio}") for anio in anios],
+            },
+        }
+
+    if fuente == "Hansen Global Forest Change":
+        anios = list(range(2001, ANO_HANSEN_MAX + 1))
+        anio_perdida = ee.Image(HANSEN_ASSET).select("lossyear")
+        bandas = [
+            anio_perdida.eq(anio - 2000)
+            .unmask(0)
+            .multiply(pixel_ha)
+            .rename(f"perdida_{anio}")
+            for anio in anios
+        ]
+        resumen = reducir_superficies(
+            ee.Image.cat(bandas),
+            geometria,
+            30,
+            ee.Image(HANSEN_ASSET).projection(),
+        ).getInfo()
+        return {
+            "titulo": "Pérdida anual de cobertura arbórea según Hansen",
+            "descripcion": (
+                "Hectáreas con pérdida anual de cobertura arbórea. La fuente detecta "
+                "pérdida, pero por sí sola no identifica su causa."
+            ),
+            "tipo": "barras",
+            "columnas": {
+                "Año": anios,
+                "Pérdida (ha)": [
+                    numero(resumen, f"perdida_{anio}") for anio in anios
+                ],
+            },
+        }
+
+    if fuente == "ESRI Land Use / Land Cover":
+        anios = list(range(ANO_ESRI_MIN, ANO_ESRI_MAX + 1))
+        bandas = [
+            obtener_esri(anio, geometria)
+            .eq(2)
+            .unmask(0)
+            .multiply(pixel_ha)
+            .rename(f"arboles_{anio}")
+            for anio in anios
+        ]
+        resumen = reducir_superficies(
+            ee.Image.cat(bandas),
+            geometria,
+            10,
+            obtener_esri(ANO_ESRI_MAX, geometria).projection(),
+        ).getInfo()
+        return {
+            "titulo": "Cobertura arbórea anual según ESRI",
+            "descripcion": (
+                "Superficie clasificada como árboles en cada edición anual. Cambios "
+                "pequeños pueden reflejar tanto cambios reales como diferencias de clasificación."
+            ),
+            "tipo": "lineas",
+            "columnas": {
+                "Año": anios,
+                "Cobertura arbórea (ha)": [
+                    numero(resumen, f"arboles_{anio}") for anio in anios
+                ],
+            },
+        }
+
+    if fuente == "Sentinel-2 · NDVI":
+        anios = list(range(2017, ANO_NDVI_MAX + 1))
+        bandas = [
+            obtener_ndvi(anio, geometria).rename(f"ndvi_{anio}") for anio in anios
+        ]
+        resumen = ee.Image.cat(bandas).reduceRegion(
+            reducer=ee.Reducer.mean(),
+            geometry=geometria,
+            scale=max(100, ESCALA_ANALISIS_NDVI_M),
+            bestEffort=True,
+            maxPixels=1e9,
+            tileScale=4,
+        ).getInfo()
+        return {
+            "titulo": "Vigor medio de la vegetación según NDVI",
+            "descripcion": (
+                "Promedio anual del NDVI calculado con Sentinel-2. Sirve como señal "
+                "corroborativa; nubes, estacionalidad y agua pueden afectar la lectura."
+            ),
+            "tipo": "lineas",
+            "columnas": {
+                "Año": anios,
+                "NDVI medio": [numero(resumen, f"ndvi_{anio}") for anio in anios],
+            },
+        }
+
+    if fuente == "GEDI · altura del dosel":
+        histograma = (
+            imagen_gedi(geometria)
+            .reduceRegion(
+                reducer=ee.Reducer.fixedHistogram(0, 60, 12),
+                geometry=geometria,
+                scale=100,
+                bestEffort=True,
+                maxPixels=1e9,
+                tileScale=4,
+            )
+            .get("altura_dosel")
+            .getInfo()
+        )
+        return {
+            "titulo": "Distribución de altura del dosel según GEDI",
+            "descripcion": (
+                "GEDI no es una serie anual comparable. Por eso se muestra la distribución "
+                "de alturas disponibles y no una línea temporal artificial."
+            ),
+            "tipo": "barras",
+            "columnas": normalizar_histograma_gedi(histograma),
+        }
+
+    raise ValueError(f"Fuente no reconocida: {fuente}")
+
+
 @st.cache_data(ttl=3600, show_spinner=False)
 def analizar_corredores_cache(aoi_geojson_serializado):
     return analizar_interseccion_corredores(json.loads(aoi_geojson_serializado))
@@ -3395,6 +3570,9 @@ CLAVES_ESTADO_RESULTADOS = (
     "errores_mapas",
     "intento_informe",
     "mapas_reporte",
+    "grafica_fuente",
+    "firma_grafica_fuente",
+    "error_grafica_fuente",
 )
 
 
@@ -3542,6 +3720,108 @@ def mostrar_panel_dashboard(resultados, modo_analisis):
             "Pérdida post-2020",
             f"{float(resultados.get('hansen_post', 0) or 0):,.2f} ha",
         )
+
+
+def mostrar_grafica_por_fuente(
+    firma_analisis,
+    tipo_area,
+    finca_id,
+    subcuenca_nombre,
+    geometria_geojson,
+):
+    """Presenta una gráfica elegida por el usuario, sin calcular todas de entrada."""
+
+    st.markdown("### Evolución por fuente")
+    st.caption(
+        "Seleccione una fuente y prepare únicamente esa gráfica. Así se conserva la "
+        "capacidad analítica sin aumentar el tiempo de carga inicial."
+    )
+    columna_fuente, columna_accion = st.columns([2.2, 1])
+    fuente = columna_fuente.selectbox(
+        "Fuente para la gráfica",
+        [
+            "JRC Tropical Moist Forest",
+            "Hansen Global Forest Change",
+            "ESRI Land Use / Land Cover",
+            "Sentinel-2 · NDVI",
+            "GEDI · altura del dosel",
+        ],
+        key="fuente_grafica_analisis",
+        help=(
+            "Cada gráfica conserva la unidad y el significado propios de su fuente. "
+            "No se mezclan indicadores incompatibles en una sola línea."
+        ),
+    )
+    preparar = columna_accion.button(
+        "Preparar gráfica",
+        type="primary",
+        use_container_width=True,
+        key="preparar_grafica_fuente",
+    )
+    firma_grafica = (firma_analisis, fuente)
+    if preparar:
+        try:
+            with st.spinner(f"Consultando {fuente} para el área seleccionada..."):
+                st.session_state["grafica_fuente"] = calcular_serie_fuente(
+                    tipo_area,
+                    finca_id,
+                    subcuenca_nombre,
+                    geometria_geojson,
+                    fuente,
+                )
+                st.session_state["firma_grafica_fuente"] = firma_grafica
+                st.session_state.pop("error_grafica_fuente", None)
+        except Exception as error:
+            st.session_state.pop("grafica_fuente", None)
+            st.session_state["firma_grafica_fuente"] = firma_grafica
+            st.session_state["error_grafica_fuente"] = (
+                f"{type(error).__name__}: {error}"
+            )
+
+    if st.session_state.get("firma_grafica_fuente") != firma_grafica:
+        st.info(
+            "La gráfica se calcula solo cuando usted la solicita. Los resultados principales "
+            "de la preevaluación ya están disponibles en las pestañas superiores."
+        )
+        return
+
+    error_grafica = st.session_state.get("error_grafica_fuente")
+    if error_grafica:
+        st.warning(
+            "La preevaluación permanece disponible, pero esta gráfica temporal no pudo "
+            "prepararse en este momento."
+        )
+        with st.expander("Detalle técnico de la gráfica", expanded=False):
+            st.code(error_grafica)
+        return
+
+    grafica = st.session_state.get("grafica_fuente")
+    if not grafica:
+        return
+    st.markdown(f"#### {grafica['titulo']}")
+    st.caption(grafica["descripcion"])
+    columnas = grafica["columnas"]
+    eje_x = next(iter(columnas))
+    series = list(columnas)[1:]
+    if grafica["tipo"] == "barras":
+        st.bar_chart(columnas, x=eje_x, y=series, height=380)
+    else:
+        st.line_chart(columnas, x=eje_x, y=series, height=380)
+    st.download_button(
+        "Descargar datos de la gráfica",
+        data=json.dumps(
+            {
+                "fuente": fuente,
+                "titulo": grafica["titulo"],
+                "columnas": columnas,
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        file_name=f"grafica_{re.sub(r'[^a-z0-9]+', '_', fuente.lower()).strip('_')}.json",
+        mime="application/json",
+        use_container_width=True,
+    )
 
 
 def establecer_modo_analisis(modo):
@@ -4713,6 +4993,7 @@ def mostrar_resultados_fragmentacion(resultados):
 # -----------------------------------------------------------------------------
 
 modo_analisis = st.session_state.get("modo_analisis")
+seccion_tablero = st.session_state.get("seccion_tablero", "Mapa")
 if modo_analisis not in MODOS_ANALISIS:
     st.session_state.pop("modo_analisis", None)
     modo_analisis = None
@@ -5151,182 +5432,175 @@ try:
             )
     else:
         modo_comparador = "Sin comparador"
-        if modo_analisis == MODO_INTEGRAL:
-            # La vista integrada prioriza una lectura preparada. Las tres capas que
-            # sostienen la decisión no requieren intervención del usuario.
-            mostrar_fragmentos_bosque = True
-            mostrar_ruta_corredor = True
-            mostrar_corredores_mapa = True
-            panel_capas = st.sidebar.expander(
-                "Personalizar mapa · opcional",
-                expanded=False,
-            )
-            panel_capas.caption(
-                "El resumen ya incluye sectores prioritarios, corredores, fragmentos "
-                "clave y la conexión potencial cuando existe. Agregue detalles solo "
-                "si necesita una revisión técnica."
-            )
-            capas_adicionales = panel_capas.multiselect(
-                "Añadir evidencia satelital",
-                [capa for capa in opciones_capas if capa != "Sectores para revisión"],
-                default=[],
-                format_func=lambda valor: nombres_capas[valor],
-                placeholder="Seleccione capas adicionales",
-                help=(
-                    "Estas capas complementan el resumen, pero no cambian la prioridad "
-                    "calculada."
-                ),
-            )
-            capas_activas = list(perfil["capas"]) + capas_adicionales
-            orden_capas_mapa = list(capas_activas)
-            capa_visible_inicial = capas_activas[0] if capas_activas else None
+        capas_activas = []
+        st.sidebar.markdown("### Capas e indicadores")
+        st.sidebar.caption(
+            "Active una o varias fuentes. Cada bloque explica qué información aporta."
+        )
 
-            if any(
-                nombre in capas_activas
-                for nombre in ("Estado forestal JRC", "Deforestación JRC", "Degradación JRC")
+        if analiza_cambios:
+            if st.sidebar.checkbox(
+                "Resultado combinado · sectores para revisión",
+                value="Sectores para revisión" in perfil["capas"],
+                key=f"capa_resultado_{modo_analisis}",
+                help="Coincidencia espacial de las señales principales de JRC, Hansen y ESRI.",
             ):
-                anio_tmf_capa = panel_capas.selectbox(
-                    "Año de la evidencia JRC",
+                capas_activas.append("Sectores para revisión")
+
+            with st.sidebar.expander("JRC Tropical Moist Forest", expanded=True):
+                st.caption("Estado anual del bosque tropical desde 1990.")
+                if st.checkbox(
+                    "Estado forestal",
+                    value="Estado forestal JRC" in perfil["capas"],
+                    key=f"capa_jrc_estado_{modo_analisis}",
+                ):
+                    capas_activas.append("Estado forestal JRC")
+                if st.checkbox(
+                    "Deforestación",
+                    value="Deforestación JRC" in perfil["capas"],
+                    key=f"capa_jrc_deforestacion_{modo_analisis}",
+                ):
+                    capas_activas.append("Deforestación JRC")
+                if st.checkbox(
+                    "Degradación",
+                    value="Degradación JRC" in perfil["capas"],
+                    key=f"capa_jrc_degradacion_{modo_analisis}",
+                ):
+                    capas_activas.append("Degradación JRC")
+                anio_tmf_capa = st.selectbox(
+                    "Año JRC",
                     list(range(1990, ANO_TMF_MAX + 1)),
                     index=ANO_TMF_MAX - 1990,
+                    key=f"anio_jrc_{modo_analisis}",
                 )
-            if "Uso y cobertura ESRI" in capas_activas:
-                anio_esri_capa = panel_capas.selectbox(
-                    "Año de la evidencia ESRI",
+
+            with st.sidebar.expander("Hansen Global Forest Change", expanded=False):
+                st.caption("Pérdida anual de cobertura arbórea desde 2001.")
+                if st.checkbox(
+                    "Pérdida posterior a 2020",
+                    value="Pérdida Hansen post-2020" in perfil["capas"],
+                    key=f"capa_hansen_reciente_{modo_analisis}",
+                ):
+                    capas_activas.append("Pérdida Hansen post-2020")
+                if st.checkbox(
+                    "Pérdida histórica 2001-2020",
+                    value="Pérdida Hansen 2001-2020" in perfil["capas"],
+                    key=f"capa_hansen_historica_{modo_analisis}",
+                ):
+                    capas_activas.append("Pérdida Hansen 2001-2020")
+                if st.checkbox(
+                    "Cobertura arbórea persistente",
+                    value="Cobertura arbórea persistente" in perfil["capas"],
+                    key=f"capa_hansen_base_{modo_analisis}",
+                ):
+                    capas_activas.append("Cobertura arbórea persistente")
+
+            with st.sidebar.expander("ESRI Land Use / Land Cover", expanded=False):
+                st.caption("Cobertura del suelo y cambios de la clase árboles.")
+                if st.checkbox(
+                    "Uso y cobertura del suelo",
+                    value="Uso y cobertura ESRI" in perfil["capas"],
+                    key=f"capa_esri_cobertura_{modo_analisis}",
+                ):
+                    capas_activas.append("Uso y cobertura ESRI")
+                if st.checkbox(
+                    "Transiciones de la clase árboles",
+                    value="Transiciones ESRI" in perfil["capas"],
+                    key=f"capa_esri_transiciones_{modo_analisis}",
+                ):
+                    capas_activas.append("Transiciones ESRI")
+                anio_esri_capa = st.selectbox(
+                    "Año ESRI",
                     list(range(ANO_ESRI_MIN, ANO_ESRI_MAX + 1)),
                     index=ANO_ESRI_MAX - ANO_ESRI_MIN,
+                    key=f"anio_esri_{modo_analisis}",
                 )
-            if "Vegetación NDVI" in capas_activas:
-                anio_ndvi_capa = panel_capas.selectbox(
-                    "Año de la evidencia NDVI",
+
+            with st.sidebar.expander("Sentinel-2 · NDVI", expanded=False):
+                st.caption("Vigor de la vegetación y disminución entre períodos.")
+                if st.checkbox(
+                    "Cambio del vigor vegetal",
+                    value="ΔNDVI" in perfil["capas"],
+                    key=f"capa_ndvi_cambio_{modo_analisis}",
+                ):
+                    capas_activas.append("ΔNDVI")
+                if st.checkbox(
+                    "Vigor vegetal de un año",
+                    value="Vegetación NDVI" in perfil["capas"],
+                    key=f"capa_ndvi_anual_{modo_analisis}",
+                ):
+                    capas_activas.append("Vegetación NDVI")
+                anio_ndvi_capa = st.selectbox(
+                    "Año NDVI",
                     list(range(2017, ANO_NDVI_MAX + 1)),
                     index=ANO_NDVI_MAX - 2017,
+                    key=f"anio_ndvi_{modo_analisis}",
                 )
-            if "ΔNDVI" in capas_activas:
-                anio_ndvi_inicial = panel_capas.selectbox(
-                    f"Año inicial del cambio NDVI (final {ANO_NDVI_MAX})",
+                anio_ndvi_inicial = st.selectbox(
+                    f"Año inicial del cambio · final {ANO_NDVI_MAX}",
                     list(range(2017, ANO_NDVI_MAX)),
                     index=list(range(2017, ANO_NDVI_MAX)).index(2023),
+                    key=f"anio_ndvi_cambio_{modo_analisis}",
                 )
 
-            panel_capas.caption("Detalles técnicos de conectividad")
-            mostrar_bosque_contexto = panel_capas.checkbox(
-                f"Mostrar bosque {ANO_BOSQUE_REFERENCIA} en el entorno",
-                value=False,
-                disabled=not bosque_automatico_disponible,
-            )
-            mostrar_conexiones_bosque = panel_capas.checkbox(
-                "Mostrar red técnica entre fragmentos",
-                value=False,
-                disabled=not bosque_automatico_disponible,
-            )
-            mostrar_brechas_bosque = panel_capas.checkbox(
-                "Mostrar fragmentos aislados y distancia al vecino",
-                value=False,
-                disabled=not bosque_automatico_disponible,
-            )
-            mostrar_puntos_criticos_mapa = panel_capas.checkbox(
-                "Mostrar puntos críticos de referencia (Almanaque Azul)",
-                value=False,
-                help=(
-                    "Son ubicaciones externas publicadas por Almanaque Azul. No son "
-                    "fragmentos calculados por la aplicación ni cambian la prioridad."
-                ),
-            )
-        else:
-            panel_capas = st.sidebar.expander(
-                "Capas disponibles en el mapa",
-                expanded=False,
-            )
-            panel_capas.caption(
-                "Active solo la información que desea consultar. Los valores recomendados "
-                "ya están seleccionados."
-            )
-            if analiza_cambios:
-                capas_activas = panel_capas.multiselect(
-                    "Cambios observados por satélite",
-                    opciones_capas,
-                    default=capas_activas,
-                    format_func=lambda valor: nombres_capas[valor],
-                    placeholder="Seleccione las capas que desea consultar",
-                    help="Cada opción seleccionada se dibuja en el mapa.",
-                )
-                orden_capas_mapa = list(capas_activas)
-                capa_visible_inicial = capas_activas[0] if capas_activas else None
-
-                if any(
-                    nombre in capas_activas
-                    for nombre in ("Estado forestal JRC", "Deforestación JRC", "Degradación JRC")
+            with st.sidebar.expander("GEDI · altura del dosel", expanded=False):
+                st.caption("Estructura vertical disponible; no es una serie anual continua.")
+                if st.checkbox(
+                    "Altura del dosel",
+                    value="Altura GEDI" in perfil["capas"],
+                    key=f"capa_gedi_{modo_analisis}",
                 ):
-                    anio_tmf_capa = panel_capas.selectbox(
-                        "Año de la capa JRC:",
-                        list(range(1990, ANO_TMF_MAX + 1)),
-                        index=ANO_TMF_MAX - 1990,
-                    )
-                if "Uso y cobertura ESRI" in capas_activas:
-                    anio_esri_capa = panel_capas.selectbox(
-                        "Año de la capa ESRI:",
-                        list(range(ANO_ESRI_MIN, ANO_ESRI_MAX + 1)),
-                        index=ANO_ESRI_MAX - ANO_ESRI_MIN,
-                    )
-                if "Vegetación NDVI" in capas_activas:
-                    anio_ndvi_capa = panel_capas.selectbox(
-                        "Año de la capa NDVI:",
-                        list(range(2017, ANO_NDVI_MAX + 1)),
-                        index=ANO_NDVI_MAX - 2017,
-                    )
-                if "ΔNDVI" in capas_activas:
-                    anio_ndvi_inicial = panel_capas.selectbox(
-                        f"Año inicial del cambio NDVI (final {ANO_NDVI_MAX}):",
-                        list(range(2017, ANO_NDVI_MAX)),
-                        index=list(range(2017, ANO_NDVI_MAX)).index(2023),
-                    )
-            else:
-                capas_activas = []
-                orden_capas_mapa = []
-                capa_visible_inicial = None
+                    capas_activas.append("Altura GEDI")
 
-            if analiza_conectividad:
-                panel_capas.caption("Bosque y conectividad")
-                mostrar_fragmentos_bosque = panel_capas.checkbox(
-                    "Mostrar fragmentos clave para la conectividad",
+        if analiza_conectividad:
+            with st.sidebar.expander("Almanaque Azul · corredores", expanded=True):
+                mostrar_corredores_mapa = st.checkbox(
+                    "Corredores estratégicos",
                     value=True,
+                    key=f"capa_corredores_{modo_analisis}",
                 )
-                mostrar_ruta_corredor = panel_capas.checkbox(
-                    "Mostrar conexión estructural potencial",
+                mostrar_puntos_criticos_mapa = st.checkbox(
+                    "Puntos críticos publicados",
+                    value=False,
+                    key=f"capa_puntos_{modo_analisis}",
+                )
+            with st.sidebar.expander(
+                f"{FUENTE_BOSQUE_ORGANIZACION} · bosque {ANO_BOSQUE_REFERENCIA}",
+                expanded=modo_analisis == MODO_CORREDORES,
+            ):
+                mostrar_fragmentos_bosque = st.checkbox(
+                    "Fragmentos de bosque",
                     value=True,
+                    key=f"capa_fragmentos_{modo_analisis}",
                 )
-                mostrar_corredores_mapa = panel_capas.checkbox(
-                    "Mostrar corredores estratégicos",
+                mostrar_ruta_corredor = st.checkbox(
+                    "Conexión potencial hacia corredor",
                     value=True,
+                    key=f"capa_ruta_{modo_analisis}",
                 )
-                mostrar_bosque_contexto = panel_capas.checkbox(
-                    f"Mostrar bosque {ANO_BOSQUE_REFERENCIA} en el entorno",
+                mostrar_bosque_contexto = st.checkbox(
+                    "Bosque en el área y el entorno",
                     value=False,
                     disabled=not bosque_automatico_disponible,
+                    key=f"capa_contexto_{modo_analisis}",
                 )
-                panel_capas.caption("Detalles técnicos opcionales")
-                mostrar_conexiones_bosque = panel_capas.checkbox(
-                    "Mostrar red técnica entre fragmentos",
+                mostrar_conexiones_bosque = st.checkbox(
+                    "Estructura esencial entre fragmentos",
                     value=False,
                     disabled=not bosque_automatico_disponible,
+                    key=f"capa_red_{modo_analisis}",
                 )
-                mostrar_brechas_bosque = panel_capas.checkbox(
-                    "Mostrar fragmentos aislados y distancia al vecino",
+                mostrar_brechas_bosque = st.checkbox(
+                    "Fragmentos separados y distancia",
                     value=False,
                     disabled=not bosque_automatico_disponible,
-                )
-                mostrar_puntos_criticos_mapa = panel_capas.checkbox(
-                    "Mostrar puntos críticos de referencia (Almanaque Azul)",
-                    value=False,
-                    help=(
-                        "Son ubicaciones externas publicadas por Almanaque Azul. No son "
-                        "fragmentos calculados por la aplicación ni cambian la prioridad."
-                    ),
+                    key=f"capa_brechas_{modo_analisis}",
                 )
 
-            if not capas_activas and not analiza_conectividad:
-                panel_capas.warning("Seleccione al menos una capa temática.")
+        orden_capas_mapa = list(capas_activas)
+        capa_visible_inicial = capas_activas[0] if capas_activas else None
+        if not capas_activas and not analiza_conectividad:
+            st.sidebar.warning("Active al menos una capa territorial para mostrarla en el mapa.")
 
     firma_analisis_actual = (
         METHODOLOGY_VERSION,
@@ -5369,13 +5643,35 @@ try:
     analisis_actual = (
         st.session_state.get("firma_analisis") == firma_analisis_actual
     )
-    st.markdown("### Visor cartográfico")
-    columna_mapa, columna_panel = st.columns([1.85, 1], gap="medium")
-    columna_mapa.markdown(
-        '<div class="panel-titulo">Mapa y evidencia espacial</div>',
-        unsafe_allow_html=True,
+    st.sidebar.markdown("## Crear análisis")
+    st.sidebar.caption(
+        "Los controles anteriores cambian la vista. Este botón ejecuta los cálculos "
+        "para el área seleccionada."
     )
-    mapa_resultados_contenedor = columna_mapa.container(border=True)
+    solicitar_analisis = st.sidebar.button(
+        "Actualizar análisis" if analisis_actual else "Crear análisis",
+        type="primary",
+        use_container_width=True,
+        key="crear_analisis_panel",
+        help=f"Procesa únicamente la información de {contenido_modo['titulo'].lower()}.",
+    )
+
+    if seccion_tablero == "Análisis":
+        st.markdown("### Análisis del área seleccionada")
+        st.caption(
+            "Consulte la lectura rápida, el detalle por tema, las descargas y una "
+            "gráfica por fuente sin volver a cargar el mapa."
+        )
+        columna_panel = st.container(border=True)
+        mapa_resultados_contenedor = None
+    else:
+        st.markdown("### Visor cartográfico")
+        columna_mapa, columna_panel = st.columns([1.85, 1], gap="medium")
+        columna_mapa.markdown(
+            '<div class="panel-titulo">Mapa y evidencia espacial</div>',
+            unsafe_allow_html=True,
+        )
+        mapa_resultados_contenedor = columna_mapa.container(border=True)
 
     with columna_panel:
         st.markdown('<div class="panel-titulo">Área y resultado</div>', unsafe_allow_html=True)
@@ -5399,7 +5695,7 @@ try:
 
         if not analisis_actual:
             st.markdown(
-                '<div class="dashboard-estado"><b>Mapa listo.</b> Revise el área y genere '
+                '<div class="dashboard-estado"><b>Selección lista.</b> Revise el área y genere '
                 'la preevaluación para ver la conclusión y todos los indicadores.</div>',
                 unsafe_allow_html=True,
             )
@@ -5419,12 +5715,7 @@ try:
             resultados = st.session_state["resultados_analisis"]
             mostrar_panel_dashboard(resultados, modo_analisis)
 
-        if st.button(
-            "Actualizar preevaluación" if analisis_actual else "Generar preevaluación",
-            type="primary",
-            use_container_width=True,
-            help=f"Procesa únicamente la información de {contenido_modo['titulo'].lower()}.",
-        ):
+        if solicitar_analisis:
             firma_anterior = st.session_state.get("firma_analisis")
             with st.spinner(f"Preparando {contenido_modo['titulo'].lower()}..."):
                 if analiza_cambios:
@@ -5489,7 +5780,7 @@ try:
             st.session_state.get("firma_analisis") == firma_analisis_actual
         )
 
-    if analisis_actual:
+    if seccion_tablero == "Análisis" and analisis_actual:
         resultados = st.session_state["resultados_analisis"]
         st.markdown("### Resultados completos")
         st.caption(
@@ -5717,15 +6008,32 @@ try:
                     )
                 with st.expander("Detalle de los mapas no disponibles", expanded=False):
                     st.code("\n".join(errores_mapas))
-    elif "resultados_analisis" in st.session_state:
+    elif seccion_tablero == "Análisis" and "resultados_analisis" in st.session_state:
         st.warning(
             "Cambió el área o el período. Ejecute nuevamente la preevaluación para "
             "actualizar los resultados y el informe."
         )
-    else:
+    elif seccion_tablero == "Análisis":
         st.info(
             "Cuando genere la preevaluación aparecerán el resumen, el detalle por fuente y los archivos de respaldo."
         )
+
+    if seccion_tablero == "Análisis":
+        if analisis_actual and analiza_cambios:
+            mostrar_grafica_por_fuente(
+                firma_analisis_actual,
+                tipo_area,
+                finca_seleccionada,
+                subcuenca_seleccionada,
+                geometria_dibujada_json,
+            )
+        elif analisis_actual:
+            st.info(
+                "Este enfoque utiliza corredores publicados y métricas de fragmentación. "
+                "Sus gráficas y archivos geográficos están en las pestañas de resultados; "
+                "no se crea una serie temporal que mezcle fuentes incompatibles."
+            )
+        st.stop()
 
     mapa_resultados_contenedor.divider()
     mapa_resultados_contenedor.subheader(

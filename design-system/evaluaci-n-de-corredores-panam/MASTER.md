@@ -5,6 +5,8 @@ Este archivo adapta las recomendaciones de UI/UX al sistema institucional ya est
 ## Principios
 
 - Interfaz científica de tipo tablero cartográfico, con divulgación progresiva.
+- Navegación principal persistente: Mapa, Análisis, Metodología y ayuda, y Acerca del
+  visor. La navegación no se oculta después de elegir un enfoque.
 - Una vez elegido el análisis, la pantalla se organiza como visor: controles del área y
   capas a la izquierda, mapa como elemento dominante y lectura rápida a la derecha.
 - La explicación inicial desaparece durante el trabajo para no competir con el mapa.
@@ -45,8 +47,15 @@ Los colores originales de Almanaque Azul (`#345a01`, `#a1d303`, `#e0c504`) solo 
 
 - Barra superior compacta: identifica la cuenca, el tipo de preevaluación y su carácter
   indicativo sin repetir una portada extensa.
+- Panel de fuentes: cada producto ocupa un bloque reconocible —JRC TMF, Hansen, ESRI,
+  Sentinel-2/NDVI y GEDI— con sus capas y períodos propios. Corredores y bosque 2021
+  permanecen en bloques separados.
+- Acción Crear análisis: botón primario al final del panel lateral; distingue los
+  controles que solo cambian la visualización de la acción que ejecuta los cálculos.
 - Tablero principal: mapa ancho acompañado por una columna de resultado con la unidad,
   superficie, conclusión y cuatro indicadores clave.
+- Página Análisis: lectura rápida, pestañas temáticas, descargas y una gráfica por fuente
+  solicitada bajo demanda; no vuelve a construir el mapa.
 - Resultados completos: pestañas visibles por tema —resumen, cambios territoriales,
   corredores y bosque/conectividad—; no se eliminan datos ni se esconden tras casillas.
 - Botón primario: fondo `#00544d`, texto blanco y foco de 3 px.
@@ -72,6 +81,11 @@ Los colores originales de Almanaque Azul (`#345a01`, `#a1d303`, `#e0c504`) solo 
 - Ninguna métrica, gráfico, tabla o descarga se elimina para reducir la densidad visual; solo cambia el momento en que se presenta.
 - Los controles del mapa permanecen en el panel lateral y los resultados se consultan por
   pestañas, siguiendo el patrón de los visores ambientales profesionales.
+- Las gráficas de JRC, Hansen, ESRI y NDVI conservan su propia unidad y significado; no
+  se superponen fuentes incompatibles en una línea común. GEDI usa una distribución de
+  alturas y no una falsa serie temporal.
+- Las series se calculan una por vez, se almacenan temporalmente en caché y nunca bloquean
+  la carga inicial del mapa o del resultado principal.
 - La conectividad se presenta con parches, estructura esencial, ruta potencial al corredor y separaciones en capas independientes.
 - La lectura principal usa «fragmentos cercanos o separados»; nodo, arista, componente y densidad quedan reservados para el detalle técnico opcional.
 - Los fragmentos se muestran por defecto. La red completa nunca se dibuja: la capa técnica usa el árbol mínimo de cada grupo, con trazo verde oscuro y halo blanco.

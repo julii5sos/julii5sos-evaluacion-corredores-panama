@@ -4,7 +4,26 @@ Este historial documenta la evolución de la aplicación UX. Las versiones sigue
 el formato `MAJOR.MINOR.PATCH`: una versión principal, mejoras compatibles y
 correcciones compatibles, respectivamente.
 
-## [2.4.0] - 2026-10-27 — versión actual
+## [3.0.0] - 2026-10-27 — versión de prueba en rama independiente
+
+### Navegación por mapa, fuentes y análisis
+
+- Separa la experiencia en **Mapa**, **Análisis**, **Metodología y ayuda** y
+  **Acerca del visor**, manteniendo accesibles las cuatro secciones después de elegir
+  el enfoque.
+- Reemplaza el selector genérico de capas por bloques reconocibles para JRC TMF,
+  Hansen, ESRI, Sentinel-2/NDVI y GEDI, además de las fuentes de conectividad.
+- Lleva **Crear análisis** al panel lateral y evita volver a construir el mapa cuando
+  la persona consulta los resultados.
+- Organiza los resultados completos en pestañas y permite preparar una gráfica por
+  fuente bajo demanda para reducir el tiempo de carga.
+- Presenta series anuales únicamente cuando tienen sentido metodológico: cambio JRC,
+  pérdida Hansen, cobertura arbórea ESRI y vigor NDVI. GEDI se representa mediante
+  una distribución de altura del dosel.
+- Conserva la aplicación estable en `main`; esta versión se publica desde la rama
+  `version/3.0-tablero-cartografico` como una app nueva de Streamlit.
+
+## [2.4.0] - 2026-10-27
 
 ### Tablero cartográfico profesional
 

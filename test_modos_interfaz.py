@@ -53,37 +53,35 @@ class ModosInterfazTests(unittest.TestCase):
 
         self.assertEqual(
             app.segmented_control[0].options,
-            ["Preevaluar un área", "Objetivo y alcance", "Método y fuentes"],
+            ["Mapa", "Análisis", "Metodología y ayuda", "Acerca del visor"],
         )
 
-        app.segmented_control[0].set_value("Objetivo y alcance").run()
+        app.segmented_control[0].set_value("Metodología y ayuda").run()
         self.assertFalse(app.exception)
-        self.assertIn("¿Para qué sirve esta preevaluación?", app.markdown[1].value)
         self.assertTrue(
             any(
-                "Propósito y utilidad de la preevaluación" in bloque.value
+                "Cómo se construye la preevaluación" in bloque.value
                 for bloque in app.markdown
             )
         )
-        self.assertFalse(
-            any("De una selección a un argumento claro" in bloque.value for bloque in app.markdown)
-        )
-        self.assertTrue(any(boton.label == "Comenzar una preevaluación" for boton in app.button))
+        self.assertTrue(any(boton.label == "Abrir el mapa" for boton in app.button))
 
-        app.segmented_control[0].set_value("Método y fuentes").run()
+        app.segmented_control[0].set_value("Acerca del visor").run()
         self.assertFalse(app.exception)
-        self.assertIn("Cómo se construye la preevaluación", app.markdown[1].value)
-        self.assertTrue(any(boton.label == "Ir a la preevaluación" for boton in app.button))
+        self.assertTrue(
+            any("Qué problema ayuda a resolver" in bloque.value for bloque in app.markdown)
+        )
+        self.assertTrue(any(boton.label == "Abrir el mapa" for boton in app.button))
 
-    def test_la_navegacion_introductoria_desaparece_al_elegir_un_enfoque(self):
+    def test_la_navegacion_principal_permanece_antes_del_selector_de_enfoque(self):
         codigo = Path("app.py").read_text(encoding="utf-8")
 
+        bloque_navegacion = codigo.index('seccion_tablero = st.segmented_control(')
         bloque_modo = codigo.index('if modo_analisis is None:')
-        bloque_navegacion = codigo.index('vista_principal = st.segmented_control(', bloque_modo)
-        bloque_aplicacion = codigo.index('APLICACION_ACTIVA =', bloque_navegacion)
+        bloque_aplicacion = codigo.index('APLICACION_ACTIVA =', bloque_modo)
 
-        self.assertLess(bloque_modo, bloque_navegacion)
-        self.assertLess(bloque_navegacion, bloque_aplicacion)
+        self.assertLess(bloque_navegacion, bloque_modo)
+        self.assertLess(bloque_modo, bloque_aplicacion)
 
     def test_el_analisis_se_presenta_como_tablero_cartografico(self):
         codigo = Path("app_experiencia.py").read_text(encoding="utf-8")
@@ -92,6 +90,14 @@ class ModosInterfazTests(unittest.TestCase):
         self.assertIn("Mapa y evidencia espacial", codigo)
         self.assertIn("Área y resultado", codigo)
         self.assertIn("Resultados completos", codigo)
+        self.assertIn("Crear análisis", codigo)
+        self.assertIn("Evolución por fuente", codigo)
+        self.assertIn("JRC Tropical Moist Forest", codigo)
+        self.assertIn("Hansen Global Forest Change", codigo)
+        self.assertIn("ESRI Land Use / Land Cover", codigo)
+        self.assertIn("Sentinel-2 · NDVI", codigo)
+        self.assertIn("GEDI · altura del dosel", codigo)
+        self.assertIn('if seccion_tablero == "Análisis":', codigo)
         self.assertIn('["Resumen"]', codigo)
         self.assertNotIn("mostrar_flujo(2)", codigo)
         self.assertNotIn("Ver detalles del análisis · opcional", codigo)
