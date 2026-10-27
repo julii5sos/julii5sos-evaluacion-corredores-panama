@@ -122,7 +122,7 @@ def mostrar_objetivo():
         "revisión más detallada, dónde conviene mirar primero y qué información respalda esa orientación.",
         "Herramienta de orientación · no sustituye una visita de campo ni una decisión técnica o legal definitiva",
     )
-    st.markdown("## De una selección a un argumento claro")
+    st.markdown("## Propósito y utilidad de la preevaluación")
     st.markdown(
         """
         <div class="ruta-simple" aria-label="Cómo ayuda la preevaluación">

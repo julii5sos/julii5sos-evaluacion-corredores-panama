@@ -59,6 +59,15 @@ class ModosInterfazTests(unittest.TestCase):
         app.segmented_control[0].set_value("Objetivo y alcance").run()
         self.assertFalse(app.exception)
         self.assertIn("¿Para qué sirve esta preevaluación?", app.markdown[1].value)
+        self.assertTrue(
+            any(
+                "Propósito y utilidad de la preevaluación" in bloque.value
+                for bloque in app.markdown
+            )
+        )
+        self.assertFalse(
+            any("De una selección a un argumento claro" in bloque.value for bloque in app.markdown)
+        )
         self.assertTrue(any(boton.label == "Comenzar una preevaluación" for boton in app.button))
 
         app.segmented_control[0].set_value("Método y fuentes").run()
