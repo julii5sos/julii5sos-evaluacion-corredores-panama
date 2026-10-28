@@ -27,8 +27,9 @@ demuestra por sí sola conectividad funcional para una especie.
   mantiene el mapa visible y presenta a la derecha la **Lectura** y las **Gráficas** del
   área, evitando una sección «Análisis» vacía o duplicada.
 - El panel gráfico compara aportes por fuente y superficies con indicios; para
-  conectividad muestra corredores, bosque y fragmentos cercanos o separados. Cada
-  gráfica ofrece también sus valores en tabla.
+  conectividad muestra corredores, bosque y fragmentos cercanos o separados. Las
+  barras usan colores consistentes, muestran el valor junto a cada categoría y
+  ofrecen también sus valores en tabla.
 - Gráficas temporales solicitadas bajo demanda para JRC, Hansen, ESRI y NDVI. GEDI se
   presenta como distribución de altura del dosel, porque no constituye una serie anual
   comparable.

@@ -9,6 +9,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date
 from io import BytesIO
 
+import altair as alt
 import ee
 import folium
 import requests
@@ -812,29 +813,33 @@ st.markdown(
     }
     .dashboard-grafica-intro {
         margin: .15rem 0 .65rem;
-        padding: .62rem .72rem;
-        border-left: 4px solid var(--institucional-verde);
-        background: var(--institucional-verde-claro);
+        padding: .68rem .78rem;
+        border: 1px solid #cfe1d7;
+        border-left: 5px solid var(--institucional-verde-acento);
+        border-radius: .45rem;
+        background: linear-gradient(135deg, #eaf4f0 0%, #f5fae9 100%);
         color: var(--institucional-tinta);
         font-size: .86rem;
         line-height: 1.45;
     }
     .dashboard-dato-clave {
         margin: .55rem 0 .25rem;
-        padding: .55rem .68rem;
-        border: 1px solid var(--institucional-borde);
-        border-radius: .3rem;
-        background: #ffffff;
-        color: var(--institucional-suave);
-        font-size: .82rem;
-        line-height: 1.4;
+        padding: .7rem .78rem;
+        border: 1px solid #c7dccd;
+        border-left: 5px solid var(--institucional-verde-acento);
+        border-radius: .45rem;
+        background: #f4f9ee;
+        color: var(--institucional-tinta);
+        font-size: .86rem;
+        line-height: 1.45;
     }
     .dashboard-dato-clave b {color: var(--institucional-verde);}
     [data-testid="stVegaLiteChart"] {
-        padding: .2rem .15rem .1rem;
-        border: 1px solid var(--institucional-borde);
-        border-radius: .35rem;
+        padding: .7rem .65rem .35rem;
+        border: 1px solid #c7dcd4;
+        border-radius: .55rem;
         background: #ffffff;
+        box-shadow: 0 8px 22px rgba(0, 84, 77, .08);
     }
     [data-testid="stMetric"] {
         min-height: 104px;
@@ -903,7 +908,28 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-3.1.0-MAPA-Y-GRAFICAS"
+APP_VERSION = "UX-3.2.0-GRAFICAS-COLOR"
+
+COLORES_FUENTES = {
+    "JRC TMF": "#1F8A70",
+    "Hansen GFC": "#E76F51",
+    "ESRI LULC": "#3A7CA5",
+    "GEDI": "#7A5195",
+    "NDVI": "#9BBF30",
+}
+COLORES_CAMBIOS = {
+    "Deforestación JRC": "#C73E3A",
+    "Degradación JRC": "#F2A541",
+    "Pérdida Hansen post-2020": "#E76F51",
+    "Salida de árboles ESRI": "#3A7CA5",
+    "Disminución NDVI": "#9BBF30",
+}
+COLORES_CONECTIVIDAD = {
+    "En corredores": "#2E7D5B",
+    "Bosque 2021": "#76B72A",
+    "Cercanos": "#2A9D8F",
+    "Separados": "#E76F51",
+}
 METHODOLOGY_VERSION = "MT-2026.15-NDVI-PONDERADO"
 PROYECTO_EE = secreto_opcional("EE_PROJECT", "ee-julissaguevaravega")
 FUENTE_BOSQUE_NOMBRE = "Bosque y otros usos"
@@ -3775,6 +3801,11 @@ def construir_graficas_dashboard(resultados, modo_analisis):
                 },
                 "eje_x": "Categoría",
                 "eje_y": "Hectáreas",
+                "unidad": "ha",
+                "colores": [
+                    COLORES_CONECTIVIDAD["En corredores"],
+                    COLORES_CONECTIVIDAD["Bosque 2021"],
+                ],
             },
             "secundaria": {
                 "titulo": "Relación entre fragmentos",
@@ -3788,6 +3819,12 @@ def construir_graficas_dashboard(resultados, modo_analisis):
                 },
                 "eje_x": "Condición",
                 "eje_y": "Fragmentos",
+                "unidad": "fragmentos",
+                "decimales": 0,
+                "colores": [
+                    COLORES_CONECTIVIDAD["Cercanos"],
+                    COLORES_CONECTIVIDAD["Separados"],
+                ],
             },
             "clave": (
                 f"Se identificaron {total_fragmentos:,} fragmentos; "
@@ -3831,6 +3868,8 @@ def construir_graficas_dashboard(resultados, modo_analisis):
             "datos": {"Fuente": fuentes, "Aporte": valores_aporte},
             "eje_x": "Fuente",
             "eje_y": "Aporte",
+            "unidad": "puntos",
+            "colores": [COLORES_FUENTES[fuente] for fuente in fuentes],
         },
         "secundaria": {
             "titulo": "Superficie con indicios",
@@ -3841,9 +3880,121 @@ def construir_graficas_dashboard(resultados, modo_analisis):
             "datos": cambios,
             "eje_x": "Indicador",
             "eje_y": "Hectáreas",
+            "unidad": "ha",
+            "colores": [
+                COLORES_CAMBIOS[indicador] for indicador in cambios["Indicador"]
+            ],
         },
         "clave": f"{senales} de 5 fuentes aportan al índice de indicios.",
     }
+
+
+def crear_grafica_barras_color(grafica, altura=None):
+    """Construye barras horizontales, etiquetadas y con colores accesibles."""
+
+    eje_categoria = grafica["eje_x"]
+    eje_valor = grafica["eje_y"]
+    categorias = list(grafica["datos"].get(eje_categoria, []))
+    valores = [float(valor or 0) for valor in grafica["datos"].get(eje_valor, [])]
+    colores = list(grafica.get("colores") or ["#1F8A70"] * len(categorias))
+    if len(colores) < len(categorias):
+        colores.extend([colores[-1] if colores else "#1F8A70"] * (len(categorias) - len(colores)))
+    unidad = grafica.get("unidad", "")
+    decimales = int(grafica.get("decimales", 1))
+
+    def etiqueta_valor(valor):
+        numero_formateado = f"{valor:,.{decimales}f}"
+        if unidad == "puntos":
+            return f"{numero_formateado} pts"
+        if unidad:
+            return f"{numero_formateado} {unidad}"
+        return numero_formateado
+
+    filas = [
+        {
+            eje_categoria: categoria,
+            eje_valor: valor,
+            "Etiqueta": etiqueta_valor(valor),
+        }
+        for categoria, valor in zip(categorias, valores)
+    ]
+    maximo = max(valores, default=0)
+    dominio_maximo = max(1, maximo * 1.28)
+    altura_grafica = altura or max(180, min(310, 48 * max(1, len(categorias))))
+    datos_altair = alt.Data(values=filas)
+    escala_valores = alt.Scale(domain=[0, dominio_maximo], nice=False, zero=True)
+    eje_categorias = alt.Y(
+        f"{eje_categoria}:N",
+        sort=categorias,
+        title=None,
+        axis=alt.Axis(
+            domain=False,
+            ticks=False,
+            labelColor="#00403A",
+            labelFontSize=12,
+            labelFontWeight=600,
+            labelLimit=178,
+            labelPadding=8,
+        ),
+    )
+    eje_valores = alt.X(
+        f"{eje_valor}:Q",
+        title=f"{eje_valor} ({unidad})" if unidad else eje_valor,
+        scale=escala_valores,
+        axis=alt.Axis(
+            domain=False,
+            tickColor="#C7DCD4",
+            gridColor="#E3ECE8",
+            gridOpacity=1,
+            labelColor="#356B61",
+            labelFontSize=11,
+            titleColor="#356B61",
+            titleFontSize=11,
+            titleFontWeight=600,
+            tickCount=4,
+        ),
+    )
+    informacion = [
+        alt.Tooltip(f"{eje_categoria}:N", title=eje_categoria),
+        alt.Tooltip(f"{eje_valor}:Q", title=eje_valor, format=",.2f"),
+    ]
+    barras = (
+        alt.Chart(datos_altair)
+        .mark_bar(cornerRadiusEnd=6, size=22)
+        .encode(
+            y=eje_categorias,
+            x=eje_valores,
+            color=alt.Color(
+                f"{eje_categoria}:N",
+                scale=alt.Scale(domain=categorias, range=colores[: len(categorias)]),
+                legend=None,
+            ),
+            tooltip=informacion,
+        )
+    )
+    etiquetas = (
+        alt.Chart(datos_altair)
+        .mark_text(
+            align="left",
+            baseline="middle",
+            dx=6,
+            color="#00403A",
+            fontSize=11,
+            fontWeight=600,
+        )
+        .encode(
+            y=eje_categorias,
+            x=eje_valores,
+            text=alt.Text("Etiqueta:N"),
+            tooltip=informacion,
+        )
+    )
+    return (
+        (barras + etiquetas)
+        .properties(height=altura_grafica)
+        .configure_view(stroke=None)
+        .configure(background="#FFFFFF")
+    )
 
 
 def mostrar_graficas_dashboard(resultados, modo_analisis):
@@ -3868,11 +4019,11 @@ def mostrar_graficas_dashboard(resultados, modo_analisis):
         with pestana:
             st.markdown(f"**{grafica['titulo']}**")
             st.caption(grafica["descripcion"])
-            st.bar_chart(
-                grafica["datos"],
-                x=grafica["eje_x"],
-                y=grafica["eje_y"],
-                height=245,
+            st.altair_chart(
+                crear_grafica_barras_color(grafica),
+                use_container_width=True,
+                theme=None,
+                key=f"dashboard_{grafica['eje_x']}_{grafica['eje_y']}",
             )
             with st.expander("Ver valores de la gráfica", expanded=False):
                 st.dataframe(grafica["datos"], hide_index=True, use_container_width=True)
@@ -3964,10 +4115,30 @@ def mostrar_grafica_por_fuente(
     columnas = grafica["columnas"]
     eje_x = next(iter(columnas))
     series = list(columnas)[1:]
+    paletas_fuente = {
+        "JRC Tropical Moist Forest": ["#C73E3A", "#F2A541"],
+        "Hansen Global Forest Change": [COLORES_FUENTES["Hansen GFC"]],
+        "ESRI Land Use / Land Cover": [COLORES_FUENTES["ESRI LULC"]],
+        "Sentinel-2 · NDVI": [COLORES_FUENTES["NDVI"]],
+        "GEDI · altura del dosel": [COLORES_FUENTES["GEDI"]],
+    }
+    colores_series = paletas_fuente.get(fuente, ["#1F8A70"])
     if grafica["tipo"] == "barras":
-        st.bar_chart(columnas, x=eje_x, y=series, height=380)
+        st.bar_chart(
+            columnas,
+            x=eje_x,
+            y=series,
+            color=colores_series[0],
+            height=380,
+        )
     else:
-        st.line_chart(columnas, x=eje_x, y=series, height=380)
+        st.line_chart(
+            columnas,
+            x=eje_x,
+            y=series,
+            color=(colores_series * len(series))[: len(series)],
+            height=380,
+        )
     st.download_button(
         "Descargar datos de la gráfica",
         data=json.dumps(
@@ -4801,59 +4972,112 @@ def mostrar_resultados(
         grafico_jrc, grafico_esri = st.columns(2)
         with grafico_jrc:
             st.markdown("**Distribución del estado forestal JRC**")
-            st.bar_chart(
-                {
-                    "Clase": [
-                        "Bosque estable",
-                        "Degradación",
-                        "Deforestación",
-                        "Recuperación",
-                        "Agua",
-                        "Otra cobertura",
-                    ],
-                    "Hectáreas": [
-                        resultados["tmf_estable"],
-                        resultados["tmf_degradacion"],
-                        resultados["tmf_deforestacion"],
-                        resultados["tmf_recuperacion"],
-                        resultados["tmf_agua"],
-                        resultados["tmf_otra_cobertura"],
-                    ],
-                },
-                x="Clase",
-                y="Hectáreas",
-                height=280,
+            st.altair_chart(
+                crear_grafica_barras_color(
+                    {
+                        "eje_x": "Clase",
+                        "eje_y": "Hectáreas",
+                        "unidad": "ha",
+                        "colores": [
+                            "#2E7D32",
+                            "#F2A541",
+                            "#C73E3A",
+                            "#43AA8B",
+                            "#4D9DE0",
+                            "#A8B3B0",
+                        ],
+                        "datos": {
+                            "Clase": [
+                                "Bosque estable",
+                                "Degradación",
+                                "Deforestación",
+                                "Recuperación",
+                                "Agua",
+                                "Otra cobertura",
+                            ],
+                            "Hectáreas": [
+                                resultados["tmf_estable"],
+                                resultados["tmf_degradacion"],
+                                resultados["tmf_deforestacion"],
+                                resultados["tmf_recuperacion"],
+                                resultados["tmf_agua"],
+                                resultados["tmf_otra_cobertura"],
+                            ],
+                        },
+                    },
+                    altura=300,
+                ),
+                use_container_width=True,
+                theme=None,
+                key="detalle_jrc_barras_color",
             )
         with grafico_esri:
             st.markdown("**Cambios de la clase árboles ESRI**")
-            st.bar_chart(
-                {
-                    "Clase": ["Árboles estables", "Salida de árboles", "Ganancia de árboles"],
-                    "Hectáreas": [
-                        resultados["esri_estable"],
-                        resultados["esri_salida"],
-                        resultados["esri_ganancia"],
-                    ],
-                },
-                x="Clase",
-                y="Hectáreas",
-                height=280,
+            st.altair_chart(
+                crear_grafica_barras_color(
+                    {
+                        "eje_x": "Clase",
+                        "eje_y": "Hectáreas",
+                        "unidad": "ha",
+                        "colores": ["#2E7D32", "#E76F51", "#9BBF30"],
+                        "datos": {
+                            "Clase": [
+                                "Árboles estables",
+                                "Salida de árboles",
+                                "Ganancia de árboles",
+                            ],
+                            "Hectáreas": [
+                                resultados["esri_estable"],
+                                resultados["esri_salida"],
+                                resultados["esri_ganancia"],
+                            ],
+                        },
+                    },
+                    altura=220,
+                ),
+                use_container_width=True,
+                theme=None,
+                key="detalle_esri_barras_color",
             )
         st.markdown("**Comparación del aporte de las fuentes al índice**")
-        st.bar_chart(
-            {
-                "Fuente": ["JRC TMF", "Hansen GFC", "ESRI LULC", "GEDI", "NDVI"],
-                "Aporte": [
-                    aportes["tmf"],
-                    aportes["hansen"],
-                    aportes["esri"],
-                    aportes["gedi"],
-                    aportes["ndvi"],
-                ],
-            },
-            x="Fuente",
-            y="Aporte",
-            height=280,
+        st.altair_chart(
+            crear_grafica_barras_color(
+                {
+                    "eje_x": "Fuente",
+                    "eje_y": "Aporte",
+                    "unidad": "puntos",
+                    "colores": [
+                        COLORES_FUENTES[fuente]
+                        for fuente in [
+                            "JRC TMF",
+                            "Hansen GFC",
+                            "ESRI LULC",
+                            "GEDI",
+                            "NDVI",
+                        ]
+                    ],
+                    "datos": {
+                        "Fuente": [
+                            "JRC TMF",
+                            "Hansen GFC",
+                            "ESRI LULC",
+                            "GEDI",
+                            "NDVI",
+                        ],
+                        "Aporte": [
+                            aportes["tmf"],
+                            aportes["hansen"],
+                            aportes["esri"],
+                            aportes["gedi"],
+                            aportes["ndvi"],
+                        ],
+                    },
+                },
+                altura=270,
+            ),
+            use_container_width=True,
+            theme=None,
+            key="detalle_aportes_barras_color",
         )
         st.caption(
             "El gráfico representa aportes ponderados, no superficies comparables "

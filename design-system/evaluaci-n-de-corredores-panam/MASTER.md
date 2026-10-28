@@ -33,6 +33,20 @@ Este archivo adapta las recomendaciones de UI/UX al sistema institucional ya est
 | Error / alta atención | `#b42318` |
 | Atención media | `#f79009` |
 
+### Paleta de datos
+
+| Fuente o lectura | Color |
+|---|---|
+| JRC TMF | `#1F8A70` |
+| Hansen GFC | `#E76F51` |
+| ESRI LULC | `#3A7CA5` |
+| GEDI | `#7A5195` |
+| NDVI | `#9BBF30` |
+
+Las gráficas comparativas usan barras horizontales, una etiqueta de categoría y el
+valor con su unidad. Los colores se mantienen estables entre el tablero y el detalle,
+pero nunca sustituyen el texto o la tabla accesible.
+
 Los colores originales de Almanaque Azul (`#345a01`, `#a1d303`, `#e0c504`) solo se usan en sus capas y leyendas, acompañados siempre por las etiquetas Alta, Mediana y Media-baja.
 
 ## Tipografía y densidad
@@ -56,7 +70,8 @@ Los colores originales de Almanaque Azul (`#345a01`, `#a1d303`, `#e0c504`) solo 
   superficie, conclusión y cuatro indicadores clave.
 - Resultados inmediatos: el mapa permanece visible y la columna derecha alterna entre
   lectura rápida y gráficas compactas. Las gráficas principales se forman con el
-  resultado ya calculado y ofrecen una tabla de valores como alternativa accesible.
+  resultado ya calculado, usan barras a color con valores directos y ofrecen una tabla
+  de valores como alternativa accesible.
 - Resultados contextuales extensos: pestañas temáticas, descargas y una gráfica por
   fuente solicitada bajo demanda. Se abren con «Detalle y descargas», ofrecen «Volver
   al mapa» y no vuelven a construir el mapa.

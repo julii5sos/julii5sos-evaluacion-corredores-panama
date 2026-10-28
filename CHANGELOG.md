@@ -4,6 +4,21 @@ Este historial documenta la evolución de la aplicación UX. Las versiones sigue
 el formato `MAJOR.MINOR.PATCH`: una versión principal, mejoras compatibles y
 correcciones compatibles, respectivamente.
 
+## [3.2.0] - 2026-10-27 — gráficas a color y lectura directa
+
+### Lenguaje visual inspirado en tableros cartográficos
+
+- Sustituye las barras monocromáticas del tablero por barras horizontales con un
+  color reconocible para cada fuente, indicador o condición de conectividad.
+- Añade el valor y la unidad directamente junto a cada barra, además del detalle al
+  pasar el cursor y la tabla accesible ya disponible.
+- Conserva una paleta estable para JRC, Hansen, ESRI, GEDI y NDVI, evitando depender
+  únicamente del color para comunicar el resultado.
+- Aplica el mismo tratamiento a las distribuciones JRC, los cambios ESRI y la
+  comparación de aportes del resultado completo.
+- Refuerza las tarjetas de gráficas con contraste, bordes y acentos institucionales
+  para que el panel sea más claro y visualmente activo.
+
 ## [3.1.0] - 2026-10-27 — mapa y gráficas en un mismo tablero
 
 ### Panel analítico inspirado en visores ambientales
