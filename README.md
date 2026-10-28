@@ -18,14 +18,17 @@ demuestra por sí sola conectividad funcional para una especie.
 
 ## Qué se añadió en este repositorio
 
-- Navegación principal persistente entre **Mapa**, **Análisis**, **Metodología y ayuda**
-  y **Acerca del visor**. Las páginas explicativas no inician Earth Engine.
+- Navegación principal simplificada entre **Mapa**, **Metodología y ayuda** y
+  **Acerca del visor**. Las páginas explicativas no inician Earth Engine.
 - Panel de fuentes inspirado en visores ambientales: JRC TMF, Hansen, ESRI, NDVI y
   GEDI conservan controles independientes, además de los bloques de corredores y
   bosque/conectividad.
-- Vista **Mapa** para seleccionar el área, activar capas y crear el análisis; vista
-  **Análisis** para consultar la lectura rápida, las pestañas temáticas, descargas y
-  gráficas por fuente sin reconstruir el mapa.
+- El mapa permite seleccionar el área, activar capas y crear la preevaluación. Después
+  mantiene el mapa visible y presenta a la derecha la **Lectura** y las **Gráficas** del
+  área, evitando una sección «Análisis» vacía o duplicada.
+- El panel gráfico compara aportes por fuente y superficies con indicios; para
+  conectividad muestra corredores, bosque y fragmentos cercanos o separados. Cada
+  gráfica ofrece también sus valores en tabla.
 - Gráficas temporales solicitadas bajo demanda para JRC, Hansen, ESRI y NDVI. GEDI se
   presenta como distribución de altura del dosel, porque no constituye una serie anual
   comparable.
@@ -88,10 +91,11 @@ conectores, separaciones y componentes aislados.
    La ruta naranja es una orientación estructural para revisar, no un corredor nuevo
    ni evidencia de movimiento de fauna. El bosque exterior que se muestre no se suma
    a las hectáreas informadas para el polígono.
-7. Abra **Análisis** para consultar por pestañas **Resumen**, **Cambios territoriales**,
-   **Corredores** o **Bosque y conectividad**. Allí se conservan las métricas, gráficos,
-   tablas y archivos descargables del análisis completo. Las gráficas anuales se preparan
-   una por vez para no ralentizar la carga inicial.
+7. Consulte en la columna derecha **Lectura** o **Gráficas** sin abandonar el mapa.
+   Pulse **Detalle y descargas** únicamente cuando necesite las pestañas **Resumen**,
+   **Cambios territoriales**, **Corredores** o **Bosque y conectividad**, las tablas y
+   los archivos del análisis completo. Las series anuales se preparan una por vez para
+   no ralentizar la carga inicial.
 8. En la preevaluación territorial o integral, prepare la ficha PDF. La primera página explica el puntaje y la acción; las dos
    siguientes separan fragmentación y conectividad para evitar que las líneas oculten
    el patrón del bosque.

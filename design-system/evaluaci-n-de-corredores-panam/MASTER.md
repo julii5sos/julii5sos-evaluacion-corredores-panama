@@ -5,8 +5,8 @@ Este archivo adapta las recomendaciones de UI/UX al sistema institucional ya est
 ## Principios
 
 - Interfaz científica de tipo tablero cartográfico, con divulgación progresiva.
-- Navegación principal persistente: Mapa, Análisis, Metodología y ayuda, y Acerca del
-  visor. La navegación no se oculta después de elegir un enfoque.
+- Navegación principal persistente: Mapa, Metodología y ayuda, y Acerca del visor.
+  Los resultados no ocupan una pestaña global: se abren únicamente después de ejecutar.
 - Una vez elegido el análisis, la pantalla se organiza como visor: controles del área y
   capas a la izquierda, mapa como elemento dominante y lectura rápida a la derecha.
 - La explicación inicial desaparece durante el trabajo para no competir con el mapa.
@@ -54,8 +54,12 @@ Los colores originales de Almanaque Azul (`#345a01`, `#a1d303`, `#e0c504`) solo 
   controles que solo cambian la visualización de la acción que ejecuta los cálculos.
 - Tablero principal: mapa ancho acompañado por una columna de resultado con la unidad,
   superficie, conclusión y cuatro indicadores clave.
-- Página Análisis: lectura rápida, pestañas temáticas, descargas y una gráfica por fuente
-  solicitada bajo demanda; no vuelve a construir el mapa.
+- Resultados inmediatos: el mapa permanece visible y la columna derecha alterna entre
+  lectura rápida y gráficas compactas. Las gráficas principales se forman con el
+  resultado ya calculado y ofrecen una tabla de valores como alternativa accesible.
+- Resultados contextuales extensos: pestañas temáticas, descargas y una gráfica por
+  fuente solicitada bajo demanda. Se abren con «Detalle y descargas», ofrecen «Volver
+  al mapa» y no vuelven a construir el mapa.
 - Resultados completos: pestañas visibles por tema —resumen, cambios territoriales,
   corredores y bosque/conectividad—; no se eliminan datos ni se esconden tras casillas.
 - Botón primario: fondo `#00544d`, texto blanco y foco de 3 px.
@@ -86,6 +90,8 @@ Los colores originales de Almanaque Azul (`#345a01`, `#a1d303`, `#e0c504`) solo 
   alturas y no una falsa serie temporal.
 - Las series se calculan una por vez, se almacenan temporalmente en caché y nunca bloquean
   la carga inicial del mapa o del resultado principal.
+- Nunca se muestra una sección de resultados vacía antes de ejecutar. Al finalizar el
+  cálculo, la aplicación abre el resultado automáticamente.
 - La conectividad se presenta con parches, estructura esencial, ruta potencial al corredor y separaciones en capas independientes.
 - La lectura principal usa «fragmentos cercanos o separados»; nodo, arista, componente y densidad quedan reservados para el detalle técnico opcional.
 - Los fragmentos se muestran por defecto. La red completa nunca se dibuja: la capa técnica usa el árbol mínimo de cada grupo, con trazo verde oscuro y halo blanco.

@@ -4,17 +4,34 @@ Este historial documenta la evolución de la aplicación UX. Las versiones sigue
 el formato `MAJOR.MINOR.PATCH`: una versión principal, mejoras compatibles y
 correcciones compatibles, respectivamente.
 
+## [3.1.0] - 2026-10-27 — mapa y gráficas en un mismo tablero
+
+### Panel analítico inspirado en visores ambientales
+
+- Mantiene el mapa visible después de ejecutar la preevaluación; el cálculo ya no
+  cambia automáticamente a una página separada de resultados.
+- Añade una columna analítica a la derecha con pestañas de **Lectura** y **Gráficas**.
+- Muestra de inmediato el aporte ponderado de JRC, Hansen, ESRI, GEDI y NDVI y la
+  superficie de los principales indicios territoriales.
+- En corredores, compara la superficie dentro de corredores, el bosque 2021 y la
+  relación entre fragmentos cercanos y separados.
+- Incluye los valores tabulares de cada gráfica como alternativa accesible y mantiene
+  el detalle técnico, las series temporales, el PDF y las descargas mediante una acción
+  contextual, sin recargar el mapa durante la exploración principal.
+
 ## [3.0.0] - 2026-10-27 — versión de prueba en rama independiente
 
 ### Navegación por mapa, fuentes y análisis
 
-- Separa la experiencia en **Mapa**, **Análisis**, **Metodología y ayuda** y
-  **Acerca del visor**, manteniendo accesibles las cuatro secciones después de elegir
-  el enfoque.
+- Simplifica la navegación superior a **Mapa**, **Metodología y ayuda** y **Acerca del
+  visor**. Los resultados se abren de forma contextual después de crear la
+  preevaluación, evitando que «Mapa» y «Análisis» muestren la misma portada.
 - Reemplaza el selector genérico de capas por bloques reconocibles para JRC TMF,
   Hansen, ESRI, Sentinel-2/NDVI y GEDI, además de las fuentes de conectividad.
 - Lleva **Crear análisis** al panel lateral y evita volver a construir el mapa cuando
   la persona consulta los resultados.
+- Añade **Ver resultados** y **Volver al mapa** como acciones contextuales; al terminar
+  el cálculo se abre automáticamente la lectura del resultado.
 - Organiza los resultados completos en pestañas y permite preparar una gráfica por
   fuente bajo demanda para reducir el tiempo de carga.
 - Presenta series anuales únicamente cuando tienen sentido metodológico: cambio JRC,

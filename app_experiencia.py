@@ -810,6 +810,32 @@ st.markdown(
         font-size: .9rem;
         line-height: 1.5;
     }
+    .dashboard-grafica-intro {
+        margin: .15rem 0 .65rem;
+        padding: .62rem .72rem;
+        border-left: 4px solid var(--institucional-verde);
+        background: var(--institucional-verde-claro);
+        color: var(--institucional-tinta);
+        font-size: .86rem;
+        line-height: 1.45;
+    }
+    .dashboard-dato-clave {
+        margin: .55rem 0 .25rem;
+        padding: .55rem .68rem;
+        border: 1px solid var(--institucional-borde);
+        border-radius: .3rem;
+        background: #ffffff;
+        color: var(--institucional-suave);
+        font-size: .82rem;
+        line-height: 1.4;
+    }
+    .dashboard-dato-clave b {color: var(--institucional-verde);}
+    [data-testid="stVegaLiteChart"] {
+        padding: .2rem .15rem .1rem;
+        border: 1px solid var(--institucional-borde);
+        border-radius: .35rem;
+        background: #ffffff;
+    }
     [data-testid="stMetric"] {
         min-height: 104px;
         padding: .72rem .8rem;
@@ -877,7 +903,7 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-3.0.0-TABLERO-POR-FUENTES"
+APP_VERSION = "UX-3.1.0-MAPA-Y-GRAFICAS"
 METHODOLOGY_VERSION = "MT-2026.15-NDVI-PONDERADO"
 PROYECTO_EE = secreto_opcional("EE_PROJECT", "ee-julissaguevaravega")
 FUENTE_BOSQUE_NOMBRE = "Bosque y otros usos"
@@ -3722,6 +3748,141 @@ def mostrar_panel_dashboard(resultados, modo_analisis):
         )
 
 
+def construir_graficas_dashboard(resultados, modo_analisis):
+    """Prepara comparaciones compactas para el panel contiguo al mapa."""
+
+    if modo_analisis == MODO_CORREDORES:
+        corredores = resultados.get("corredores") or {}
+        fragmentacion = resultados.get("fragmentacion") or {}
+        clase = fragmentacion.get("metricas_clase") or {}
+        red = fragmentacion.get("metricas_red") or {}
+        total_fragmentos = int(clase.get("numero_parches", 0) or 0)
+        separados = int(red.get("numero_parches_aislados", 0) or 0)
+        cercanos = max(0, total_fragmentos - separados)
+        return {
+            "primaria": {
+                "titulo": "Superficie de interés",
+                "descripcion": (
+                    "Compara la superficie coincidente con corredores publicados y el "
+                    "bosque identificado dentro del área."
+                ),
+                "datos": {
+                    "Categoría": ["En corredores", "Bosque 2021"],
+                    "Hectáreas": [
+                        float(corredores.get("area_en_corredores_ha", 0) or 0),
+                        float(clase.get("area_total_bosque_ha", 0) or 0),
+                    ],
+                },
+                "eje_x": "Categoría",
+                "eje_y": "Hectáreas",
+            },
+            "secundaria": {
+                "titulo": "Relación entre fragmentos",
+                "descripcion": (
+                    "Distingue fragmentos cercanos de los que aparecen separados con la "
+                    "distancia configurada."
+                ),
+                "datos": {
+                    "Condición": ["Cercanos", "Separados"],
+                    "Fragmentos": [cercanos, separados],
+                },
+                "eje_x": "Condición",
+                "eje_y": "Fragmentos",
+            },
+            "clave": (
+                f"Se identificaron {total_fragmentos:,} fragmentos; "
+                f"{separados:,} aparecen separados."
+            ),
+        }
+
+    aportes = resultados.get("aportes_indice") or {}
+    cambios = {
+        "Indicador": [
+            "Deforestación JRC",
+            "Degradación JRC",
+            "Pérdida Hansen post-2020",
+            "Salida de árboles ESRI",
+            "Disminución NDVI",
+        ],
+        "Hectáreas": [
+            float(resultados.get("tmf_deforestacion", 0) or 0),
+            float(resultados.get("tmf_degradacion", 0) or 0),
+            float(resultados.get("hansen_post", 0) or 0),
+            float(resultados.get("esri_salida", 0) or 0),
+            float(resultados.get("ndvi_disminucion", 0) or 0),
+        ],
+    }
+    fuentes = ["JRC TMF", "Hansen GFC", "ESRI LULC", "GEDI", "NDVI"]
+    valores_aporte = [
+        float(aportes.get("tmf", 0) or 0),
+        float(aportes.get("hansen", 0) or 0),
+        float(aportes.get("esri", 0) or 0),
+        float(aportes.get("gedi", 0) or 0),
+        float(aportes.get("ndvi", 0) or 0),
+    ]
+    senales = sum(valor > 0 for valor in valores_aporte)
+    return {
+        "primaria": {
+            "titulo": "Aporte de las fuentes al índice",
+            "descripcion": (
+                "Muestra el aporte ponderado de cada producto; no representa hectáreas "
+                "comparables entre fuentes."
+            ),
+            "datos": {"Fuente": fuentes, "Aporte": valores_aporte},
+            "eje_x": "Fuente",
+            "eje_y": "Aporte",
+        },
+        "secundaria": {
+            "titulo": "Superficie con indicios",
+            "descripcion": (
+                "Resume las superficies detectadas por cada indicador. Las metodologías "
+                "y fechas son distintas y deben interpretarse por separado."
+            ),
+            "datos": cambios,
+            "eje_x": "Indicador",
+            "eje_y": "Hectáreas",
+        },
+        "clave": f"{senales} de 5 fuentes aportan al índice de indicios.",
+    }
+
+
+def mostrar_graficas_dashboard(resultados, modo_analisis):
+    """Muestra gráficas inmediatas sin abandonar el mapa principal."""
+
+    graficas = construir_graficas_dashboard(resultados, modo_analisis)
+    st.markdown(
+        '<div class="dashboard-grafica-intro">Las gráficas se actualizan con el área '
+        'analizada. Pase el cursor sobre las barras para consultar valores exactos.</div>',
+        unsafe_allow_html=True,
+    )
+    nombres = (
+        ["Superficie", "Fragmentos"]
+        if modo_analisis == MODO_CORREDORES
+        else ["Fuentes", "Cambios"]
+    )
+    pestana_primaria, pestana_secundaria = st.tabs(nombres)
+    for pestana, grafica in (
+        (pestana_primaria, graficas["primaria"]),
+        (pestana_secundaria, graficas["secundaria"]),
+    ):
+        with pestana:
+            st.markdown(f"**{grafica['titulo']}**")
+            st.caption(grafica["descripcion"])
+            st.bar_chart(
+                grafica["datos"],
+                x=grafica["eje_x"],
+                y=grafica["eje_y"],
+                height=245,
+            )
+            with st.expander("Ver valores de la gráfica", expanded=False):
+                st.dataframe(grafica["datos"], hide_index=True, use_container_width=True)
+    st.markdown(
+        f'<div class="dashboard-dato-clave"><b>Lectura clave:</b> '
+        f'{html_lib.escape(graficas["clave"])}</div>',
+        unsafe_allow_html=True,
+    )
+
+
 def mostrar_grafica_por_fuente(
     firma_analisis,
     tipo_area,
@@ -3827,8 +3988,17 @@ def mostrar_grafica_por_fuente(
 def establecer_modo_analisis(modo):
     limpiar_estado_resultados()
     st.session_state["modo_analisis"] = modo
+    st.session_state["mostrar_resultados"] = False
     st.session_state.pop("orden_capas_personalizado", None)
     st.session_state.pop("capa_a_reordenar", None)
+
+
+def abrir_resultados_contextuales():
+    st.session_state["mostrar_resultados"] = True
+
+
+def volver_al_mapa():
+    st.session_state["mostrar_resultados"] = False
 
 
 def mostrar_selector_modos():
@@ -4993,7 +5163,9 @@ def mostrar_resultados_fragmentacion(resultados):
 # -----------------------------------------------------------------------------
 
 modo_analisis = st.session_state.get("modo_analisis")
-seccion_tablero = st.session_state.get("seccion_tablero", "Mapa")
+seccion_tablero = (
+    "Análisis" if st.session_state.get("mostrar_resultados", False) else "Mapa"
+)
 if modo_analisis not in MODOS_ANALISIS:
     st.session_state.pop("modo_analisis", None)
     modo_analisis = None
@@ -5021,13 +5193,23 @@ contenido_modo = MODOS_ANALISIS[modo_analisis]
 analiza_cambios = modo_analisis in (MODO_TERRITORIAL, MODO_INTEGRAL)
 analiza_conectividad = modo_analisis in (MODO_CORREDORES, MODO_INTEGRAL)
 mostrar_barra_visor(contenido_modo)
-columna_contexto, columna_cambiar = st.columns([5, 1])
+if seccion_tablero == "Análisis":
+    columna_contexto, columna_volver, columna_cambiar = st.columns([4, 1, 1])
+    columna_volver.button(
+        "Volver al mapa",
+        use_container_width=True,
+        on_click=volver_al_mapa,
+        key="volver_mapa_resultados",
+    )
+else:
+    columna_contexto, columna_cambiar = st.columns([5, 1])
 columna_contexto.caption(
     f"{contenido_modo['pregunta']} · {contenido_modo['resultado']}"
 )
 if columna_cambiar.button("Cambiar análisis", use_container_width=True):
     limpiar_estado_resultados()
     st.session_state.pop("modo_analisis", None)
+    st.session_state["mostrar_resultados"] = False
     st.rerun()
 
 try:
@@ -5643,18 +5825,42 @@ try:
     analisis_actual = (
         st.session_state.get("firma_analisis") == firma_analisis_actual
     )
-    st.sidebar.markdown("## Crear análisis")
-    st.sidebar.caption(
-        "Los controles anteriores cambian la vista. Este botón ejecuta los cálculos "
-        "para el área seleccionada."
-    )
-    solicitar_analisis = st.sidebar.button(
-        "Actualizar análisis" if analisis_actual else "Crear análisis",
-        type="primary",
-        use_container_width=True,
-        key="crear_analisis_panel",
-        help=f"Procesa únicamente la información de {contenido_modo['titulo'].lower()}.",
-    )
+    if seccion_tablero == "Análisis":
+        st.sidebar.markdown("## Resultados")
+        st.sidebar.caption(
+            "Está consultando el resultado preparado para el área seleccionada."
+        )
+        st.sidebar.button(
+            "Volver al mapa",
+            use_container_width=True,
+            key="volver_mapa_sidebar",
+            on_click=volver_al_mapa,
+        )
+        solicitar_analisis = False
+    else:
+        st.sidebar.markdown("## Crear análisis")
+        st.sidebar.caption(
+            "Los controles anteriores cambian la vista. Este botón ejecuta los cálculos "
+            "para el área seleccionada."
+        )
+        solicitar_analisis = st.sidebar.button(
+            "Actualizar análisis" if analisis_actual else "Crear análisis",
+            type="primary",
+            use_container_width=True,
+            key="crear_analisis_panel",
+            help=f"Procesa únicamente la información de {contenido_modo['titulo'].lower()}.",
+        )
+        if analisis_actual:
+            st.sidebar.button(
+                "Detalle y descargas",
+                use_container_width=True,
+                key="abrir_resultados_sidebar",
+                on_click=abrir_resultados_contextuales,
+                help=(
+                    "Abre las tablas completas, la gráfica temporal por fuente y los "
+                    "archivos de respaldo."
+                ),
+            )
 
     if seccion_tablero == "Análisis":
         st.markdown("### Análisis del área seleccionada")
@@ -5713,7 +5919,21 @@ try:
                     )
         else:
             resultados = st.session_state["resultados_analisis"]
-            mostrar_panel_dashboard(resultados, modo_analisis)
+            pestana_lectura, pestana_graficas = st.tabs(["Lectura", "Gráficas"])
+            with pestana_lectura:
+                mostrar_panel_dashboard(resultados, modo_analisis)
+            with pestana_graficas:
+                mostrar_graficas_dashboard(resultados, modo_analisis)
+            st.button(
+                "Abrir detalle completo y descargas",
+                use_container_width=True,
+                key="abrir_resultados_panel",
+                on_click=abrir_resultados_contextuales,
+                help=(
+                    "Mantiene este tablero compacto. El detalle incluye todas las tablas, "
+                    "series por fuente, archivos geográficos e informe."
+                ),
+            )
 
         if solicitar_analisis:
             firma_anterior = st.session_state.get("firma_analisis")
@@ -5768,6 +5988,9 @@ try:
                 resultados_nuevos["modo_analisis"] = modo_analisis
                 st.session_state["resultados_analisis"] = resultados_nuevos
                 st.session_state["firma_analisis"] = firma_analisis_actual
+                # El resultado aparece en la columna derecha sin ocultar el mapa.
+                # La vista extensa se abre únicamente si el usuario solicita el detalle.
+                st.session_state["mostrar_resultados"] = False
                 if firma_anterior != firma_analisis_actual:
                     st.session_state.pop("pdf_analisis", None)
                     st.session_state.pop("firma_informe", None)
