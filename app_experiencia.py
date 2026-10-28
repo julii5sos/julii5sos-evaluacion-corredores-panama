@@ -111,9 +111,11 @@ st.markdown(
     .stApp {background: var(--institucional-fondo); color: var(--institucional-tinta);}
     html {color-scheme: light;}
     .block-container {
-        padding: 3.75rem .85rem 1.5rem;
+        padding: 3.5rem .55rem .85rem;
         max-width: none;
     }
+    .block-container [data-testid="stVerticalBlock"] {gap: .55rem;}
+    .block-container [data-testid="stHorizontalBlock"] {gap: .6rem;}
     .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6,
     .stApp p, .stApp label, .stApp li, .stApp small, .stApp summary,
     .stApp legend, .stApp th, .stApp td,
@@ -176,11 +178,13 @@ st.markdown(
     }
     [data-testid="stSidebar"] {
         border-right: 1px solid var(--institucional-borde);
-        min-width: 338px;
-        max-width: 338px;
+        min-width: 315px;
+        max-width: 315px;
         box-shadow: 6px 0 20px rgba(6,42,94,.05);
     }
-    [data-testid="stSidebar"] > div:first-child {background: #ffffff; padding-top: .45rem;}
+    [data-testid="stSidebar"] > div:first-child {background: #ffffff; padding-top: .35rem;}
+    [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {gap: .45rem;}
+    [data-testid="stSidebar"] hr {margin: .35rem 0;}
     [data-testid="stSidebar"] * {overflow-wrap: anywhere;}
     [data-testid="stSidebar"] h2,
     [data-testid="stSidebar"] h3 {color: var(--institucional-verde);}
@@ -729,10 +733,10 @@ st.markdown(
         display: flex;
         justify-content: space-between;
         align-items: center;
-        gap: 1rem;
-        min-height: 64px;
-        margin: 0 0 .65rem;
-        padding: .68rem 1rem;
+        gap: .65rem;
+        min-height: 54px;
+        margin: 0 0 .3rem;
+        padding: .5rem .75rem;
         border: 0;
         border-bottom: 5px solid var(--institucional-verde-acento);
         border-radius: 0;
@@ -744,7 +748,7 @@ st.markdown(
         display: block;
         margin-bottom: .12rem;
         color: #dce8f8;
-        font-size: .74rem;
+        font-size: .68rem;
         font-weight: 750;
         letter-spacing: .055em;
         text-transform: uppercase;
@@ -752,59 +756,57 @@ st.markdown(
     .visor-marca strong {
         display: block;
         color: #ffffff;
-        font-size: clamp(1.08rem, 1.7vw, 1.45rem);
+        font-size: clamp(1rem, 1.5vw, 1.28rem);
         line-height: 1.2;
     }
     .visor-contexto {
         display: flex;
         flex-wrap: wrap;
         justify-content: flex-end;
-        gap: .4rem;
+        gap: .3rem;
     }
     .visor-etiqueta {
         display: inline-flex;
         align-items: center;
-        min-height: 32px;
-        padding: .25rem .68rem;
+        min-height: 28px;
+        padding: .2rem .55rem;
         border: 1px solid rgba(255,255,255,.55);
         border-radius: 999px;
         background: rgba(255,255,255,.1);
         color: #ffffff;
-        font-size: .82rem;
+        font-size: .76rem;
         font-weight: 700;
         white-space: nowrap;
     }
-    .panel-titulo {
-        margin: .1rem 0 .55rem;
-        color: var(--institucional-verde);
-        font-size: .78rem;
-        font-weight: 750;
-        letter-spacing: .055em;
-        text-transform: uppercase;
-    }
+    .panel-titulo {margin:0;color:var(--institucional-verde);font-size:.78rem;font-weight:750;letter-spacing:.055em;text-transform:uppercase;}
     .panel-ayuda {
         margin: -.35rem 0 .8rem;
         color: var(--institucional-suave);
         font-size: .9rem;
         line-height: 1.5;
     }
+    .mapa-cabecera,
     .resultado-cabecera {
-        margin:-.05rem -.05rem .75rem;
-        padding:.8rem .9rem;
+        margin:0 0 .4rem;
+        padding:.55rem .7rem;
         border-bottom:5px solid var(--institucional-verde-acento);
         background:var(--institucional-verde);
         color:#ffffff;
     }
+    .mapa-cabecera {background:linear-gradient(112deg,var(--institucional-verde) 0 82%,var(--institucional-verde-oscuro) 82%);}
+    .mapa-cabecera small,
     .resultado-cabecera small {
         display:block;margin-bottom:.18rem;color:#cfe0f5;font-size:.7rem;
         font-weight:750;letter-spacing:.065em;text-transform:uppercase;
     }
-    .resultado-cabecera strong {display:block;color:#ffffff;font-size:1.08rem;line-height:1.25;}
+    .mapa-cabecera strong,
+    .resultado-cabecera strong {display:block;color:#ffffff;font-size:1rem;line-height:1.2;}
+    .mapa-nota {margin:0 0 .35rem;padding:.35rem .5rem;border-left:4px solid var(--institucional-verde-acento);background:#f3f8e9;color:var(--institucional-suave);font-size:.8rem;line-height:1.35;}
     .dashboard-area {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 1px;
-        margin: .25rem 0 .85rem;
+        margin: .15rem 0 .45rem;
         border: 1px solid var(--institucional-borde);
         border-radius: 6px;
         overflow: hidden;
@@ -812,12 +814,12 @@ st.markdown(
     }
     .dashboard-area > div {
         min-width: 0;
-        padding: .68rem .75rem;
+        padding: .48rem .55rem;
         background: var(--institucional-verde-claro);
     }
     .dashboard-area small {
         display: block;
-        margin-bottom: .15rem;
+        margin-bottom: .08rem;
         color: var(--institucional-suave);
         font-size: .74rem;
         font-weight: 700;
@@ -827,7 +829,8 @@ st.markdown(
     .dashboard-area strong {
         display: block;
         color: var(--institucional-tinta);
-        line-height: 1.35;
+        line-height: 1.25;
+        font-size: .92rem;
         overflow-wrap: anywhere;
     }
     .dashboard-estado {
@@ -870,8 +873,8 @@ st.markdown(
         box-shadow: 0 8px 22px rgba(6,42,94,.08);
     }
     [data-testid="stMetric"] {
-        min-height: 104px;
-        padding: .72rem .8rem;
+        min-height: 88px;
+        padding: .55rem .65rem;
         border: 1px solid var(--institucional-borde);
         border-radius: 6px;
         background: var(--institucional-verde-claro);
@@ -881,7 +884,7 @@ st.markdown(
         gap: .15rem;
         border-bottom: 1px solid var(--institucional-borde);
     }
-    [data-testid="stTabs"] button[role="tab"] {min-height: 46px;}
+    [data-testid="stTabs"] button[role="tab"] {min-height: 42px;}
     [data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
         color: var(--institucional-verde) !important;
         box-shadow: inset 0 -4px 0 var(--institucional-verde-acento);
@@ -942,7 +945,7 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-4.0.0-MODELO-HTML"
+APP_VERSION = "UX-4.1.0-CARTOGRAFIA-CENTRAL"
 
 COLORES_FUENTES = {
     "JRC TMF": "#1F8A70",
@@ -3675,7 +3678,7 @@ def mostrar_barra_visor(contenido_modo):
         <header class="visor-barra" aria-label="Identificación del visor">
           <div class="visor-marca">
             <small>Cuenca Hidrográfica del Canal de Panamá</small>
-            <strong>Visor de preevaluación territorial y conectividad</strong>
+            <strong>Evidencia cartográfica y resultados</strong>
           </div>
           <div class="visor-contexto">
             <span class="visor-etiqueta">{html_lib.escape(contenido_modo['titulo'])}</span>
@@ -6129,10 +6132,10 @@ try:
         columna_panel = st.container(border=True)
         mapa_resultados_contenedor = None
     else:
-        st.markdown("### Visor cartográfico")
-        columna_mapa, columna_panel = st.columns([2.15, 1], gap="small")
+        columna_mapa, columna_panel = st.columns([2.55, 1], gap="small")
         columna_mapa.markdown(
-            '<div class="panel-titulo">Mapa y evidencia espacial</div>',
+            '<div class="mapa-cabecera"><small>Centro del análisis</small>'
+            '<strong>Evidencia cartográfica</strong></div>',
             unsafe_allow_html=True,
         )
         mapa_resultados_contenedor = columna_mapa.container(border=True)
@@ -6520,20 +6523,18 @@ try:
             )
         st.stop()
 
-    mapa_resultados_contenedor.divider()
-    mapa_resultados_contenedor.subheader(
-        "Evidencia para orientar la decisión" if analisis_actual else "Evidencia cartográfica"
-    )
     if analisis_actual:
         if modo_analisis == MODO_INTEGRAL:
-            mapa_resultados_contenedor.caption(
-                "Vista resumida preparada automáticamente. Muestra la evidencia principal "
-                "para ubicar dónde conviene revisar primero."
+            mapa_resultados_contenedor.markdown(
+                '<div class="mapa-nota">Vista resumida automática: muestra la evidencia '
+                'principal para ubicar dónde conviene revisar primero.</div>',
+                unsafe_allow_html=True,
             )
         else:
-            mapa_resultados_contenedor.caption(
-                "Use las capas del panel lateral para ubicar la evidencia. Los cálculos y "
-                "tablas detallados se mantienen cerrados hasta que decida consultarlos."
+            mapa_resultados_contenedor.markdown(
+                '<div class="mapa-nota">Active las capas del panel lateral para ubicar la '
+                'evidencia; el detalle técnico permanece disponible bajo demanda.</div>',
+                unsafe_allow_html=True,
             )
 
     mapa = folium.Map(

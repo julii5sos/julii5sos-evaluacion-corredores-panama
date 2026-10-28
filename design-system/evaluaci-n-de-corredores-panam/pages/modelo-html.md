@@ -38,3 +38,15 @@ ESRI, GEDI, NDVI y Almanaque Azul conservan su significado.
 - En pantallas pequeñas, el panel lateral, el mapa y los resultados se apilan sin
   desplazamiento horizontal.
 - El movimiento es mínimo y respeta `prefers-reduced-motion`.
+
+## Ajuste compacto 4.1
+
+- Una vez elegido el análisis, se muestra una sola cabecera de contexto para evitar
+  duplicar identidad y navegación.
+- La evidencia cartográfica ocupa aproximadamente 72 % del tablero y el resultado
+  rápido el espacio restante.
+- Mapa y resultado comienzan en la misma línea y utilizan cabeceras equivalentes.
+- No se coloca una introducción extensa dentro del contenedor del mapa: solo una nota
+  breve cuando aporta contexto.
+- El panel lateral utiliza 315 px y una separación vertical densa, manteniendo controles
+  de al menos 44 px y foco visible.

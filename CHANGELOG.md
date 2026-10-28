@@ -4,6 +4,19 @@ Este historial documenta la evolución de la aplicación UX. Las versiones sigue
 el formato `MAJOR.MINOR.PATCH`: una versión principal, mejoras compatibles y
 correcciones compatibles, respectivamente.
 
+## [4.1.0] - 2026-10-28 — evidencia cartográfica como foco
+
+- Oculta la cabecera institucional duplicada después de elegir una preevaluación y
+  conserva una sola barra compacta de contexto.
+- Reduce márgenes, separación vertical, ancho del panel lateral y altura de tarjetas
+  para mostrar más información útil sin perder legibilidad.
+- Amplía la relación del mapa frente al panel de resultados y alinea ambas columnas
+  con cabeceras visuales equivalentes.
+- Elimina el bloque introductorio grande que antecedía al mapa; la ayuda cartográfica
+  pasa a una nota breve y la evidencia aparece inmediatamente.
+- Compacta las estadísticas, métricas y pestañas del resultado para mantener una
+  lectura armónica junto al mapa.
+
 ## [4.0.0] - 2026-10-27 — modelo visual basado en el portal HTML
 
 ### Nueva variante en una rama independiente

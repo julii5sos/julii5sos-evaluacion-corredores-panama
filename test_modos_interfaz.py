@@ -87,8 +87,9 @@ class ModosInterfazTests(unittest.TestCase):
     def test_el_analisis_se_presenta_como_tablero_cartografico(self):
         codigo = Path("app_experiencia.py").read_text(encoding="utf-8")
 
-        self.assertIn("Visor cartográfico", codigo)
-        self.assertIn("Mapa y evidencia espacial", codigo)
+        self.assertIn("Evidencia cartográfica", codigo)
+        self.assertIn("Centro del análisis", codigo)
+        self.assertIn("mapa-cabecera", codigo)
         self.assertIn("Resultado de la preevaluación", codigo)
         self.assertIn("Estadísticas del área", codigo)
         self.assertIn("Lectura", codigo)
@@ -137,7 +138,9 @@ class ModosInterfazTests(unittest.TestCase):
         self.assertIn("WGS 84 · EPSG:4326", portada)
         self.assertIn("#0a4393", portada.lower())
         self.assertIn("#77cc09", portada.lower())
-        self.assertIn('APP_VERSION = "UX-4.0.0-MODELO-HTML"', visor)
+        self.assertIn('APP_VERSION = "UX-4.1.0-CARTOGRAFIA-CENTRAL"', visor)
+        self.assertIn("st.columns([2.55, 1]", visor)
+        self.assertNotIn('st.markdown("### Visor cartográfico")', visor)
         for fuente in ("JRC", "Hansen", "ESRI", "GEDI", "NDVI"):
             self.assertIn(fuente, visor)
 

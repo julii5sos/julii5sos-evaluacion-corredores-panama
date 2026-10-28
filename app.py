@@ -42,7 +42,7 @@ st.markdown(
         --fondo:#f6f8fb;--claro:#eef1f7;
     }
     .stApp {background:var(--fondo);color:var(--azul-profundo);}
-    .block-container {padding-top:3.75rem;padding-bottom:2.5rem;max-width:none;}
+    .block-container {padding-top:3.5rem;padding-bottom:1.25rem;max-width:none;}
     button, [role="button"] {min-height:44px;touch-action:manipulation;}
     button:focus-visible, [role="button"]:focus-visible, input:focus-visible {
         outline:3px solid var(--acento);outline-offset:2px;
@@ -65,7 +65,7 @@ st.markdown(
     .portal-chip{padding:.28rem .62rem;border:1px solid rgba(255,255,255,.5);border-radius:999px;font-size:.73rem;font-weight:700;color:#fff;white-space:nowrap;}
     .portal-chip.acento{border-color:var(--acento);background:var(--acento);color:#183400;}
     [data-testid="stSegmentedControl"] {
-        margin-bottom:.75rem;padding:0 .45rem;background:#fff;
+        margin-bottom:.35rem;padding:0 .35rem;background:#fff;
         border:1px solid var(--borde);border-radius:6px;
     }
     [data-testid="stSegmentedControl"] button[aria-checked="true"] {
@@ -122,7 +122,7 @@ st.markdown(
     }
     .texto-legible {max-width:75ch;color:var(--suave);line-height:1.65;}
     @media(max-width:760px){
-        .block-container{padding-top:3.75rem}.entrada{padding:1.1rem}
+        .block-container{padding-top:3.5rem}.entrada{padding:1.1rem}
         .ruta-simple,.metodo-pasos,.alcance-grid{grid-template-columns:1fr}
         .tarjeta{min-height:auto}
         .portal-nav{align-items:flex-start;flex-direction:column}.portal-util{justify-content:flex-start}
@@ -425,7 +425,8 @@ if st.session_state.get("seccion_tablero") == "Análisis":
     # Migra sesiones abiertas con la navegación anterior.
     st.session_state["seccion_tablero"] = SECCION_MAPA
 
-mostrar_cabecera_portal()
+if st.session_state.get("modo_analisis") not in MODOS_ANALISIS:
+    mostrar_cabecera_portal()
 
 seccion_tablero = st.segmented_control(
     "Navegación principal",
