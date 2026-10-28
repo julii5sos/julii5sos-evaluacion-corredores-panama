@@ -54,9 +54,12 @@ Los colores originales de Almanaque Azul (`#345a01`, `#a1d303`, `#e0c504`) solo 
   controles que solo cambian la visualización de la acción que ejecuta los cálculos.
 - Tablero principal: mapa ancho acompañado por una columna de resultado con la unidad,
   superficie, conclusión y cuatro indicadores clave.
-- Resultados contextuales: lectura rápida, pestañas temáticas, descargas y una gráfica
-  por fuente solicitada bajo demanda. Se abren con «Ver resultados», ofrecen «Volver al
-  mapa» y no vuelven a construir el mapa.
+- Resultados inmediatos: el mapa permanece visible y la columna derecha alterna entre
+  lectura rápida y gráficas compactas. Las gráficas principales se forman con el
+  resultado ya calculado y ofrecen una tabla de valores como alternativa accesible.
+- Resultados contextuales extensos: pestañas temáticas, descargas y una gráfica por
+  fuente solicitada bajo demanda. Se abren con «Detalle y descargas», ofrecen «Volver
+  al mapa» y no vuelven a construir el mapa.
 - Resultados completos: pestañas visibles por tema —resumen, cambios territoriales,
   corredores y bosque/conectividad—; no se eliminan datos ni se esconden tras casillas.
 - Botón primario: fondo `#00544d`, texto blanco y foco de 3 px.

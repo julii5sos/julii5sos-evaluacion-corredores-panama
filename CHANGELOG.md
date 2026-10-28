@@ -4,6 +4,21 @@ Este historial documenta la evolución de la aplicación UX. Las versiones sigue
 el formato `MAJOR.MINOR.PATCH`: una versión principal, mejoras compatibles y
 correcciones compatibles, respectivamente.
 
+## [3.1.0] - 2026-10-27 — mapa y gráficas en un mismo tablero
+
+### Panel analítico inspirado en visores ambientales
+
+- Mantiene el mapa visible después de ejecutar la preevaluación; el cálculo ya no
+  cambia automáticamente a una página separada de resultados.
+- Añade una columna analítica a la derecha con pestañas de **Lectura** y **Gráficas**.
+- Muestra de inmediato el aporte ponderado de JRC, Hansen, ESRI, GEDI y NDVI y la
+  superficie de los principales indicios territoriales.
+- En corredores, compara la superficie dentro de corredores, el bosque 2021 y la
+  relación entre fragmentos cercanos y separados.
+- Incluye los valores tabulares de cada gráfica como alternativa accesible y mantiene
+  el detalle técnico, las series temporales, el PDF y las descargas mediante una acción
+  contextual, sin recargar el mapa durante la exploración principal.
+
 ## [3.0.0] - 2026-10-27 — versión de prueba en rama independiente
 
 ### Navegación por mapa, fuentes y análisis
