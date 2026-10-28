@@ -89,7 +89,8 @@ class ModosInterfazTests(unittest.TestCase):
 
         self.assertIn("Visor cartográfico", codigo)
         self.assertIn("Mapa y evidencia espacial", codigo)
-        self.assertIn("Área y resultado", codigo)
+        self.assertIn("Resultado de la preevaluación", codigo)
+        self.assertIn("Estadísticas del área", codigo)
         self.assertIn("Lectura", codigo)
         self.assertIn("Gráficas", codigo)
         self.assertIn("mostrar_graficas_dashboard", codigo)
@@ -125,6 +126,20 @@ class ModosInterfazTests(unittest.TestCase):
         self.assertIn('["Resumen"]', codigo)
         self.assertNotIn("mostrar_flujo(2)", codigo)
         self.assertNotIn("Ver detalles del análisis · opcional", codigo)
+
+    def test_modelo_html_conserva_el_analisis_y_declara_su_identidad(self):
+        portada = Path("app.py").read_text(encoding="utf-8")
+        visor = Path("app_experiencia.py").read_text(encoding="utf-8")
+
+        self.assertIn("mostrar_cabecera_portal", portada)
+        self.assertIn("Visor CHCP", portada)
+        self.assertIn("Google Earth Engine", portada)
+        self.assertIn("WGS 84 · EPSG:4326", portada)
+        self.assertIn("#0a4393", portada.lower())
+        self.assertIn("#77cc09", portada.lower())
+        self.assertIn('APP_VERSION = "UX-4.0.0-MODELO-HTML"', visor)
+        for fuente in ("JRC", "Hansen", "ESRI", "GEDI", "NDVI"):
+            self.assertIn(fuente, visor)
 
     def test_subcuenca_se_recorta_a_la_cuenca(self):
         geometria = GeometriaPrueba()

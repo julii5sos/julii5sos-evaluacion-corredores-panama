@@ -4,6 +4,22 @@ Este historial documenta la evolución de la aplicación UX. Las versiones sigue
 el formato `MAJOR.MINOR.PATCH`: una versión principal, mejoras compatibles y
 correcciones compatibles, respectivamente.
 
+## [4.0.0] - 2026-10-27 — modelo visual basado en el portal HTML
+
+### Nueva variante en una rama independiente
+
+- Adapta la composición visual del HTML de referencia a la aplicación Streamlit sin
+  incorporar sus datos demostrativos, cálculos ni metodología.
+- Introduce una cabecera institucional azul, acento verde, panel lateral compacto,
+  mapa dominante y panel analítico a la derecha.
+- Conserva los análisis reales del repositorio: JRC TMF, Hansen GFC, ESRI LULC,
+  GEDI, Sentinel-2/NDVI, corredores, bosque 2021 y fragmentación.
+- Mantiene las tres rutas de preevaluación, la selección por finca, subcuenca,
+  polígono o cuenca completa, así como las gráficas, tablas, PDF y descargas.
+- Documenta la variante en `design-system/evaluaci-n-de-corredores-panam/pages/modelo-html.md`.
+- Se publica desde `version/4.0-modelo-html`; `main` y la aplicación actualmente
+  desplegada no se modifican.
+
 ## [3.2.0] - 2026-10-27 — gráficas a color y lectura directa
 
 ### Lenguaje visual inspirado en tableros cartográficos

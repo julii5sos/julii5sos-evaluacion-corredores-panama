@@ -126,15 +126,16 @@ streamlit run app.py
 
 ## Crear una nueva app en Streamlit Community Cloud
 
-Esta versión se mantiene separada de la aplicación estable en la rama
-`version/3.0-tablero-cartografico`. Para probarla como una aplicación nueva sin
-modificar la actual:
+El modelo visual basado en el portal HTML se mantiene separado de la aplicación
+estable en la rama `version/4.0-modelo-html`. El ZIP aportado se utilizó únicamente
+como referencia de presentación; los cálculos y datos siguen siendo los de este
+repositorio. Para probar el modelo como una aplicación nueva sin modificar la actual:
 
 1. En Streamlit Community Cloud elija **Create app**.
 2. Use el repositorio `julii5sos/julii5sos-evaluacion-corredores-panama`.
-3. En **Branch** seleccione `version/3.0-tablero-cartografico`.
+3. En **Branch** seleccione `version/4.0-modelo-html`.
 4. En **Main file path** escriba `app.py`.
-5. Elija un nombre distinto, por ejemplo `visor-chcp-tablero`.
+5. Elija un nombre distinto, por ejemplo `visor-chcp-modelo-html`.
 6. Copie en **App settings > Secrets** los mismos secretos de la aplicación estable y
    verifique que la cuenta de servicio tenga acceso a los assets privados.
 7. Despliegue y pruebe primero las cuatro áreas disponibles, la subcuenca Lago

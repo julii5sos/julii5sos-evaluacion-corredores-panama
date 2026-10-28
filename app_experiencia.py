@@ -87,7 +87,7 @@ from reporte_cartografico import crear_mapa_conectividad, crear_mapa_fragmentaci
 
 if not st.session_state.get("_pagina_configurada"):
     st.set_page_config(
-        page_title="Preevaluación territorial y corredores | Panamá",
+        page_title="Visor CHCP | Preevaluación territorial y conectividad",
         page_icon=":material/map:",
         layout="wide",
         initial_sidebar_state="expanded",
@@ -98,19 +98,20 @@ st.markdown(
     """
     <style>
     :root {
-        --institucional-verde: #00544d;
-        --institucional-verde-oscuro: #00403a;
-        --institucional-verde-acento: #76b72a;
-        --institucional-verde-claro: #eaf4f0;
-        --institucional-tinta: #00544d;
-        --institucional-suave: #356b61;
-        --institucional-borde: #b6d1c8;
-        --institucional-fondo: #f6faf8;
+        --institucional-verde: #0a4393;
+        --institucional-verde-oscuro: #062a5e;
+        --institucional-verde-acento: #77cc09;
+        --institucional-verde-claro: #eef1f7;
+        --institucional-tinta: #062a5e;
+        --institucional-suave: #566176;
+        --institucional-borde: #d6deeb;
+        --institucional-fondo: #f6f8fb;
+        --portal-amarillo: #fabc20;
     }
     .stApp {background: var(--institucional-fondo); color: var(--institucional-tinta);}
     html {color-scheme: light;}
     .block-container {
-        padding: 1rem 1.15rem 2.5rem;
+        padding: 3.75rem .85rem 1.5rem;
         max-width: none;
     }
     .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6,
@@ -175,18 +176,31 @@ st.markdown(
     }
     [data-testid="stSidebar"] {
         border-right: 1px solid var(--institucional-borde);
-        min-width: 350px;
-        max-width: 350px;
+        min-width: 338px;
+        max-width: 338px;
+        box-shadow: 6px 0 20px rgba(6,42,94,.05);
     }
-    [data-testid="stSidebar"] > div:first-child {background: #ffffff; padding-top: .75rem;}
+    [data-testid="stSidebar"] > div:first-child {background: #ffffff; padding-top: .45rem;}
     [data-testid="stSidebar"] * {overflow-wrap: anywhere;}
+    [data-testid="stSidebar"] h2,
+    [data-testid="stSidebar"] h3 {color: var(--institucional-verde);}
+    [data-testid="stSidebar"] [data-testid="stExpander"] {
+        margin-bottom:.35rem;border:1px solid var(--institucional-borde);
+        border-radius:6px;background:var(--institucional-verde-claro);
+    }
+    [data-testid="stSidebar"] [data-testid="stExpander"] details[open] {
+        background:#ffffff;
+    }
+    [data-testid="stSidebar"] [data-testid="stExpander"] summary {
+        color:var(--institucional-verde)!important;font-weight:700;
+    }
     #MainMenu, footer {visibility: hidden;}
     iframe {max-width: 100% !important;}
     button, [role="button"] {min-height: 44px;}
     button:focus-visible, [role="button"]:focus-visible,
     input:focus-visible, select:focus-visible, textarea:focus-visible,
     .leyenda-info:focus-visible {
-        outline: 3px solid var(--institucional-verde);
+        outline: 3px solid var(--institucional-verde-acento);
         outline-offset: 2px;
     }
     .cabecera-app {
@@ -716,19 +730,20 @@ st.markdown(
         justify-content: space-between;
         align-items: center;
         gap: 1rem;
-        min-height: 66px;
-        margin: 0 0 .8rem;
-        padding: .72rem 1rem;
-        border: 1px solid var(--institucional-borde);
-        border-top: 4px solid var(--institucional-verde);
-        border-radius: .35rem;
-        background: #ffffff;
+        min-height: 64px;
+        margin: 0 0 .65rem;
+        padding: .68rem 1rem;
+        border: 0;
+        border-bottom: 5px solid var(--institucional-verde-acento);
+        border-radius: 0;
+        background: linear-gradient(112deg, var(--institucional-verde) 0 78%, var(--institucional-verde-oscuro) 78%);
+        box-shadow: 0 8px 22px rgba(6,42,94,.12);
     }
     .visor-marca {min-width: 0;}
     .visor-marca small {
         display: block;
         margin-bottom: .12rem;
-        color: var(--institucional-suave);
+        color: #dce8f8;
         font-size: .74rem;
         font-weight: 750;
         letter-spacing: .055em;
@@ -736,7 +751,7 @@ st.markdown(
     }
     .visor-marca strong {
         display: block;
-        color: var(--institucional-verde);
+        color: #ffffff;
         font-size: clamp(1.08rem, 1.7vw, 1.45rem);
         line-height: 1.2;
     }
@@ -751,20 +766,21 @@ st.markdown(
         align-items: center;
         min-height: 32px;
         padding: .25rem .68rem;
-        border: 1px solid var(--institucional-borde);
+        border: 1px solid rgba(255,255,255,.55);
         border-radius: 999px;
-        background: var(--institucional-verde-claro);
-        color: var(--institucional-verde);
+        background: rgba(255,255,255,.1);
+        color: #ffffff;
         font-size: .82rem;
         font-weight: 700;
         white-space: nowrap;
     }
     .panel-titulo {
-        margin: .15rem 0 .7rem;
+        margin: .1rem 0 .55rem;
         color: var(--institucional-verde);
-        font-size: 1.05rem;
+        font-size: .78rem;
         font-weight: 750;
-        letter-spacing: .01em;
+        letter-spacing: .055em;
+        text-transform: uppercase;
     }
     .panel-ayuda {
         margin: -.35rem 0 .8rem;
@@ -772,20 +788,32 @@ st.markdown(
         font-size: .9rem;
         line-height: 1.5;
     }
+    .resultado-cabecera {
+        margin:-.05rem -.05rem .75rem;
+        padding:.8rem .9rem;
+        border-bottom:5px solid var(--institucional-verde-acento);
+        background:var(--institucional-verde);
+        color:#ffffff;
+    }
+    .resultado-cabecera small {
+        display:block;margin-bottom:.18rem;color:#cfe0f5;font-size:.7rem;
+        font-weight:750;letter-spacing:.065em;text-transform:uppercase;
+    }
+    .resultado-cabecera strong {display:block;color:#ffffff;font-size:1.08rem;line-height:1.25;}
     .dashboard-area {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 1px;
         margin: .25rem 0 .85rem;
         border: 1px solid var(--institucional-borde);
-        border-radius: .35rem;
+        border-radius: 6px;
         overflow: hidden;
         background: var(--institucional-borde);
     }
     .dashboard-area > div {
         min-width: 0;
         padding: .68rem .75rem;
-        background: #ffffff;
+        background: var(--institucional-verde-claro);
     }
     .dashboard-area small {
         display: block;
@@ -806,7 +834,7 @@ st.markdown(
         margin: .65rem 0 .85rem;
         padding: .75rem .85rem;
         border-left: 4px solid var(--institucional-verde-acento);
-        background: #f4f9ee;
+        background: #f3f8e9;
         color: var(--institucional-tinta);
         font-size: .9rem;
         line-height: 1.5;
@@ -814,10 +842,10 @@ st.markdown(
     .dashboard-grafica-intro {
         margin: .15rem 0 .65rem;
         padding: .68rem .78rem;
-        border: 1px solid #cfe1d7;
+        border: 1px solid var(--institucional-borde);
         border-left: 5px solid var(--institucional-verde-acento);
         border-radius: .45rem;
-        background: linear-gradient(135deg, #eaf4f0 0%, #f5fae9 100%);
+        background: linear-gradient(135deg, var(--institucional-verde-claro) 0%, #f4f9e9 100%);
         color: var(--institucional-tinta);
         font-size: .86rem;
         line-height: 1.45;
@@ -825,10 +853,10 @@ st.markdown(
     .dashboard-dato-clave {
         margin: .55rem 0 .25rem;
         padding: .7rem .78rem;
-        border: 1px solid #c7dccd;
+        border: 1px solid var(--institucional-borde);
         border-left: 5px solid var(--institucional-verde-acento);
         border-radius: .45rem;
-        background: #f4f9ee;
+        background: #f4f9e9;
         color: var(--institucional-tinta);
         font-size: .86rem;
         line-height: 1.45;
@@ -836,17 +864,17 @@ st.markdown(
     .dashboard-dato-clave b {color: var(--institucional-verde);}
     [data-testid="stVegaLiteChart"] {
         padding: .7rem .65rem .35rem;
-        border: 1px solid #c7dcd4;
+        border: 1px solid var(--institucional-borde);
         border-radius: .55rem;
         background: #ffffff;
-        box-shadow: 0 8px 22px rgba(0, 84, 77, .08);
+        box-shadow: 0 8px 22px rgba(6,42,94,.08);
     }
     [data-testid="stMetric"] {
         min-height: 104px;
         padding: .72rem .8rem;
         border: 1px solid var(--institucional-borde);
-        border-radius: .35rem;
-        background: #ffffff;
+        border-radius: 6px;
+        background: var(--institucional-verde-claro);
     }
     [data-testid="stMetric"] [data-testid="stMetricLabel"] {font-weight: 650;}
     [data-testid="stTabs"] [data-baseweb="tab-list"] {
@@ -854,14 +882,20 @@ st.markdown(
         border-bottom: 1px solid var(--institucional-borde);
     }
     [data-testid="stTabs"] button[role="tab"] {min-height: 46px;}
+    [data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
+        color: var(--institucional-verde) !important;
+        box-shadow: inset 0 -4px 0 var(--institucional-verde-acento);
+    }
     [data-testid="stVerticalBlockBorderWrapper"] {
         border-color: var(--institucional-borde) !important;
         background: #ffffff;
+        border-radius: 6px !important;
     }
     iframe[title="streamlit_folium.st_folium"] {
         border: 1px solid var(--institucional-borde);
-        border-radius: .25rem;
-        background: #eef4f1;
+        border-radius: 6px;
+        background: var(--institucional-verde-claro);
+        box-shadow: 0 8px 24px rgba(6,42,94,.08);
     }
     @media (max-width: 760px) {
         .flujo-pasos, .contexto-analisis, .entregables, .resumen-principiante,
@@ -908,7 +942,7 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-3.2.0-GRAFICAS-COLOR"
+APP_VERSION = "UX-4.0.0-MODELO-HTML"
 
 COLORES_FUENTES = {
     "JRC TMF": "#1F8A70",
@@ -3930,7 +3964,7 @@ def crear_grafica_barras_color(grafica, altura=None):
         axis=alt.Axis(
             domain=False,
             ticks=False,
-            labelColor="#00403A",
+            labelColor="#062A5E",
             labelFontSize=12,
             labelFontWeight=600,
             labelLimit=178,
@@ -3943,12 +3977,12 @@ def crear_grafica_barras_color(grafica, altura=None):
         scale=escala_valores,
         axis=alt.Axis(
             domain=False,
-            tickColor="#C7DCD4",
-            gridColor="#E3ECE8",
+            tickColor="#D6DEEB",
+            gridColor="#E1E6EE",
             gridOpacity=1,
-            labelColor="#356B61",
+            labelColor="#566176",
             labelFontSize=11,
-            titleColor="#356B61",
+            titleColor="#566176",
             titleFontSize=11,
             titleFontWeight=600,
             tickCount=4,
@@ -3978,7 +4012,7 @@ def crear_grafica_barras_color(grafica, altura=None):
             align="left",
             baseline="middle",
             dx=6,
-            color="#00403A",
+            color="#062A5E",
             fontSize=11,
             fontWeight=600,
         )
@@ -6096,7 +6130,7 @@ try:
         mapa_resultados_contenedor = None
     else:
         st.markdown("### Visor cartográfico")
-        columna_mapa, columna_panel = st.columns([1.85, 1], gap="medium")
+        columna_mapa, columna_panel = st.columns([2.15, 1], gap="small")
         columna_mapa.markdown(
             '<div class="panel-titulo">Mapa y evidencia espacial</div>',
             unsafe_allow_html=True,
@@ -6104,7 +6138,11 @@ try:
         mapa_resultados_contenedor = columna_mapa.container(border=True)
 
     with columna_panel:
-        st.markdown('<div class="panel-titulo">Área y resultado</div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="resultado-cabecera"><small>Estadísticas del área</small>'
+            '<strong>Resultado de la preevaluación</strong></div>',
+            unsafe_allow_html=True,
+        )
         st.markdown(
             f"""
             <div class="dashboard-area">
