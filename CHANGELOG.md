@@ -4,6 +4,14 @@ Este historial documenta la evolución de la aplicación UX. Las versiones sigue
 el formato `MAJOR.MINOR.PATCH`: una versión principal, mejoras compatibles y
 correcciones compatibles, respectivamente.
 
+## [4.2.6] - 2026-10-29 — composición multicapa visible
+
+- Separa el eje categórico de las barras del control temporal para evitar que la escala
+  interactiva comprima todas las series en el borde izquierdo.
+- El navegador inferior filtra los años mediante un campo numérico estable; una, dos o
+  tres capas conservan barras visibles y apiladas.
+- Evita desplazamientos de año causados por conversiones de fecha y zona horaria.
+
 ## [4.2.5] - 2026-10-29 — barras visibles desde la carga inicial
 
 - Inicializa el navegador temporal con el intervalo completo de años disponibles para

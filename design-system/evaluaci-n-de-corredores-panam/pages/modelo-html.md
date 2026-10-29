@@ -100,3 +100,5 @@ ESRI, GEDI, NDVI y Almanaque Azul conservan su significado.
   un control y la evidencia principal continúa representada mediante barras.
 - El intervalo se inicializa con todos los años disponibles y no puede quedar vacío, de
   modo que las barras siempre sean visibles antes de cualquier interacción.
+- Las barras usan un eje anual categórico y el navegador filtra mediante el año numérico;
+  así se evita que una escala temporal dinámica oculte la composición multicapa.

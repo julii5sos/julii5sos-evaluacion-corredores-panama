@@ -1,6 +1,5 @@
 import ast
 import unittest
-from datetime import date
 from pathlib import Path
 
 import altair as alt
@@ -32,7 +31,7 @@ class ModosInterfazTests(unittest.TestCase):
             if isinstance(nodo, ast.FunctionDef)
             and nodo.name == "crear_grafica_serie_barras"
         )
-        espacio = {"alt": alt, "date": date}
+        espacio = {"alt": alt}
         exec(
             compile(
                 ast.Module(body=[funcion], type_ignores=[]),
@@ -47,16 +46,36 @@ class ModosInterfazTests(unittest.TestCase):
                     "Año": list(range(2000, 2026)),
                     "Deforestación (ha)": [10] * 26,
                     "Degradación (ha)": [5] * 26,
+                    "Regeneración forestal (ha)": [3] * 26,
                 }
             },
-            series=["Deforestación (ha)", "Degradación (ha)"],
-            colores=["#C73E3A", "#F2A541"],
+            series=[
+                "Deforestación (ha)",
+                "Degradación (ha)",
+                "Regeneración forestal (ha)",
+            ],
+            colores=["#C73E3A", "#F2A541", "#2E8B57"],
         ).to_dict()
 
         seleccion = grafica["params"][0]
-        self.assertEqual(seleccion["value"]["x"][0]["year"], 2000)
-        self.assertEqual(seleccion["value"]["x"][1]["year"], 2025)
+        self.assertEqual(seleccion["value"]["x"], [2000, 2025])
         self.assertFalse(seleccion["select"]["clear"])
+        self.assertEqual(
+            grafica["vconcat"][0]["encoding"]["x"]["field"],
+            "Periodo",
+        )
+        self.assertEqual(
+            grafica["vconcat"][0]["transform"][0]["filter"]["param"],
+            "periodo_visible",
+        )
+        self.assertEqual(
+            grafica["vconcat"][0]["encoding"]["color"]["scale"]["domain"],
+            [
+                "Deforestación (ha)",
+                "Degradación (ha)",
+                "Regeneración forestal (ha)",
+            ],
+        )
         self.assertEqual(grafica["vconcat"][0]["encoding"]["y"]["stack"], "zero")
 
     def test_aplicacion_importa_la_regla_de_recorte(self):
@@ -197,7 +216,7 @@ class ModosInterfazTests(unittest.TestCase):
         self.assertIn("WGS 84 · EPSG:4326", portada)
         self.assertIn("#0a4393", portada.lower())
         self.assertIn("#77cc09", portada.lower())
-        self.assertIn('APP_VERSION = "UX-4.2.5-GRAFICA-RANGO-INICIAL"', visor)
+        self.assertIn('APP_VERSION = "UX-4.2.6-GRAFICA-MULTICAPA-VISIBLE"', visor)
         self.assertIn("st.columns([2.55, 1]", visor)
         self.assertIn('[data-collapsed="true"]', visor)
         self.assertIn("width: 0 !important", visor)

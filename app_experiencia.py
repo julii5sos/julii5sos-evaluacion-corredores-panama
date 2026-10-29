@@ -993,7 +993,7 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-4.2.5-GRAFICA-RANGO-INICIAL"
+APP_VERSION = "UX-4.2.6-GRAFICA-MULTICAPA-VISIBLE"
 
 COLORES_FUENTES = {
     "JRC TMF": "#1F8A70",
@@ -4329,7 +4329,7 @@ def crear_grafica_serie_barras(
     es_serie_anual = eje_x.strip().lower() in {"año", "ano"}
     filas = []
     periodos = []
-    fechas_disponibles = []
+    anios_disponibles = []
     for indice, valor_x in enumerate(valores_x):
         try:
             valor_numerico_x = float(valor_x)
@@ -4351,9 +4351,9 @@ def crear_grafica_serie_barras(
                 "Valor": valor,
             }
             if es_serie_anual and valor_numerico_x is not None:
-                fecha_periodo = date(int(valor_numerico_x), 1, 1)
-                fila["Fecha"] = fecha_periodo.isoformat()
-                fechas_disponibles.append(fecha_periodo)
+                anio_periodo = int(valor_numerico_x)
+                fila["Anio"] = anio_periodo
+                anios_disponibles.append(anio_periodo)
             filas.append(fila)
 
     colores = list(colores or ["#1F8A70"])
@@ -4376,8 +4376,8 @@ def crear_grafica_serie_barras(
     navegador_periodo = None
     if es_serie_anual and len(set(periodos)) > 8:
         intervalo_inicial = (
-            min(fechas_disponibles),
-            max(fechas_disponibles),
+            min(anios_disponibles),
+            max(anios_disponibles),
         )
         navegador_periodo = alt.selection_interval(
             encodings=["x"],
@@ -4392,11 +4392,10 @@ def crear_grafica_serie_barras(
             ),
         )
         eje_periodo = alt.X(
-            "Fecha:T",
+            "Periodo:O",
+            sort=list(dict.fromkeys(periodos)),
             title=eje_x,
-            scale=alt.Scale(domain=navegador_periodo),
             axis=alt.Axis(
-                format="%Y",
                 labelAngle=0,
                 labelOverlap="greedy",
                 labelColor="#566176",
@@ -4425,7 +4424,10 @@ def crear_grafica_serie_barras(
             ),
         )
 
-    base = alt.Chart(datos).mark_bar(
+    base = alt.Chart(datos)
+    if navegador_periodo is not None:
+        base = base.transform_filter(navegador_periodo)
+    base = base.mark_bar(
         cornerRadiusTopLeft=3,
         cornerRadiusTopRight=3,
     )
@@ -4480,10 +4482,10 @@ def crear_grafica_serie_barras(
             )
             .encode(
                 x=alt.X(
-                    "Fecha:T",
+                    "Anio:Q",
                     title=None,
                     axis=alt.Axis(
-                        format="%Y",
+                        format="d",
                         labelAngle=0,
                         labelColor="#566176",
                         labelFontSize=9,
