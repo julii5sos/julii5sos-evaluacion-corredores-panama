@@ -4,6 +4,16 @@ Este historial documenta la evolución de la aplicación UX. Las versiones sigue
 el formato `MAJOR.MINOR.PATCH`: una versión principal, mejoras compatibles y
 correcciones compatibles, respectivamente.
 
+## [4.2.4] - 2026-10-29 — gráfica temporal inspirada en MapBiomas
+
+- Presenta las capas anuales comparables mediante barras apiladas, con una leyenda y
+  colores estables para reconocer cada indicador seleccionado.
+- Añade un navegador temporal inferior que permite enfocar un intervalo de años sin
+  convertir la gráfica analítica principal en una gráfica de líneas.
+- Incorpora la etiqueta «Visualizadas en el mapa» para reforzar la relación entre las
+  capas activas, la evidencia cartográfica y las series visibles.
+- Conserva tooltips con valores exactos y una tabla accesible con las mismas series.
+
 ## [4.2.3] - 2026-10-29 — modo de enfoque al cerrar el panel
 
 - Al contraer el panel lateral, su ancho reservado pasa realmente a cero y el mapa con

@@ -77,7 +77,7 @@ ESRI, GEDI, NDVI y Almanaque Azul conservan su significado.
 - La gráfica contextual responde al conjunto de capas activas, no únicamente a la
   última casilla seleccionada.
 - Deforestación, degradación y regeneración forestal de JRC TMF se comparan mediante
-  barras agrupadas, con una leyenda visible y colores estables.
+  barras apiladas, con una leyenda visible y colores estables.
 - Al desactivar una capa, su serie desaparece de la gráfica y de la tabla de valores.
 - Capas de fuentes o unidades distintas no comparten un mismo eje; la vista conserva
   como contexto principal la fuente de la última evidencia activada.
@@ -89,3 +89,12 @@ ESRI, GEDI, NDVI y Almanaque Azul conservan su significado.
   perder la selección actual.
 - El botón para reabrir el panel permanece en la barra superior y conserva un área de
   interacción mínima de 44 px.
+
+## Navegador temporal 4.2.4
+
+- La cabecera de la gráfica identifica las capas «Visualizadas en el mapa» mediante una
+  etiqueta compacta de alto contraste.
+- Las capas comparables activas se apilan por año para presentar composición y total sin
+  perder la identidad cromática de cada indicador.
+- Un navegador inferior permite seleccionar el período visible; la línea de contexto es
+  un control y la evidencia principal continúa representada mediante barras.

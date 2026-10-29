@@ -871,13 +871,19 @@ st.markdown(
         background: #ffffff;
     }
     .grafica-contextual-cabecera small {
-        display: block;
-        margin-bottom: .12rem;
-        color: var(--institucional-suave);
-        font-size: .7rem;
+        display: inline-flex;
+        align-items: center;
+        width: fit-content;
+        margin-bottom: .3rem;
+        padding: .18rem .55rem;
+        border: 2px solid #78a9bd;
+        border-radius: 999px;
+        background: #e8f3f7;
+        color: var(--institucional-tinta);
+        font-size: .68rem;
         font-weight: 750;
-        letter-spacing: .055em;
-        text-transform: uppercase;
+        letter-spacing: .025em;
+        text-transform: none;
     }
     .grafica-contextual-cabecera strong {
         display: block;
@@ -987,7 +993,7 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-4.2.3-MODO-ENFOQUE"
+APP_VERSION = "UX-4.2.4-GRAFICA-MAPBIOMAS"
 
 COLORES_FUENTES = {
     "JRC TMF": "#1F8A70",
@@ -4285,7 +4291,7 @@ def configuracion_grafica_contextual_compuesta(capa_principal, capas_activas):
             configuracion_compuesta.update(
                 titulo="Cambios forestales seleccionados por año",
                 descripcion=(
-                    "Las barras agrupadas comparan las capas JRC TMF activadas. "
+                    "Las barras apiladas comparan las capas JRC TMF activadas. "
                     "Cada indicador conserva un color y una etiqueta propios."
                 ),
             )
@@ -4311,7 +4317,7 @@ def crear_grafica_serie_barras(
     anio_max=None,
     altura=245,
 ):
-    """Construye series temporales o distribuciones únicamente con barras."""
+    """Construye barras apiladas y, para años, un navegador temporal inferior."""
 
     columnas = grafica["columnas"]
     eje_x = next(iter(columnas))
@@ -4320,6 +4326,7 @@ def crear_grafica_serie_barras(
     if not series:
         series = series_disponibles
     valores_x = list(columnas.get(eje_x, []))
+    es_serie_anual = eje_x.strip().lower() in {"año", "ano"}
     filas = []
     periodos = []
     for indice, valor_x in enumerate(valores_x):
@@ -4333,10 +4340,18 @@ def crear_grafica_serie_barras(
             continue
         periodo = str(int(valor_x)) if isinstance(valor_x, int) else str(valor_x)
         periodos.append(periodo)
-        for serie in series:
+        for orden_serie, serie in enumerate(series):
             valores_serie = columnas.get(serie, [])
             valor = float(valores_serie[indice] or 0) if indice < len(valores_serie) else 0.0
-            filas.append({"Periodo": periodo, "Serie": serie, "Valor": valor})
+            fila = {
+                "Periodo": periodo,
+                "Serie": serie,
+                "OrdenSerie": orden_serie,
+                "Valor": valor,
+            }
+            if es_serie_anual and valor_numerico_x is not None:
+                fila["Fecha"] = f"{int(valor_numerico_x):04d}-01-01"
+            filas.append(fila)
 
     colores = list(colores or ["#1F8A70"])
     if len(colores) < len(series):
@@ -4354,12 +4369,38 @@ def crear_grafica_serie_barras(
         titulo_eje = "Valor"
         formato_tooltip = ",.2f"
 
-    base = alt.Chart(alt.Data(values=filas)).mark_bar(
-        cornerRadiusTopLeft=3,
-        cornerRadiusTopRight=3,
-    )
-    codificacion = {
-        "x": alt.X(
+    datos = alt.Data(values=filas)
+    navegador_periodo = None
+    if es_serie_anual and len(set(periodos)) > 8:
+        navegador_periodo = alt.selection_interval(
+            encodings=["x"],
+            name="periodo_visible",
+            mark=alt.BrushConfig(
+                fill="#D6DEEB",
+                fillOpacity=0.38,
+                stroke="#3A7CA5",
+                strokeWidth=1.5,
+            ),
+        )
+        eje_periodo = alt.X(
+            "Fecha:T",
+            title=eje_x,
+            scale=alt.Scale(domain=navegador_periodo),
+            axis=alt.Axis(
+                format="%Y",
+                labelAngle=0,
+                labelOverlap="greedy",
+                labelColor="#566176",
+                labelFontSize=10,
+                titleColor="#566176",
+                titleFontSize=11,
+                tickColor="#D6DEEB",
+                domainColor="#D6DEEB",
+                tickCount=6,
+            ),
+        )
+    else:
+        eje_periodo = alt.X(
             "Periodo:N",
             sort=list(dict.fromkeys(periodos)),
             title=eje_x,
@@ -4373,10 +4414,18 @@ def crear_grafica_serie_barras(
                 tickColor="#D6DEEB",
                 domainColor="#D6DEEB",
             ),
-        ),
+        )
+
+    base = alt.Chart(datos).mark_bar(
+        cornerRadiusTopLeft=3,
+        cornerRadiusTopRight=3,
+    )
+    codificacion = {
+        "x": eje_periodo,
         "y": alt.Y(
             "Valor:Q",
             title=titulo_eje,
+            stack="zero",
             scale=alt.Scale(zero=True),
             axis=alt.Axis(
                 gridColor="#E1E6EE",
@@ -4408,13 +4457,47 @@ def crear_grafica_serie_barras(
             alt.Tooltip("Serie:N", title="Indicador"),
             alt.Tooltip("Valor:Q", title=titulo_eje, format=formato_tooltip),
         ],
+        "order": alt.Order("OrdenSerie:Q", sort="ascending"),
     }
-    if len(series) > 1:
-        codificacion["xOffset"] = alt.XOffset("Serie:N", sort=series)
+    grafica_principal = base.encode(**codificacion).properties(height=altura)
+
+    if navegador_periodo is not None:
+        navegador = (
+            alt.Chart(datos)
+            .mark_area(
+                color="#78A9BD",
+                opacity=0.3,
+                line=alt.LineConfig(color="#3A7CA5", strokeWidth=1),
+            )
+            .encode(
+                x=alt.X(
+                    "Fecha:T",
+                    title=None,
+                    axis=alt.Axis(
+                        format="%Y",
+                        labelAngle=0,
+                        labelColor="#566176",
+                        labelFontSize=9,
+                        tickCount=6,
+                        grid=False,
+                        domainColor="#D6DEEB",
+                    ),
+                ),
+                y=alt.Y("sum(Valor):Q", title=None, axis=None),
+            )
+            .properties(height=52)
+            .add_params(navegador_periodo)
+        )
+        grafica_final = alt.vconcat(
+            grafica_principal,
+            navegador,
+            spacing=8,
+        )
+    else:
+        grafica_final = grafica_principal
+
     return (
-        base.encode(**codificacion)
-        .properties(height=altura)
-        .configure_view(stroke=None)
+        grafica_final.configure_view(stroke=None)
         .configure(background="#FFFFFF")
     )
 
@@ -4508,11 +4591,12 @@ def mostrar_grafica_contextual_dashboard(
             capas_activas,
         )
     etiqueta_capa = " · ".join(capas_representadas) or "Resumen del resultado"
-    rotulo_cabecera = (
-        f"{len(capas_representadas)} capas vinculadas al mapa"
-        if len(capas_representadas) > 1
-        else "Gráfica vinculada al mapa"
-    )
+    if capa_contextual in (None, "Sectores para revisión"):
+        rotulo_cabecera = "Resumen visualizado en el mapa"
+    elif len(capas_representadas) > 1:
+        rotulo_cabecera = f"Visualizadas en el mapa · {len(capas_representadas)} capas"
+    else:
+        rotulo_cabecera = "Visualizada en el mapa"
     st.markdown(
         f'<div class="grafica-contextual-cabecera"><small>{rotulo_cabecera}</small>'
         f'<strong>{html_lib.escape(etiqueta_capa)}</strong></div>',
