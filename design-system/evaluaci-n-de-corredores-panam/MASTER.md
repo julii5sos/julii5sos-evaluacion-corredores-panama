@@ -33,6 +33,21 @@ Este archivo adapta las recomendaciones de UI/UX al sistema institucional ya est
 | Error / alta atención | `#b42318` |
 | Atención media | `#f79009` |
 
+### Paleta de datos
+
+| Fuente o lectura | Color |
+|---|---|
+| JRC TMF | `#1F8A70` |
+| JRC TMF · regeneración forestal | `#43AA8B` |
+| Hansen GFC | `#E76F51` |
+| ESRI LULC | `#3A7CA5` |
+| GEDI | `#7A5195` |
+| NDVI | `#9BBF30` |
+
+Las gráficas comparativas usan barras horizontales, una etiqueta de categoría y el
+valor con su unidad. Los colores se mantienen estables entre el tablero y el detalle,
+pero nunca sustituyen el texto o la tabla accesible.
+
 Los colores originales de Almanaque Azul (`#345a01`, `#a1d303`, `#e0c504`) solo se usan en sus capas y leyendas, acompañados siempre por las etiquetas Alta, Mediana y Media-baja.
 
 ## Tipografía y densidad
@@ -56,7 +71,8 @@ Los colores originales de Almanaque Azul (`#345a01`, `#a1d303`, `#e0c504`) solo 
   superficie, conclusión y cuatro indicadores clave.
 - Resultados inmediatos: el mapa permanece visible y la columna derecha alterna entre
   lectura rápida y gráficas compactas. Las gráficas principales se forman con el
-  resultado ya calculado y ofrecen una tabla de valores como alternativa accesible.
+  resultado ya calculado, usan barras a color con valores directos y ofrecen una tabla
+  de valores como alternativa accesible.
 - Resultados contextuales extensos: pestañas temáticas, descargas y una gráfica por
   fuente solicitada bajo demanda. Se abren con «Detalle y descargas», ofrecen «Volver
   al mapa» y no vuelven a construir el mapa.
@@ -85,9 +101,14 @@ Los colores originales de Almanaque Azul (`#345a01`, `#a1d303`, `#e0c504`) solo 
 - Ninguna métrica, gráfico, tabla o descarga se elimina para reducir la densidad visual; solo cambia el momento en que se presenta.
 - Los controles del mapa permanecen en el panel lateral y los resultados se consultan por
   pestañas, siguiendo el patrón de los visores ambientales profesionales.
+- Al cerrar el panel lateral, el tablero entra en modo de enfoque: mapa y resultados
+  ocupan todo el ancho, mientras el control nativo para reabrir el panel permanece visible.
 - Las gráficas de JRC, Hansen, ESRI y NDVI conservan su propia unidad y significado; no
-  se superponen fuentes incompatibles en una línea común. GEDI usa una distribución de
+  se superponen fuentes incompatibles en una misma escala. GEDI usa una distribución de
   alturas y no una falsa serie temporal.
+- Cuando se activan dos o tres capas comparables de una misma fuente, la gráfica
+  contextual las reúne como barras agrupadas. Cada serie mantiene color, leyenda,
+  tooltip y columna propia en la tabla accesible.
 - Las series se calculan una por vez, se almacenan temporalmente en caché y nunca bloquean
   la carga inicial del mapa o del resultado principal.
 - Nunca se muestra una sección de resultados vacía antes de ejecutar. Al finalizar el

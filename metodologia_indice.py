@@ -207,7 +207,7 @@ REGLAS_PRIORIDAD = {
 REGLAS_CONSISTENCIA = {
     "alta": "JRC TMF, Hansen y ESRI presentan señal de deterioro",
     "parcial": "exactamente dos de JRC TMF, Hansen y ESRI presentan señal",
-    "mixta": "coexisten señales de deterioro y de recuperación/ganancia",
+    "mixta": "coexisten señales de deterioro y de regeneración forestal/ganancia",
     "sin_senal": "menos de dos fuentes principales coinciden en deterioro",
 }
 
@@ -737,7 +737,7 @@ def evaluar_consistencia(
     recuperacion = [
         nombre
         for nombre, activa in (
-            ("JRC TMF (recuperación)", recuperacion_tmf),
+            ("JRC TMF (regeneración forestal)", recuperacion_tmf),
             ("ESRI LULC (ganancia de árboles)", ganancia_esri),
         )
         if activa
@@ -746,7 +746,7 @@ def evaluar_consistencia(
     if deterioro and recuperacion:
         nivel = "Lectura mixta"
         detalle = (
-            "El área contiene señales de deterioro y de recuperación o ganancia "
+            "El área contiene señales de deterioro y de regeneración forestal o ganancia "
             "arbórea. Revise su distribución espacial; no deben compensarse "
             "numéricamente ni interpretarse como ausencia de cambio."
         )

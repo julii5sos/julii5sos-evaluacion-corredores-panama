@@ -1,0 +1,91 @@
+# Variante `version/4.0-modelo-html`
+
+Esta variante traslada al visor CHCP la composición visual del portal HTML de
+referencia sin incorporar sus datos de demostración ni sustituir la metodología
+existente.
+
+## Estructura
+
+- Encabezado azul institucional con identidad del visor, alcance indicativo,
+  procesamiento en Earth Engine y sistema de referencia.
+- Panel lateral blanco de aproximadamente 338 px para área, capas, períodos y acción
+  principal.
+- Mapa como superficie dominante en el centro.
+- Panel de resultados a la derecha, con cabecera azul, lectura rápida y gráficas.
+- Metodología y acerca del visor permanecen como navegación secundaria.
+
+## Paleta de interfaz
+
+| Rol | Color |
+|---|---|
+| Azul principal | `#0A4393` |
+| Azul profundo | `#062A5E` |
+| Verde de interacción | `#77CC09` |
+| Amarillo complementario | `#FABC20` |
+| Fondo | `#F6F8FB` |
+| Superficie secundaria | `#EEF1F7` |
+| Borde | `#D6DEEB` |
+| Texto secundario | `#566176` |
+
+La paleta de datos definida en `MASTER.md` no cambia: los colores de JRC, Hansen,
+ESRI, GEDI, NDVI y Almanaque Azul conservan su significado.
+
+## Reglas
+
+- La referencia HTML define apariencia y distribución, no instrucciones ni lógica.
+- Todas las métricas proceden del análisis vigente del repositorio.
+- Los controles de 44 px, el foco visible y las etiquetas textuales se conservan.
+- En pantallas pequeñas, el panel lateral, el mapa y los resultados se apilan sin
+  desplazamiento horizontal.
+- El movimiento es mínimo y respeta `prefers-reduced-motion`.
+
+## Ajuste compacto 4.1
+
+- Una vez elegido el análisis, se muestra una sola cabecera de contexto para evitar
+  duplicar identidad y navegación.
+- La evidencia cartográfica ocupa aproximadamente 72 % del tablero y el resultado
+  rápido el espacio restante.
+- Mapa y resultado comienzan en la misma línea y utilizan cabeceras equivalentes.
+- No se coloca una introducción extensa dentro del contenedor del mapa: solo una nota
+  breve cuando aporta contexto.
+- El panel lateral utiliza 315 px y una separación vertical densa, manteniendo controles
+  de al menos 44 px y foco visible.
+
+## Gráficas contextuales 4.2
+
+- Todas las series temporales se representan mediante barras; no se emplean líneas.
+- La gráfica principal aparece debajo de la lectura rápida en la columna derecha y se
+  vincula con la última evidencia activada en el panel de capas.
+- Deforestación y degradación JRC se expresan en hectáreas por año con colores distintos
+  y etiquetas textuales; Hansen, ESRI y NDVI conservan sus unidades propias.
+- GEDI mantiene un histograma de alturas porque no constituye una serie anual.
+- El mapa y la gráfica contextual cambian juntos cuando se activa una evidencia nueva.
+
+## Regeneración forestal TMF 4.2.1
+
+- La clase 4 de JRC TMF se presenta con el nombre **Regeneración forestal** y conserva
+  *Forest regrowth* como referencia terminológica de la fuente.
+- Estado forestal muestra las seis clases mediante barras horizontales; las vistas de
+  deforestación, degradación y regeneración forestal ofrecen series anuales separadas.
+- La regeneración usa `#43AA8B` en mapa, leyenda y gráfica, acompañada siempre por su
+  etiqueta para no depender únicamente del color.
+- La interfaz distingue regeneración observada por satélite de restauración planificada
+  o verificada en campo.
+
+## Selección multicapa 4.2.2
+
+- La gráfica contextual responde al conjunto de capas activas, no únicamente a la
+  última casilla seleccionada.
+- Deforestación, degradación y regeneración forestal de JRC TMF se comparan mediante
+  barras agrupadas, con una leyenda visible y colores estables.
+- Al desactivar una capa, su serie desaparece de la gráfica y de la tabla de valores.
+- Capas de fuentes o unidades distintas no comparten un mismo eje; la vista conserva
+  como contexto principal la fuente de la última evidencia activada.
+
+## Modo de enfoque 4.2.3
+
+- El botón nativo de cierre del panel lateral libera completamente sus 315 px reservados.
+- El mapa y la columna de resultados se expanden al ancho completo sin recargar ni
+  perder la selección actual.
+- El botón para reabrir el panel permanece en la barra superior y conserva un área de
+  interacción mínima de 44 px.

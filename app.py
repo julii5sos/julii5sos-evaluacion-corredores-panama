@@ -15,7 +15,7 @@ from modos_app import MODO_INTEGRAL, MODOS_ANALISIS
 
 
 st.set_page_config(
-    page_title="Preevaluación territorial y corredores | Panamá",
+    page_title="Visor CHCP | Preevaluación territorial y conectividad",
     page_icon=":material/map:",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -35,25 +35,65 @@ SECCIONES_PRINCIPALES = (
 st.markdown(
     """
     <style>
-    :root {--verde:#00544d;--verde-oscuro:#00403a;--suave:#356b61;--borde:#b6d1c8;--fondo:#f6faf8;--claro:#eaf4f0;}
-    .stApp {background:var(--fondo);color:var(--verde);}
-    .block-container {padding-top:3.5rem;padding-bottom:2.5rem;max-width:1440px;}
+    :root {
+        --azul:#0a4393;--azul-profundo:#062a5e;--azul-suave:#eef1f7;
+        --verde:#0a4393;--verde-oscuro:#062a5e;--acento:#77cc09;
+        --amarillo:#fabc20;--suave:#566176;--borde:#d6deeb;
+        --fondo:#f6f8fb;--claro:#eef1f7;
+    }
+    .stApp {background:var(--fondo);color:var(--azul-profundo);}
+    .block-container {padding-top:3.5rem;padding-bottom:1.25rem;max-width:none;}
     button, [role="button"] {min-height:44px;touch-action:manipulation;}
     button:focus-visible, [role="button"]:focus-visible, input:focus-visible {
-        outline:3px solid var(--verde);outline-offset:2px;
+        outline:3px solid var(--acento);outline-offset:2px;
     }
-    [data-testid="stSegmentedControl"] {margin-bottom:1rem;}
+    .portal-nav {
+        display:flex;align-items:center;justify-content:space-between;gap:1rem;
+        min-height:74px;margin:0 0 .65rem;padding:.8rem 1rem;
+        color:#fff;background:linear-gradient(112deg,var(--azul) 0 78%,var(--azul-profundo) 78%);
+        border-bottom:5px solid var(--acento);box-shadow:0 8px 22px rgba(6,42,94,.14);
+    }
+    .portal-marca {display:flex;align-items:center;gap:.75rem;min-width:0;}
+    .portal-logo {
+        display:grid;place-items:center;flex:0 0 42px;width:42px;height:42px;
+        color:var(--azul);background:#fff;border-radius:50%;
+    }
+    .portal-logo svg{width:25px;height:25px;}
+    .portal-marca strong{display:block;font-size:1.18rem;line-height:1.15;color:#fff;}
+    .portal-marca small{display:block;margin-top:.2rem;font-size:.72rem;font-weight:700;letter-spacing:.055em;text-transform:uppercase;color:#dce8f8;}
+    .portal-util{display:flex;align-items:center;justify-content:flex-end;gap:.45rem;flex-wrap:wrap;}
+    .portal-chip{padding:.28rem .62rem;border:1px solid rgba(255,255,255,.5);border-radius:999px;font-size:.73rem;font-weight:700;color:#fff;white-space:nowrap;}
+    .portal-chip.acento{border-color:var(--acento);background:var(--acento);color:#183400;}
+    [data-testid="stSegmentedControl"] {
+        margin-bottom:.35rem;padding:0 .35rem;background:#fff;
+        border:1px solid var(--borde);border-radius:6px;
+    }
+    [data-testid="stSegmentedControl"] button[aria-checked="true"] {
+        color:var(--azul)!important;box-shadow:inset 0 -4px 0 var(--acento);
+    }
     [data-testid="stSegmentedControl"] button {cursor:pointer;}
-    .entrada {
-        padding:1.45rem 1.6rem;border:1px solid var(--borde);
-        border-left:6px solid var(--verde);background:#fff;margin-bottom:1.2rem;
+    .stButton button[data-testid="stBaseButton-primary"] {
+        border-color:var(--azul)!important;background:var(--azul)!important;color:#fff!important;font-weight:700;
     }
-    .entrada h1 {margin:0;color:var(--verde);font-size:clamp(2rem,4vw,3.25rem);line-height:1.12;}
-    .entrada .subtitulo {margin:.45rem 0 0;color:var(--verde);font-size:1.2rem;font-weight:650;line-height:1.4;}
-    .entrada p {color:var(--suave);max-width:75ch;line-height:1.6;margin:.65rem 0 0;}
-    .entrada small {display:block;margin-top:.65rem;color:var(--suave);line-height:1.5;}
+    .stButton button[data-testid="stBaseButton-primary"]:hover {
+        border-color:var(--azul-profundo)!important;background:var(--azul-profundo)!important;
+    }
+    [data-testid="stVerticalBlockBorderWrapper"] {
+        border-color:var(--borde)!important;border-radius:6px!important;background:#fff;
+        box-shadow:0 8px 22px rgba(6,42,94,.06);
+    }
+    .entrada {
+        position:relative;overflow:hidden;padding:1.55rem 1.7rem;
+        border:0;border-bottom:6px solid var(--acento);
+        background:linear-gradient(112deg,var(--azul) 0 78%,var(--azul-profundo) 78%);
+        box-shadow:0 8px 22px rgba(6,42,94,.12);margin-bottom:1.2rem;
+    }
+    .entrada h1 {margin:0;color:#fff;font-size:clamp(2rem,4vw,3.25rem);line-height:1.12;}
+    .entrada .subtitulo {margin:.45rem 0 0;color:#fff;font-size:1.2rem;font-weight:650;line-height:1.4;}
+    .entrada p {color:#e0e9f7;max-width:75ch;line-height:1.6;margin:.65rem 0 0;}
+    .entrada small {display:block;margin-top:.65rem;color:#d1def0;line-height:1.5;}
     .pregunta {margin:.1rem 0 1rem;color:var(--verde);}
-    .tarjeta {min-height:220px;}
+    .tarjeta {min-height:220px;padding:.1rem;}
     .tarjeta small {display:block;color:var(--suave);font-weight:700;text-transform:uppercase;line-height:1.4;}
     .tarjeta h3 {margin:.45rem 0;color:var(--verde);line-height:1.35;}
     .tarjeta p {color:var(--suave);line-height:1.55;}
@@ -63,7 +103,7 @@ st.markdown(
     }
     .ruta-paso, .metodo-paso {
         position:relative;padding:1rem 1rem 1rem 3.7rem;border:1px solid var(--borde);
-        background:#fff;min-height:130px;line-height:1.5;
+        background:var(--azul-suave);min-height:130px;line-height:1.5;
     }
     .ruta-numero, .metodo-numero {
         position:absolute;top:1rem;left:1rem;display:grid;place-items:center;width:2rem;height:2rem;
@@ -82,9 +122,10 @@ st.markdown(
     }
     .texto-legible {max-width:75ch;color:var(--suave);line-height:1.65;}
     @media(max-width:760px){
-        .block-container{padding-top:3rem}.entrada{padding:1.1rem}
+        .block-container{padding-top:3.5rem}.entrada{padding:1.1rem}
         .ruta-simple,.metodo-pasos,.alcance-grid{grid-template-columns:1fr}
         .tarjeta{min-height:auto}
+        .portal-nav{align-items:flex-start;flex-direction:column}.portal-util{justify-content:flex-start}
     }
     @media(prefers-reduced-motion:reduce){
         *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important;}
@@ -93,6 +134,31 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+
+def mostrar_cabecera_portal():
+    st.markdown(
+        """
+        <header class="portal-nav" aria-label="Identificación del visor CHCP">
+          <div class="portal-marca">
+            <span class="portal-logo" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 6.5 9 3l6 3 5-2.5v13L15 20l-6-3-5 3z"/>
+                <path d="M9 3v14M15 6v14"/>
+                <path d="M6.5 10.5c2-1.6 3.5 1.4 5.5 0s3.5 1.4 5.5 0"/>
+              </svg>
+            </span>
+            <span><strong>Visor CHCP</strong><small>Preevaluación territorial y conectividad</small></span>
+          </div>
+          <div class="portal-util">
+            <span class="portal-chip acento">Resultado indicativo</span>
+            <span class="portal-chip">Google Earth Engine</span>
+            <span class="portal-chip">WGS 84 · EPSG:4326</span>
+          </div>
+        </header>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def elegir_modo(modo):
@@ -358,6 +424,9 @@ def mostrar_acerca():
 if st.session_state.get("seccion_tablero") == "Análisis":
     # Migra sesiones abiertas con la navegación anterior.
     st.session_state["seccion_tablero"] = SECCION_MAPA
+
+if st.session_state.get("modo_analisis") not in MODOS_ANALISIS:
+    mostrar_cabecera_portal()
 
 seccion_tablero = st.segmented_control(
     "Navegación principal",
