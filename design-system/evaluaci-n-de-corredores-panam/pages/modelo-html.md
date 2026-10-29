@@ -71,3 +71,13 @@ ESRI, GEDI, NDVI y Almanaque Azul conservan su significado.
   etiqueta para no depender únicamente del color.
 - La interfaz distingue regeneración observada por satélite de restauración planificada
   o verificada en campo.
+
+## Selección multicapa 4.2.2
+
+- La gráfica contextual responde al conjunto de capas activas, no únicamente a la
+  última casilla seleccionada.
+- Deforestación, degradación y regeneración forestal de JRC TMF se comparan mediante
+  barras agrupadas, con una leyenda visible y colores estables.
+- Al desactivar una capa, su serie desaparece de la gráfica y de la tabla de valores.
+- Capas de fuentes o unidades distintas no comparten un mismo eje; la vista conserva
+  como contexto principal la fuente de la última evidencia activada.

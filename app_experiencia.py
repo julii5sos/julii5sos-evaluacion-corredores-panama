@@ -974,7 +974,7 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-4.2.1-TMF-REGENERACION"
+APP_VERSION = "UX-4.2.2-GRAFICAS-MULTICAPA"
 
 COLORES_FUENTES = {
     "JRC TMF": "#1F8A70",
@@ -4208,6 +4208,88 @@ def configuracion_grafica_contextual(capa):
     return configuraciones.get(capa)
 
 
+def configuracion_grafica_contextual_compuesta(capa_principal, capas_activas):
+    """Agrupa en una sola gráfica las evidencias activas que sí son comparables."""
+
+    configuracion_principal = configuracion_grafica_contextual(capa_principal)
+    if (
+        not configuracion_principal
+        or configuracion_principal.get("tipo")
+        or not configuracion_principal.get("fuente")
+    ):
+        return configuracion_principal, [capa_principal] if capa_principal else []
+
+    fuente_principal = configuracion_principal["fuente"]
+    configuraciones_compatibles = []
+    for capa in dict.fromkeys(capas_activas or []):
+        configuracion = configuracion_grafica_contextual(capa)
+        if (
+            configuracion
+            and not configuracion.get("tipo")
+            and configuracion.get("fuente") == fuente_principal
+        ):
+            configuraciones_compatibles.append((capa, configuracion))
+
+    if not any(capa == capa_principal for capa, _ in configuraciones_compatibles):
+        configuraciones_compatibles.append(
+            (capa_principal, configuracion_principal)
+        )
+
+    configuracion_compuesta = dict(configuracion_principal)
+    series = []
+    colores = []
+    for _, configuracion in configuraciones_compatibles:
+        colores_configuracion = configuracion.get("colores") or ["#1F8A70"]
+        for indice, serie in enumerate(configuracion.get("series", [])):
+            if serie in series:
+                continue
+            series.append(serie)
+            colores.append(
+                colores_configuracion[min(indice, len(colores_configuracion) - 1)]
+            )
+    configuracion_compuesta["series"] = series
+    configuracion_compuesta["colores"] = colores
+
+    if len(configuraciones_compatibles) > 1:
+        limites_minimos = [
+            configuracion.get("anio_min")
+            for _, configuracion in configuraciones_compatibles
+        ]
+        limites_maximos = [
+            configuracion.get("anio_max")
+            for _, configuracion in configuraciones_compatibles
+        ]
+        if all(limite is not None for limite in limites_minimos):
+            configuracion_compuesta["anio_min"] = min(limites_minimos)
+        else:
+            configuracion_compuesta.pop("anio_min", None)
+        if all(limite is not None for limite in limites_maximos):
+            configuracion_compuesta["anio_max"] = max(limites_maximos)
+        else:
+            configuracion_compuesta.pop("anio_max", None)
+
+        if fuente_principal == "JRC Tropical Moist Forest":
+            configuracion_compuesta.update(
+                titulo="Cambios forestales seleccionados por año",
+                descripcion=(
+                    "Las barras agrupadas comparan las capas JRC TMF activadas. "
+                    "Cada indicador conserva un color y una etiqueta propios."
+                ),
+            )
+        elif fuente_principal == "Hansen Global Forest Change":
+            configuracion_compuesta.update(
+                titulo="Pérdida de cobertura arbórea por año",
+                descripcion=(
+                    "La serie reúne los períodos Hansen seleccionados sin duplicar "
+                    "los años ni cambiar la unidad de hectáreas."
+                ),
+            )
+
+    return configuracion_compuesta, [
+        capa for capa, _ in configuraciones_compatibles
+    ]
+
+
 def crear_grafica_serie_barras(
     grafica,
     series=None,
@@ -4401,12 +4483,25 @@ def mostrar_grafica_contextual_dashboard(
     finca_id,
     subcuenca_nombre,
     geometria_geojson,
+    capas_activas=None,
 ):
     """Muestra debajo del resultado la gráfica vinculada con la evidencia activa."""
 
-    etiqueta_capa = capa_contextual or "Resumen del resultado"
+    configuracion = None
+    capas_representadas = [capa_contextual] if capa_contextual else []
+    if capa_contextual not in (None, "Sectores para revisión", "Conectividad y fragmentos"):
+        configuracion, capas_representadas = configuracion_grafica_contextual_compuesta(
+            capa_contextual,
+            capas_activas,
+        )
+    etiqueta_capa = " · ".join(capas_representadas) or "Resumen del resultado"
+    rotulo_cabecera = (
+        f"{len(capas_representadas)} capas vinculadas al mapa"
+        if len(capas_representadas) > 1
+        else "Gráfica vinculada al mapa"
+    )
     st.markdown(
-        '<div class="grafica-contextual-cabecera"><small>Gráfica vinculada al mapa</small>'
+        f'<div class="grafica-contextual-cabecera"><small>{rotulo_cabecera}</small>'
         f'<strong>{html_lib.escape(etiqueta_capa)}</strong></div>',
         unsafe_allow_html=True,
     )
@@ -4440,7 +4535,6 @@ def mostrar_grafica_contextual_dashboard(
         )
         return
 
-    configuracion = configuracion_grafica_contextual(capa_contextual)
     if not configuracion:
         st.info("Esta evidencia se interpreta directamente en el mapa y en la lectura del resultado.")
         return
@@ -4463,7 +4557,12 @@ def mostrar_grafica_contextual_dashboard(
         return
 
     try:
-        with st.spinner(f"Preparando barras de {etiqueta_capa.lower()}..."):
+        mensaje_carga = (
+            "Preparando las barras de las capas seleccionadas..."
+            if len(capas_representadas) > 1
+            else f"Preparando barras de {etiqueta_capa.lower()}..."
+        )
+        with st.spinner(mensaje_carga):
             grafica = calcular_serie_fuente(
                 tipo_area,
                 finca_id,
@@ -4480,6 +4579,7 @@ def mostrar_grafica_contextual_dashboard(
             st.code(f"{type(error).__name__}: {error}")
         return
 
+    clave_capas = "_".join(capas_representadas)
     st.altair_chart(
         crear_grafica_serie_barras(
             grafica,
@@ -4491,7 +4591,10 @@ def mostrar_grafica_contextual_dashboard(
         ),
         use_container_width=True,
         theme=None,
-        key=f"grafica_contextual_{re.sub(r'[^a-z0-9]+', '_', capa_contextual.lower()).strip('_')}",
+        key=(
+            "grafica_contextual_"
+            f"{re.sub(r'[^a-z0-9]+', '_', clave_capas.lower()).strip('_')}"
+        ),
     )
     with st.expander("Ver valores de la gráfica", expanded=False):
         st.dataframe(
@@ -6685,6 +6788,7 @@ try:
                 finca_id=finca_seleccionada,
                 subcuenca_nombre=subcuenca_seleccionada,
                 geometria_geojson=geometria_dibujada_json,
+                capas_activas=capas_activas,
             )
             st.button(
                 "Abrir detalle completo y descargas",
