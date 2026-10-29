@@ -79,6 +79,10 @@ def agregar_capas_corredores(
     mapa,
     mostrar: bool = False,
     mostrar_puntos_criticos: bool = False,
+    corredores_geojson: dict[str, Any] | None = None,
+    etiqueta_contexto: str | None = None,
+    opacidad_relleno: float = 0.26,
+    grosor_linea: float = 1.4,
 ):
     """Agrega los corredores con una visibilidad decidida fuera del mapa."""
 
@@ -89,12 +93,20 @@ def agregar_capas_corredores(
     # Folium incluye el GeoJSON completo aun si ``show`` es falso; omitir las
     # capas apagadas reduce más de 1 MB del HTML reconstruido en cada interacción.
     if mostrar:
-        datos = cargar_corredores()
+        datos = corredores_geojson or cargar_corredores()
+        if not datos.get("features"):
+            mostrar = False
+    if mostrar:
         for categoria in CATEGORIAS:
             etiqueta = ETIQUETAS_CATEGORIA[categoria]
             color = COLORES_CATEGORIA[categoria]
+            nombre_grupo = (
+                f"{etiqueta_contexto} · {etiqueta.lower()}"
+                if etiqueta_contexto
+                else f"Conectividad {etiqueta.lower()} · Almanaque Azul"
+            )
             grupo = folium.FeatureGroup(
-                name=f"Conectividad {etiqueta.lower()} · Almanaque Azul",
+                name=nombre_grupo,
                 overlay=True,
                 control=False,
                 show=True,
@@ -109,9 +121,9 @@ def agregar_capas_corredores(
                 name=etiqueta,
                 style_function=lambda _, color=color: {
                     "color": color,
-                    "weight": 1.4,
+                    "weight": grosor_linea,
                     "fillColor": color,
-                    "fillOpacity": 0.26,
+                    "fillOpacity": opacidad_relleno,
                 },
                 highlight_function=lambda _, color=color: {
                     "color": "#00544d",
@@ -136,30 +148,36 @@ def agregar_capas_corredores(
             grupo.add_to(mapa)
             capas.append(grupo)
 
-        meso = folium.FeatureGroup(
-            name="Corredor Biológico Mesoamericano · tramos de Panamá",
-            overlay=True,
-            control=False,
-            show=True,
-        )
-        folium.GeoJson(
-            _feature_collection(filter(_es_mesoamericano, datos["features"])),
-            name="Tramos mesoamericanos",
-            style_function=lambda _: {
-                "color": "#00544d",
-                "weight": 5,
-                "dashArray": "9 6",
-                "fillColor": "#00544d",
-                "fillOpacity": 0.04,
-            },
-            tooltip=folium.GeoJsonTooltip(
-                fields=["nombre", "categoria_etiqueta", "cond_promedio"],
-                aliases=["Tramo", "Conectividad", "Conductividad promedio"],
-                sticky=False,
-            ),
-        ).add_to(meso)
-        meso.add_to(mapa)
-        capas.append(meso)
+        features_meso = list(filter(_es_mesoamericano, datos["features"]))
+        if features_meso:
+            meso = folium.FeatureGroup(
+                name=(
+                    f"{etiqueta_contexto} · Corredor Mesoamericano"
+                    if etiqueta_contexto
+                    else "Corredor Biológico Mesoamericano · tramos de Panamá"
+                ),
+                overlay=True,
+                control=False,
+                show=True,
+            )
+            folium.GeoJson(
+                _feature_collection(features_meso),
+                name="Tramos mesoamericanos",
+                style_function=lambda _: {
+                    "color": "#00544d",
+                    "weight": 5,
+                    "dashArray": "9 6",
+                    "fillColor": "#00544d",
+                    "fillOpacity": 0.04,
+                },
+                tooltip=folium.GeoJsonTooltip(
+                    fields=["nombre", "categoria_etiqueta", "cond_promedio"],
+                    aliases=["Tramo", "Conectividad", "Conductividad promedio"],
+                    sticky=False,
+                ),
+            ).add_to(meso)
+            meso.add_to(mapa)
+            capas.append(meso)
 
     if mostrar_puntos_criticos:
         ojos = folium.FeatureGroup(
@@ -204,7 +222,7 @@ def analizar_interseccion_corredores(aoi_geojson: dict[str, Any]) -> dict[str, A
 
     try:
         from pyproj import Transformer
-        from shapely.geometry import shape
+        from shapely.geometry import mapping, shape
         from shapely.ops import transform, unary_union
         from shapely.validation import make_valid
     except ImportError as exc:  # pragma: no cover - mensaje operativo
@@ -237,11 +255,15 @@ def analizar_interseccion_corredores(aoi_geojson: dict[str, Any]) -> dict[str, A
 
     # WGS 84 / Equal Earth Americas; evita medir areas en grados o Web Mercator.
     proyector = Transformer.from_crs("EPSG:4326", "EPSG:8857", always_xy=True)
+    proyector_inverso = Transformer.from_crs(
+        "EPSG:8857", "EPSG:4326", always_xy=True
+    )
     aoi_m = transform(proyector.transform, geometria_aoi)
     area_aoi_ha = aoi_m.area / 10_000
 
     detalles = []
     intersecciones = []
+    features_interseccion = []
     distancia_corredor_mas_cercano_m = None
     por_categoria: dict[str, list[Any]] = {categoria: [] for categoria in CATEGORIAS}
     intersecciones_meso = []
@@ -277,6 +299,23 @@ def analizar_interseccion_corredores(aoi_geojson: dict[str, Any]) -> dict[str, A
         }
         detalles.append(detalle)
         intersecciones.append(interseccion)
+        propiedades_interseccion = dict(propiedades)
+        propiedades_interseccion.update(
+            {
+                "area_ha": round(area_ha, 4),
+                "interseccion_ha": round(area_ha, 4),
+                "alcance": "Parte dentro del área analizada",
+            }
+        )
+        features_interseccion.append(
+            {
+                "type": "Feature",
+                "properties": propiedades_interseccion,
+                "geometry": mapping(
+                    transform(proyector_inverso.transform, interseccion)
+                ),
+            }
+        )
         por_categoria[categoria].append(interseccion)
         if detalle["es_mesoamericano"]:
             intersecciones_meso.append(interseccion)
@@ -310,6 +349,10 @@ def analizar_interseccion_corredores(aoi_geojson: dict[str, Any]) -> dict[str, A
         ),
         "areas_categoria_ha": areas_categoria,
         "corredores": detalles,
+        "intersecciones_geojson": {
+            "type": "FeatureCollection",
+            "features": features_interseccion,
+        },
         "fuente": FUENTE_CORTA,
         "url": URL_MAPA,
         "participa_indice_prioridad": False,

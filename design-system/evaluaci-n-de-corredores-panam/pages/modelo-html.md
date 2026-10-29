@@ -116,3 +116,15 @@ ESRI, GEDI, NDVI y Almanaque Azul conservan su significado.
   transferirla; las superficies reportadas continúan limitadas al área elegida.
 - Durante el cálculo se informa si se están procesando señales, corredores o fragmentos,
   evitando una espera sin retroalimentación.
+
+## Corredores recortados y gráficas coherentes 4.3.1
+
+- La capa principal de corredores muestra únicamente la intersección con el área analizada;
+  el polígono regional completo permanece apagado y se identifica como contexto opcional.
+- La intersección usa mayor opacidad y el contexto regional una opacidad tenue, de modo
+  que no se interpreten como cobertura de bosque ni como superficie de la finca.
+- Corredor y bosque no se enfrentan como categorías equivalentes en una misma gráfica.
+  Se presentan tres composiciones independientes: dentro/fuera de corredores,
+  bosque/otros usos de 2021 y fragmentos cercanos/separados.
+- Cada gráfica conserva valores directos, unidad, descripción metodológica y tabla
+  accesible; la lectura clave aclara que corredor y bosque no se suman entre sí.

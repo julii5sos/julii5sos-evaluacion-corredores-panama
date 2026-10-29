@@ -4,6 +4,17 @@ Este historial documenta la evolución de la aplicación UX. Las versiones sigue
 el formato `MAJOR.MINOR.PATCH`: una versión principal, mejoras compatibles y
 correcciones compatibles, respectivamente.
 
+## [4.3.1] - 2026-10-29 — corredores recortados y gráficas comparables
+
+- Muestra por defecto únicamente la parte de los corredores que coincide con la finca,
+  subcuenca o polígono analizado.
+- Conserva el corredor completo como contexto regional opcional, con menor opacidad para
+  que no se confunda con bosque ni con la superficie evaluada.
+- Sustituye la comparación ambigua entre corredor y bosque por tres gráficas coherentes:
+  dentro/fuera de corredores, bosque/otros usos de 2021 y fragmentos cercanos/separados.
+- Añade geometrías recortadas al resultado analítico y mantiene tablas con valores como
+  alternativa accesible a las gráficas.
+
 ## [4.3.0] - 2026-10-29 — conectividad más rápida y panel simplificado
 
 - Elimina del panel lateral el bloque informativo redundante de fuentes de conectividad;

@@ -97,6 +97,23 @@ class CorredoresDatosTests(unittest.TestCase):
 
         self.assertGreater(resultado["area_aoi_ha"], 0)
 
+    def test_devuelve_corredores_recortados_al_area_analizada(self):
+        from shapely.geometry import mapping, shape
+
+        corredor = shape(cargar_corredores()["features"][0]["geometry"])
+        area = corredor.representative_point().buffer(0.01)
+        resultado = analizar_interseccion_corredores(mapping(area))
+        recortes = resultado["intersecciones_geojson"]["features"]
+
+        self.assertTrue(recortes)
+        for feature in recortes:
+            recorte = shape(feature["geometry"])
+            self.assertTrue(area.buffer(1e-8).covers(recorte))
+            self.assertEqual(
+                feature["properties"]["alcance"],
+                "Parte dentro del área analizada",
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

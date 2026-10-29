@@ -216,7 +216,7 @@ class ModosInterfazTests(unittest.TestCase):
         self.assertIn("WGS 84 · EPSG:4326", portada)
         self.assertIn("#0a4393", portada.lower())
         self.assertIn("#77cc09", portada.lower())
-        self.assertIn('APP_VERSION = "UX-4.3.0-CONECTIVIDAD-LIGERA"', visor)
+        self.assertIn('APP_VERSION = "UX-4.3.1-CORREDORES-RECORTADOS"', visor)
         self.assertIn("st.columns([2.55, 1]", visor)
         self.assertIn('[data-collapsed="true"]', visor)
         self.assertIn("width: 0 !important", visor)
@@ -239,7 +239,8 @@ class ModosInterfazTests(unittest.TestCase):
         self.assertNotIn('st.sidebar.expander("Fuentes de conectividad"', visor)
         self.assertNotIn("Cobertura lista. La aplicación consultará", visor)
         self.assertIn("Opciones técnicas · opcional", visor)
-        self.assertIn("Corredores estratégicos publicados", visor)
+        self.assertIn("Coincidencia dentro del área analizada", visor)
+        self.assertIn("Corredores completos · contexto regional", visor)
         self.assertIn("value=False", visor)
         self.assertIn("distancia_corredor_mas_cercano_m", visor)
         self.assertIn("radio_contexto_m", visor)
@@ -248,6 +249,68 @@ class ModosInterfazTests(unittest.TestCase):
         self.assertIn("max_entries=4", visor)
         self.assertIn("if mostrar:", corredores)
         self.assertIn("if mostrar_puntos_criticos:", corredores)
+
+    def test_graficas_de_corredores_comparan_partes_del_mismo_total(self):
+        arbol = ast.parse(Path("app_experiencia.py").read_text(encoding="utf-8"))
+        funcion = next(
+            nodo
+            for nodo in arbol.body
+            if isinstance(nodo, ast.FunctionDef)
+            and nodo.name == "construir_graficas_dashboard"
+        )
+        colores = {
+            "En corredores": "#2E7D5B",
+            "Fuera de corredores": "#7B8CA5",
+            "Bosque 2021": "#76B72A",
+            "Otros usos 2021": "#B7791F",
+            "Cercanos": "#2A9D8F",
+            "Separados": "#E76F51",
+        }
+        espacio = {
+            "MODO_CORREDORES": "Corredores",
+            "COLORES_CONECTIVIDAD": colores,
+        }
+        exec(
+            compile(
+                ast.Module(body=[funcion], type_ignores=[]),
+                "graficas_corredores_prueba",
+                "exec",
+            ),
+            espacio,
+        )
+        graficas = espacio["construir_graficas_dashboard"](
+            {
+                "area_ha": 100,
+                "corredores": {"area_en_corredores_ha": 40},
+                "fragmentacion": {
+                    "metricas_clase": {
+                        "area_total_bosque_ha": 30,
+                        "numero_parches": 10,
+                    },
+                    "metricas_red": {"numero_parches_aislados": 2},
+                },
+            },
+            "Corredores",
+        )
+
+        self.assertEqual(
+            graficas["primaria"]["datos"],
+            {
+                "Categoría": ["En corredores", "Fuera de corredores"],
+                "Hectáreas": [40.0, 60.0],
+            },
+        )
+        self.assertEqual(
+            graficas["secundaria"]["datos"],
+            {
+                "Cobertura": ["Bosque 2021", "Otros usos 2021"],
+                "Hectáreas": [30.0, 70.0],
+            },
+        )
+        self.assertEqual(
+            graficas["terciaria"]["datos"]["Fragmentos"], [8, 2]
+        )
+        self.assertIn("no se suman entre sí", graficas["clave"])
 
     def test_subcuenca_se_recorta_a_la_cuenca(self):
         geometria = GeometriaPrueba()
