@@ -81,3 +81,11 @@ ESRI, GEDI, NDVI y Almanaque Azul conservan su significado.
 - Al desactivar una capa, su serie desaparece de la gráfica y de la tabla de valores.
 - Capas de fuentes o unidades distintas no comparten un mismo eje; la vista conserva
   como contexto principal la fuente de la última evidencia activada.
+
+## Modo de enfoque 4.2.3
+
+- El botón nativo de cierre del panel lateral libera completamente sus 315 px reservados.
+- El mapa y la columna de resultados se expanden al ancho completo sin recargar ni
+  perder la selección actual.
+- El botón para reabrir el panel permanece en la barra superior y conserva un área de
+  interacción mínima de 44 px.

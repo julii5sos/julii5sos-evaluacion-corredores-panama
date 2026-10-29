@@ -4,6 +4,15 @@ Este historial documenta la evolución de la aplicación UX. Las versiones sigue
 el formato `MAJOR.MINOR.PATCH`: una versión principal, mejoras compatibles y
 correcciones compatibles, respectivamente.
 
+## [4.2.3] - 2026-10-29 — modo de enfoque al cerrar el panel
+
+- Al contraer el panel lateral, su ancho reservado pasa realmente a cero y el mapa con
+  los resultados utiliza todo el espacio horizontal disponible.
+- El control nativo para reabrir el panel permanece visible y conserva su área de
+  interacción accesible.
+- En pantallas pequeñas, el panel abierto continúa adaptándose al ancho disponible sin
+  producir desplazamiento horizontal.
+
 ## [4.2.2] - 2026-10-29 — gráficas vinculadas a varias capas
 
 - Cuando se activan varias capas comparables de una misma fuente, la columna de

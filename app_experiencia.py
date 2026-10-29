@@ -176,11 +176,20 @@ st.markdown(
         color: #ffffff !important;
         -webkit-text-fill-color: #ffffff !important;
     }
-    [data-testid="stSidebar"] {
+    [data-testid="stSidebar"][data-collapsed="false"] {
         border-right: 1px solid var(--institucional-borde);
+        width: 315px !important;
         min-width: 315px;
         max-width: 315px;
         box-shadow: 6px 0 20px rgba(6,42,94,.05);
+    }
+    [data-testid="stSidebar"][data-collapsed="true"] {
+        width: 0 !important;
+        min-width: 0 !important;
+        max-width: 0 !important;
+        flex-basis: 0 !important;
+        border-right: 0;
+        box-shadow: none;
     }
     [data-testid="stSidebar"] > div:first-child {background: #ffffff; padding-top: .35rem;}
     [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {gap: .45rem;}
@@ -933,7 +942,11 @@ st.markdown(
         .flujo-pasos, .contexto-analisis, .entregables, .resumen-principiante,
         .lectura-rapida, .recuperacion-error {grid-template-columns: 1fr 1fr;}
         .block-container {padding: 3.5rem .75rem 2rem;}
-        [data-testid="stSidebar"] {min-width: auto; max-width: none;}
+        [data-testid="stSidebar"][data-collapsed="false"] {
+            width: auto !important;
+            min-width: auto;
+            max-width: none;
+        }
         .cabecera-app {padding: 1.2rem;}
         .cabecera-app h1 {font-size: 2rem; line-height: 1.15;}
         .visor-barra {align-items: flex-start; flex-direction: column;}
@@ -974,7 +987,7 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-4.2.2-GRAFICAS-MULTICAPA"
+APP_VERSION = "UX-4.2.3-MODO-ENFOQUE"
 
 COLORES_FUENTES = {
     "JRC TMF": "#1F8A70",

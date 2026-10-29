@@ -154,8 +154,11 @@ class ModosInterfazTests(unittest.TestCase):
         self.assertIn("WGS 84 · EPSG:4326", portada)
         self.assertIn("#0a4393", portada.lower())
         self.assertIn("#77cc09", portada.lower())
-        self.assertIn('APP_VERSION = "UX-4.2.2-GRAFICAS-MULTICAPA"', visor)
+        self.assertIn('APP_VERSION = "UX-4.2.3-MODO-ENFOQUE"', visor)
         self.assertIn("st.columns([2.55, 1]", visor)
+        self.assertIn('[data-collapsed="true"]', visor)
+        self.assertIn("width: 0 !important", visor)
+        self.assertIn("flex-basis: 0 !important", visor)
         self.assertNotIn('st.markdown("### Visor cartográfico")', visor)
         for fuente in ("JRC", "Hansen", "ESRI", "GEDI", "NDVI"):
             self.assertIn(fuente, visor)

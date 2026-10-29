@@ -101,6 +101,8 @@ Los colores originales de Almanaque Azul (`#345a01`, `#a1d303`, `#e0c504`) solo 
 - Ninguna métrica, gráfico, tabla o descarga se elimina para reducir la densidad visual; solo cambia el momento en que se presenta.
 - Los controles del mapa permanecen en el panel lateral y los resultados se consultan por
   pestañas, siguiendo el patrón de los visores ambientales profesionales.
+- Al cerrar el panel lateral, el tablero entra en modo de enfoque: mapa y resultados
+  ocupan todo el ancho, mientras el control nativo para reabrir el panel permanece visible.
 - Las gráficas de JRC, Hansen, ESRI y NDVI conservan su propia unidad y significado; no
   se superponen fuentes incompatibles en una misma escala. GEDI usa una distribución de
   alturas y no una falsa serie temporal.
