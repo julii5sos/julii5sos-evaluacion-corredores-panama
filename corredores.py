@@ -47,6 +47,23 @@ def cargar_catalogo() -> dict[str, Any]:
     return _leer_json(str(RUTA_CATALOGO))
 
 
+def calcular_radio_contexto(
+    distancia_corredor_m: float | None,
+    umbral_conectividad_m: float,
+    radio_maximo_m: float = 5_000,
+) -> float:
+    """Limita el contexto a la distancia necesaria para alcanzar un corredor."""
+
+    umbral_m = max(0.0, float(umbral_conectividad_m))
+    radio_maximo_m = max(umbral_m, float(radio_maximo_m))
+    if distancia_corredor_m is None:
+        return radio_maximo_m
+    return min(
+        radio_maximo_m,
+        max(umbral_m, max(0.0, float(distancia_corredor_m)) + umbral_m),
+    )
+
+
 def _feature_collection(features: Iterable[dict[str, Any]]) -> dict[str, Any]:
     return {"type": "FeatureCollection", "features": list(features)}
 
@@ -67,109 +84,114 @@ def agregar_capas_corredores(
 
     import folium
 
-    datos = cargar_corredores()
     capas = []
-    for categoria in CATEGORIAS:
-        etiqueta = ETIQUETAS_CATEGORIA[categoria]
-        color = COLORES_CATEGORIA[categoria]
-        grupo = folium.FeatureGroup(
-            name=f"Conectividad {etiqueta.lower()} · Almanaque Azul",
+    # No serializar geometrías nacionales cuando la persona no pidió verlas.
+    # Folium incluye el GeoJSON completo aun si ``show`` es falso; omitir las
+    # capas apagadas reduce más de 1 MB del HTML reconstruido en cada interacción.
+    if mostrar:
+        datos = cargar_corredores()
+        for categoria in CATEGORIAS:
+            etiqueta = ETIQUETAS_CATEGORIA[categoria]
+            color = COLORES_CATEGORIA[categoria]
+            grupo = folium.FeatureGroup(
+                name=f"Conectividad {etiqueta.lower()} · Almanaque Azul",
+                overlay=True,
+                control=False,
+                show=True,
+            )
+            features = [
+                feature
+                for feature in datos["features"]
+                if (feature.get("properties") or {}).get("cat") == categoria
+            ]
+            folium.GeoJson(
+                _feature_collection(features),
+                name=etiqueta,
+                style_function=lambda _, color=color: {
+                    "color": color,
+                    "weight": 1.4,
+                    "fillColor": color,
+                    "fillOpacity": 0.26,
+                },
+                highlight_function=lambda _, color=color: {
+                    "color": "#00544d",
+                    "weight": 4,
+                    "fillColor": color,
+                    "fillOpacity": 0.42,
+                },
+                tooltip=folium.GeoJsonTooltip(
+                    fields=["nombre", "categoria_etiqueta", "cond_promedio", "area_ha"],
+                    aliases=["Corredor", "Conectividad", "Conductividad promedio", "Área (ha)"],
+                    localize=True,
+                    sticky=False,
+                ),
+                popup=folium.GeoJsonPopup(
+                    fields=["nombre", "categoria_etiqueta", "notas"],
+                    aliases=["Corredor", "Categoría original", "Lectura de Almanaque Azul"],
+                    localize=True,
+                    max_width=520,
+                ),
+                zoom_on_click=True,
+            ).add_to(grupo)
+            grupo.add_to(mapa)
+            capas.append(grupo)
+
+        meso = folium.FeatureGroup(
+            name="Corredor Biológico Mesoamericano · tramos de Panamá",
             overlay=True,
             control=False,
-            show=mostrar,
+            show=True,
         )
-        features = [
-            feature
-            for feature in datos["features"]
-            if (feature.get("properties") or {}).get("cat") == categoria
-        ]
         folium.GeoJson(
-            _feature_collection(features),
-            name=etiqueta,
-            style_function=lambda _, color=color: {
-                "color": color,
-                "weight": 1.4,
-                "fillColor": color,
-                "fillOpacity": 0.26,
-            },
-            highlight_function=lambda _, color=color: {
+            _feature_collection(filter(_es_mesoamericano, datos["features"])),
+            name="Tramos mesoamericanos",
+            style_function=lambda _: {
                 "color": "#00544d",
-                "weight": 4,
-                "fillColor": color,
-                "fillOpacity": 0.42,
+                "weight": 5,
+                "dashArray": "9 6",
+                "fillColor": "#00544d",
+                "fillOpacity": 0.04,
             },
             tooltip=folium.GeoJsonTooltip(
-                fields=["nombre", "categoria_etiqueta", "cond_promedio", "area_ha"],
-                aliases=["Corredor", "Conectividad", "Conductividad promedio", "Área (ha)"],
-                localize=True,
+                fields=["nombre", "categoria_etiqueta", "cond_promedio"],
+                aliases=["Tramo", "Conectividad", "Conductividad promedio"],
                 sticky=False,
             ),
-            popup=folium.GeoJsonPopup(
-                fields=["nombre", "categoria_etiqueta", "notas"],
-                aliases=["Corredor", "Categoría original", "Lectura de Almanaque Azul"],
-                localize=True,
-                max_width=520,
-            ),
-            zoom_on_click=True,
-        ).add_to(grupo)
-        grupo.add_to(mapa)
-        capas.append(grupo)
+        ).add_to(meso)
+        meso.add_to(mapa)
+        capas.append(meso)
 
-    meso = folium.FeatureGroup(
-        name="Corredor Biológico Mesoamericano · tramos de Panamá",
-        overlay=True,
-        control=False,
-        show=mostrar,
-    )
-    folium.GeoJson(
-        _feature_collection(filter(_es_mesoamericano, datos["features"])),
-        name="Tramos mesoamericanos",
-        style_function=lambda _: {
-            "color": "#00544d",
-            "weight": 5,
-            "dashArray": "9 6",
-            "fillColor": "#00544d",
-            "fillOpacity": 0.04,
-        },
-        tooltip=folium.GeoJsonTooltip(
-            fields=["nombre", "categoria_etiqueta", "cond_promedio"],
-            aliases=["Tramo", "Conectividad", "Conductividad promedio"],
-            sticky=False,
-        ),
-    ).add_to(meso)
-    meso.add_to(mapa)
-    capas.append(meso)
-
-    ojos = folium.FeatureGroup(
-        name="Puntos críticos de conectividad · Almanaque Azul",
-        overlay=True,
-        control=False,
-        show=mostrar_puntos_criticos,
-    )
-    for feature in cargar_puntos_criticos()["features"]:
-        propiedades = feature.get("properties") or {}
-        coordenadas = (feature.get("geometry") or {}).get("coordinates") or []
-        if len(coordenadas) < 2:
-            continue
-        nota = html.escape(
-            str(propiedades.get("notas") or "Punto crítico identificado")
+    if mostrar_puntos_criticos:
+        ojos = folium.FeatureGroup(
+            name="Puntos críticos de conectividad · Almanaque Azul",
+            overlay=True,
+            control=False,
+            show=True,
         )
-        folium.CircleMarker(
-            location=[coordenadas[1], coordenadas[0]],
-            radius=7,
-            color="#ffffff",
-            weight=2,
-            fill=True,
-            fill_color="#b42318",
-            fill_opacity=0.92,
-            tooltip="Punto crítico de conectividad",
-            popup=folium.Popup(
-                f"<strong>Punto crítico</strong><br>{nota}<br><small>{FUENTE_CORTA}</small>",
-                max_width=430,
-            ),
-        ).add_to(ojos)
-    ojos.add_to(mapa)
-    capas.append(ojos)
+        for feature in cargar_puntos_criticos()["features"]:
+            propiedades = feature.get("properties") or {}
+            coordenadas = (feature.get("geometry") or {}).get("coordinates") or []
+            if len(coordenadas) < 2:
+                continue
+            nota = html.escape(
+                str(propiedades.get("notas") or "Punto crítico identificado")
+            )
+            folium.CircleMarker(
+                location=[coordenadas[1], coordenadas[0]],
+                radius=7,
+                color="#ffffff",
+                weight=2,
+                fill=True,
+                fill_color="#b42318",
+                fill_opacity=0.92,
+                tooltip="Punto crítico de conectividad",
+                popup=folium.Popup(
+                    f"<strong>Punto crítico</strong><br>{nota}<br><small>{FUENTE_CORTA}</small>",
+                    max_width=430,
+                ),
+            ).add_to(ojos)
+        ojos.add_to(mapa)
+        capas.append(ojos)
     return capas
 
 
@@ -220,6 +242,7 @@ def analizar_interseccion_corredores(aoi_geojson: dict[str, Any]) -> dict[str, A
 
     detalles = []
     intersecciones = []
+    distancia_corredor_mas_cercano_m = None
     por_categoria: dict[str, list[Any]] = {categoria: [] for categoria in CATEGORIAS}
     intersecciones_meso = []
     for feature in cargar_corredores()["features"]:
@@ -227,6 +250,12 @@ def analizar_interseccion_corredores(aoi_geojson: dict[str, Any]) -> dict[str, A
         if not geometria.is_valid:
             geometria = make_valid(geometria)
         geometria_m = transform(proyector.transform, geometria)
+        distancia_m = float(geometria_m.distance(aoi_m))
+        if (
+            distancia_corredor_mas_cercano_m is None
+            or distancia_m < distancia_corredor_mas_cercano_m
+        ):
+            distancia_corredor_mas_cercano_m = distancia_m
         if not geometria_m.intersects(aoi_m):
             continue
         interseccion = geometria_m.intersection(aoi_m)
@@ -274,6 +303,11 @@ def analizar_interseccion_corredores(aoi_geojson: dict[str, Any]) -> dict[str, A
         else 0.0,
         "area_corredor_mesoamericano_ha": round(meso_ha, 4),
         "intersecta_mesoamericano": meso_ha > 0,
+        "distancia_corredor_mas_cercano_m": (
+            round(distancia_corredor_mas_cercano_m, 1)
+            if distancia_corredor_mas_cercano_m is not None
+            else None
+        ),
         "areas_categoria_ha": areas_categoria,
         "corredores": detalles,
         "fuente": FUENTE_CORTA,

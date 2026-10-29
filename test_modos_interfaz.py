@@ -216,7 +216,7 @@ class ModosInterfazTests(unittest.TestCase):
         self.assertIn("WGS 84 · EPSG:4326", portada)
         self.assertIn("#0a4393", portada.lower())
         self.assertIn("#77cc09", portada.lower())
-        self.assertIn('APP_VERSION = "UX-4.2.6-GRAFICA-MULTICAPA-VISIBLE"', visor)
+        self.assertIn('APP_VERSION = "UX-4.3.0-CONECTIVIDAD-LIGERA"', visor)
         self.assertIn("st.columns([2.55, 1]", visor)
         self.assertIn('[data-collapsed="true"]', visor)
         self.assertIn("width: 0 !important", visor)
@@ -224,6 +224,20 @@ class ModosInterfazTests(unittest.TestCase):
         self.assertNotIn('st.markdown("### Visor cartográfico")', visor)
         for fuente in ("JRC", "Hansen", "ESRI", "GEDI", "NDVI"):
             self.assertIn(fuente, visor)
+
+    def test_conectividad_evitar_carga_y_texto_tecnico_innecesarios(self):
+        visor = Path("app_experiencia.py").read_text(encoding="utf-8")
+        corredores = Path("corredores.py").read_text(encoding="utf-8")
+
+        self.assertNotIn('st.sidebar.expander("Fuentes de conectividad"', visor)
+        self.assertNotIn("Cobertura lista. La aplicación consultará", visor)
+        self.assertIn("Opciones técnicas · opcional", visor)
+        self.assertIn("Corredores estratégicos publicados", visor)
+        self.assertIn("value=False", visor)
+        self.assertIn("distancia_corredor_mas_cercano_m", visor)
+        self.assertIn("radio_contexto_m", visor)
+        self.assertIn("if mostrar:", corredores)
+        self.assertIn("if mostrar_puntos_criticos:", corredores)
 
     def test_subcuenca_se_recorta_a_la_cuenca(self):
         geometria = GeometriaPrueba()

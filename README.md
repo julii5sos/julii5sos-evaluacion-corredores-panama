@@ -48,8 +48,8 @@ demuestra por sí sola conectividad funcional para una especie.
 - Métricas de fragmentación equivalentes a las utilizadas en los ejercicios R: número y densidad de parches, área total/media/mediana, borde, forma y parche mayor.
 - Red de parches conectados por una distancia configurable e índice conector compuesto por grado (40%), intermediación (30%), área (20%) y fuerza de conexión (10%).
 - Red completa para las métricas y una estructura mínima legible en el mapa, trazada entre los bordes más próximos de los fragmentos.
-- Ruta estructural potencial hacia un corredor publicado cuando existe una cadena de bosque en la que cada salto cumple la distancia seleccionada; la búsqueda se limita a un entorno de 5 km.
-- Capa visual opcional de cobertura completa de bosque 2021 dentro del área y hasta 5 km alrededor, sin sumar el exterior a las hectáreas del resultado.
+- Ruta estructural potencial hacia un corredor publicado cuando existe una cadena de bosque en la que cada salto cumple la distancia seleccionada; la búsqueda usa el contexto necesario según la distancia al corredor y nunca supera 5 km.
+- Capa visual opcional de cobertura completa de bosque 2021 dentro del área y el contexto adaptativo calculado, sin sumar el exterior a las hectáreas del resultado.
 - Brechas potenciales desde parches aislados hacia su vecino más cercano; las capas se pueden consultar y descargar como GeoJSON.
 - Resultados de corredores y fragmentación en la interfaz, el PDF y el registro metodológico JSON.
 - Diagnóstico de visita que combina la urgencia por cambios con el valor estratégico
@@ -84,7 +84,7 @@ conectores, separaciones y componentes aislados.
 4. En **Mapa**, active únicamente las capas que necesita y pulse **Crear análisis**. La aplicación procesa solo las fuentes necesarias y muestra
    primero una conclusión breve, los indicadores principales y el mapa.
 5. En las opciones con conectividad, la aplicación conserva el área elegida para las hectáreas, pero revisa también un
-   entorno exterior de hasta 5 km para evitar falsos aislamientos y buscar una cadena
+   entorno exterior adaptativo de hasta 5 km para evitar falsos aislamientos y buscar una cadena
    estructural hacia un corredor publicado.
 6. Use **Capas disponibles en el mapa** para encender o apagar por separado la
    cobertura completa de bosque del área y su entorno, los fragmentos evaluados,
@@ -177,7 +177,7 @@ Esta tarea corresponde a la administración, no a las personas que consultan la 
 4. Verifique que la cuenta de servicio de Streamlit pueda leer el asset.
 5. Copie la ruta completa en el secreto `EE_ASSET_BOSQUE_2021` y reinicie la aplicación.
 
-Desde ese momento, cada área seleccionada usa la misma fuente: la aplicación filtra internamente `Categoria = Bosques y Otras Tierras Boscosas`, conserva el recorte del área activa para las hectáreas y usa hasta 5 km de contexto exterior para calcular la red y buscar una conexión estructural potencial hacia un corredor. No muestra un cargador ni un selector de clases.
+Desde ese momento, cada área seleccionada usa la misma fuente: la aplicación filtra internamente `Categoria = Bosques y Otras Tierras Boscosas`, conserva el recorte del área activa para las hectáreas y usa un contexto exterior adaptativo —distancia al corredor más cercano más el umbral, con máximo de 5 km— para calcular la red y buscar una conexión estructural potencial. No muestra un cargador ni un selector de clases.
 
 ## Estructura principal
 
@@ -197,4 +197,4 @@ python -m unittest discover -v
 
 ## Rendimiento y límites prácticos
 
-El asset se recorta primero en Earth Engine usando el área activa más su buffer de contexto. El resultado se procesa en memoria, pero solo las porciones interiores se publican en el mapa y en las métricas de superficie. Para áreas con miles de fragmentos, aumente el área mínima de parche. A partir de 400 nodos, la intermediación se aproxima con una muestra reproducible para evitar bloquear la aplicación.
+El asset se recorta primero en Earth Engine usando el área activa más su buffer de contexto adaptativo y se generaliza a 10 m antes de transferirse. El resultado se procesa en memoria, pero solo las porciones interiores se publican en el mapa y en las métricas de superficie. Para áreas con miles de fragmentos, aumente el área mínima de parche. A partir de 250 nodos, la intermediación se aproxima con una muestra reproducible de hasta 64 nodos para evitar bloquear la aplicación; la cercanía, que no participa en el índice, se omite en esas redes grandes.

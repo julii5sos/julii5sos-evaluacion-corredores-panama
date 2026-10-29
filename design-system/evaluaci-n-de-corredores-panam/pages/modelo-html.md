@@ -102,3 +102,17 @@ ESRI, GEDI, NDVI y Almanaque Azul conservan su significado.
   modo que las barras siempre sean visibles antes de cualquier interacción.
 - Las barras usan un eje anual categórico y el navegador filtra mediante el año numérico;
   así se evita que una escala temporal dinámica oculte la composición multicapa.
+
+## Conectividad ligera 4.3
+
+- El panel de trabajo no repite conteos, estados de configuración ni descripciones
+  metodológicas de las fuentes; esa información permanece en Metodología y ayuda.
+- Las geometrías nacionales de Almanaque Azul se incorporan al mapa únicamente cuando
+  la persona activa la capa. Una capa apagada no se serializa de forma invisible.
+- El análisis forestal usa un contexto adaptativo: la distancia al corredor más cercano
+  más el umbral de conexión, con un máximo de 5 km. Si el área ya toca un corredor, no
+  procesa innecesariamente los 5 km completos.
+- Earth Engine generaliza la geometría vectorial con una tolerancia de 10 m antes de
+  transferirla; las superficies reportadas continúan limitadas al área elegida.
+- Durante el cálculo se informa si se están procesando señales, corredores o fragmentos,
+  evitando una espera sin retroalimentación.

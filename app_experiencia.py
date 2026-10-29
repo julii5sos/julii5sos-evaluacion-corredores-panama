@@ -47,6 +47,7 @@ from corredores import (
     URL_MAPA as URL_MAPA_CORREDORES,
     agregar_capas_corredores,
     analizar_interseccion_corredores,
+    calcular_radio_contexto,
     cargar_catalogo as cargar_catalogo_corredores,
     cargar_corredores,
     leyenda_corredores,
@@ -993,7 +994,7 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-4.2.6-GRAFICA-MULTICAPA-VISIBLE"
+APP_VERSION = "UX-4.3.0-CONECTIVIDAD-LIGERA"
 
 COLORES_FUENTES = {
     "JRC TMF": "#1F8A70",
@@ -1016,7 +1017,7 @@ COLORES_CONECTIVIDAD = {
     "Cercanos": "#2A9D8F",
     "Separados": "#E76F51",
 }
-METHODOLOGY_VERSION = "MT-2026.15-NDVI-PONDERADO"
+METHODOLOGY_VERSION = "MT-2026.16-CONECTIVIDAD-FOCALIZADA"
 PROYECTO_EE = secreto_opcional("EE_PROJECT", "ee-julissaguevaravega")
 FUENTE_BOSQUE_NOMBRE = "Bosque y otros usos"
 FUENTE_BOSQUE_ORGANIZACION = "SINIA–MiAMBIENTE"
@@ -1028,6 +1029,7 @@ FUENTE_BOSQUE_CORTA = (
 CAMPO_COBERTURA_BOSQUE_2021 = "Categoria"
 VALOR_COBERTURA_BOSQUE_2021 = "Bosques y Otras Tierras Boscosas"
 RADIO_BUSQUEDA_CORREDOR_M = 5_000
+TOLERANCIA_GEOMETRIA_CONECTIVIDAD_M = 10
 
 ASSET_CUENCA = (
     "projects/ee-julissaguevaravega/assets/"
@@ -1228,7 +1230,7 @@ LEYENDAS = {
         (
             "#2f6b45",
             "Bosque 2021 dentro y alrededor del área",
-            "Cobertura institucional visible hasta 5 km fuera; solo el bosque dentro del polígono se suma a las hectáreas",
+            "Cobertura institucional visible en el contexto adaptativo; solo el bosque dentro del polígono se suma a las hectáreas",
         ),
     ],
     "Importancia de parches": [
@@ -2534,12 +2536,15 @@ def analizar_bosque_asset_cache(
     aoi_geojson_serializado,
     umbral_m,
     area_min_ha,
+    radio_contexto_m,
 ):
     aoi_geojson = json.loads(aoi_geojson_serializado)
     aoi_ee = ee.Geometry(aoi_geojson)
-    contexto_ee = aoi_ee.buffer(
-        max(float(umbral_m), float(RADIO_BUSQUEDA_CORREDOR_M))
+    radio_contexto_m = min(
+        float(RADIO_BUSQUEDA_CORREDOR_M),
+        max(float(umbral_m), float(radio_contexto_m)),
     )
+    contexto_ee = aoi_ee.buffer(radio_contexto_m)
     bosque_en_contexto = (
         ee.FeatureCollection(asset_id)
         .filter(ee.Filter.eq(campo_clase, valor_bosque))
@@ -2549,7 +2554,11 @@ def analizar_bosque_asset_cache(
         geometria_bosque = {"type": "FeatureCollection", "features": []}
     else:
         geometria_bosque = (
-            bosque_en_contexto.geometry(1).intersection(contexto_ee, 1).getInfo()
+            bosque_en_contexto
+            .geometry(TOLERANCIA_GEOMETRIA_CONECTIVIDAD_M)
+            .intersection(contexto_ee, TOLERANCIA_GEOMETRIA_CONECTIVIDAD_M)
+            .simplify(TOLERANCIA_GEOMETRIA_CONECTIVIDAD_M)
+            .getInfo()
         )
     return analizar_fragmentacion_geojson(
         bosque_geojson=geometria_bosque,
@@ -2558,7 +2567,7 @@ def analizar_bosque_asset_cache(
         area_min_ha=area_min_ha,
         incluir_contexto_exterior=True,
         corredores_geojson=cargar_corredores(),
-        radio_busqueda_corredor_m=RADIO_BUSQUEDA_CORREDOR_M,
+        radio_busqueda_corredor_m=radio_contexto_m,
     )
 
 
@@ -6365,30 +6374,15 @@ try:
 
     st.sidebar.markdown("---")
     if analiza_conectividad:
-        with st.sidebar.expander("Fuentes de conectividad", expanded=False):
-            st.caption(
-                f"Corredores públicos: {catalogo_corredores['corredores_poligonos']} "
-                f"polígonos y {catalogo_corredores['puntos_criticos']} puntos críticos."
-            )
-            if bosque_automatico_disponible:
-                st.success(
-                    "Cobertura lista. La aplicación consultará automáticamente el área "
-                    "elegida y su entorno de conectividad."
-                )
-            else:
-                st.warning(
-                    "La cobertura institucional todavía no fue configurada por la administración. "
-                    "Se revisarán los corredores, pero no se mostrará la red de fragmentos."
-                )
-            st.caption(
-                f"Fuente: {FUENTE_BOSQUE_CORTA}. Se usa automáticamente la categoría "
-                f"«{VALOR_COBERTURA_BOSQUE_2021}»; no necesita cargar archivos."
+        if not bosque_automatico_disponible:
+            st.sidebar.warning(
+                "La red de fragmentos no está disponible. Aun puede consultar los "
+                "corredores publicados."
             )
 
-        with st.sidebar.expander("Ajustes avanzados de conectividad", expanded=False):
+        with st.sidebar.expander("Opciones técnicas · opcional", expanded=False):
             st.caption(
-                "Para un análisis rápido conserve los valores recomendados. Estos ajustes "
-                "solo cambian cómo se agrupan y relacionan los fragmentos de bosque."
+                "Conserve los valores recomendados salvo que necesite una lectura técnica."
             )
             umbral_conectividad_m = st.select_slider(
                 "Distancia para considerar cercanos dos fragmentos",
@@ -6692,9 +6686,10 @@ try:
         if analiza_conectividad:
             with st.sidebar.expander("Almanaque Azul · corredores", expanded=True):
                 mostrar_corredores_mapa = st.checkbox(
-                    "Corredores estratégicos",
-                    value=True,
+                    "Corredores estratégicos publicados",
+                    value=False,
                     key=f"capa_corredores_{modo_analisis}",
+                    help="Actívelos cuando necesite ver los polígonos publicados sobre el mapa.",
                 )
                 mostrar_puntos_criticos_mapa = st.checkbox(
                     "Puntos críticos publicados",
@@ -6911,8 +6906,12 @@ try:
 
         if solicitar_analisis:
             firma_anterior = st.session_state.get("firma_analisis")
-            with st.spinner(f"Preparando {contenido_modo['titulo'].lower()}..."):
+            with st.status(
+                f"Preparando {contenido_modo['titulo'].lower()}...",
+                expanded=True,
+            ) as estado_analisis:
                 if analiza_cambios:
+                    estado_analisis.write("Calculando las señales territoriales seleccionadas.")
                     resultados_nuevos = ejecutar_analisis(
                         tipo_area=tipo_area,
                         finca_id=finca_seleccionada,
@@ -6926,6 +6925,7 @@ try:
                     resultados_nuevos = {"area_ha": superficie_ha}
 
                 if analiza_conectividad:
+                    estado_analisis.write("Revisando la relación con los corredores publicados.")
                     aoi_geojson_serializado = json.dumps(
                         geometria.getInfo(),
                         ensure_ascii=False,
@@ -6936,6 +6936,21 @@ try:
                     )
                     if bosque_automatico_disponible:
                         try:
+                            distancia_corredor_m = resultados_nuevos["corredores"].get(
+                                "distancia_corredor_mas_cercano_m"
+                            )
+                            radio_contexto_m = calcular_radio_contexto(
+                                distancia_corredor_m,
+                                umbral_conectividad_m,
+                                RADIO_BUSQUEDA_CORREDOR_M,
+                            )
+                            resultados_nuevos["radio_contexto_conectividad_m"] = (
+                                radio_contexto_m
+                            )
+                            estado_analisis.write(
+                                "Analizando fragmentos de bosque en el área y solo el "
+                                f"entorno necesario ({radio_contexto_m / 1000:.1f} km)."
+                            )
                             resultados_nuevos["fragmentacion"] = analizar_bosque_asset_cache(
                                 ASSET_BOSQUE_2021,
                                 CAMPO_COBERTURA_BOSQUE_2021,
@@ -6943,6 +6958,7 @@ try:
                                 aoi_geojson_serializado,
                                 umbral_conectividad_m,
                                 area_min_parche_ha,
+                                radio_contexto_m,
                             )
                             resultados_nuevos["fragmentacion"][
                                 "fuente_cobertura"
@@ -6971,6 +6987,11 @@ try:
                     st.session_state.pop("errores_mapas", None)
                     st.session_state.pop("intento_informe", None)
                     st.session_state.pop("mapas_reporte", None)
+                estado_analisis.update(
+                    label="Preevaluación preparada.",
+                    state="complete",
+                    expanded=False,
+                )
             st.rerun()
 
         analisis_actual = (
@@ -7490,6 +7511,16 @@ try:
             f"Vegetación NDVI {anio_ndvi_capa}",
         )
 
+    resultados_mapa = (
+        st.session_state.get("resultados_analisis", {})
+        if st.session_state.get("firma_analisis") == firma_analisis_actual
+        else {}
+    )
+    fragmentacion_mapa = resultados_mapa.get("fragmentacion") or {}
+    radio_contexto_mapa = float(
+        fragmentacion_mapa.get("distancia_contexto_m", RADIO_BUSQUEDA_CORREDOR_M)
+    )
+
     capa_bosque_contexto = None
     if (
         modo_mapa == "Explorar capas"
@@ -7498,7 +7529,7 @@ try:
     ):
         capa_bosque_contexto = capa_gee(
             mapa,
-            imagen_bosque_contexto(geometria),
+            imagen_bosque_contexto(geometria, radio_contexto_mapa),
             {"min": 1, "max": 1, "palette": ["2f6b45"]},
             f"Bosque {ANO_BOSQUE_REFERENCIA} · área y entorno",
             mostrar=True,
@@ -7513,17 +7544,15 @@ try:
         mostrar_puntos_criticos=mostrar_puntos_criticos_mapa,
     )
     capas_fragmentacion_mapa = []
-    if st.session_state.get("firma_analisis") == firma_analisis_actual:
-        resultados_mapa = st.session_state.get("resultados_analisis", {})
-        if resultados_mapa.get("fragmentacion"):
-            capas_fragmentacion_mapa = agregar_resultados_fragmentacion(
-                mapa,
-                resultados_mapa["fragmentacion"],
-                mostrar_parches=mostrar_fragmentos_bosque,
-                mostrar_conexiones=mostrar_conexiones_bosque,
-                mostrar_brechas=mostrar_brechas_bosque,
-                mostrar_ruta_corredor=mostrar_ruta_corredor,
-            )
+    if fragmentacion_mapa:
+        capas_fragmentacion_mapa = agregar_resultados_fragmentacion(
+            mapa,
+            fragmentacion_mapa,
+            mostrar_parches=mostrar_fragmentos_bosque,
+            mostrar_conexiones=mostrar_conexiones_bosque,
+            mostrar_brechas=mostrar_brechas_bosque,
+            mostrar_ruta_corredor=mostrar_ruta_corredor,
+        )
 
     cuenca = ee.FeatureCollection(ASSET_CUENCA)
     capa_limite_cuenca = capa_gee(
@@ -7551,7 +7580,7 @@ try:
     limites_mapa = limites_area
     if mostrar_bosque_contexto and bosque_automatico_disponible:
         contexto_mapa = ee.FeatureCollection(
-            [ee.Feature(geometria.buffer(RADIO_BUSQUEDA_CORREDOR_M))]
+            [ee.Feature(geometria.buffer(radio_contexto_mapa))]
         )
         limites_mapa = obtener_limites(contexto_mapa)
     if mostrar_ruta_corredor and analisis_actual:
@@ -7640,14 +7669,12 @@ try:
             "las demás capas y resultados permanecen disponibles."
         )
 
-    fragmentacion_actual = st.session_state.get("resultados_analisis", {}).get(
-        "fragmentacion"
-    )
+    fragmentacion_actual = fragmentacion_mapa or None
     if mostrar_bosque_contexto and bosque_automatico_disponible:
         mapa_resultados_contenedor.info(
             f"Contexto forestal visible: el verde muestra la cobertura de bosque "
             f"{ANO_BOSQUE_REFERENCIA} dentro del área y hasta "
-            f"{RADIO_BUSQUEDA_CORREDOR_M / 1000:,.0f} km alrededor. El bosque exterior "
+            f"{radio_contexto_mapa / 1000:,.1f} km alrededor. El bosque exterior "
             "ayuda a interpretar la ruta naranja, pero no aumenta las hectáreas reportadas."
         )
     if (
@@ -7682,7 +7709,7 @@ try:
     ):
         mapa_resultados_contenedor.info(
             f"No hay una ruta estructural visible hacia los corredores publicados dentro "
-            f"de {RADIO_BUSQUEDA_CORREDOR_M / 1000:,.0f} km con saltos máximos de "
+            f"de {radio_contexto_mapa / 1000:,.1f} km con saltos máximos de "
             f"{umbral_conectividad_m:,.0f} m."
         )
 

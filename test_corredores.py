@@ -2,7 +2,9 @@ import unittest
 
 from corredores import (
     CATEGORIAS,
+    agregar_capas_corredores,
     analizar_interseccion_corredores,
+    calcular_radio_contexto,
     cargar_catalogo,
     cargar_corredores,
     cargar_puntos_criticos,
@@ -52,6 +54,28 @@ class CorredoresDatosTests(unittest.TestCase):
         self.assertEqual(len(resultado["corredores"]), 22)
         self.assertFalse(resultado["participa_indice_prioridad"])
         self.assertTrue(resultado["participa_prioridad_visita"])
+        self.assertEqual(resultado["distancia_corredor_mas_cercano_m"], 0.0)
+
+    def test_no_serializa_corredores_si_las_capas_estan_apagadas(self):
+        import folium
+
+        mapa = folium.Map()
+        capas = agregar_capas_corredores(
+            mapa,
+            mostrar=False,
+            mostrar_puntos_criticos=False,
+        )
+        html = mapa.get_root().render()
+
+        self.assertEqual(capas, [])
+        self.assertNotIn("Conectividad alta · Almanaque Azul", html)
+        self.assertLess(len(html), 10_000)
+
+    def test_contexto_se_adapta_a_la_distancia_del_corredor(self):
+        self.assertEqual(calcular_radio_contexto(0, 500), 500)
+        self.assertEqual(calcular_radio_contexto(1_200, 500), 1_700)
+        self.assertEqual(calcular_radio_contexto(9_000, 500), 5_000)
+        self.assertEqual(calcular_radio_contexto(None, 500), 5_000)
 
     def test_acepta_area_como_geometry_collection(self):
         poligono = {

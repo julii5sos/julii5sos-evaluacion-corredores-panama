@@ -4,6 +4,17 @@ Este historial documenta la evolución de la aplicación UX. Las versiones sigue
 el formato `MAJOR.MINOR.PATCH`: una versión principal, mejoras compatibles y
 correcciones compatibles, respectivamente.
 
+## [4.3.0] - 2026-10-29 — conectividad más rápida y panel simplificado
+
+- Elimina del panel lateral el bloque informativo redundante de fuentes de conectividad;
+  las fuentes y su alcance permanecen disponibles en Metodología y ayuda.
+- Evita serializar 22 polígonos nacionales y 14 puntos críticos cuando sus capas están
+  apagadas, reduciendo aproximadamente 1,2 MB del mapa inicial.
+- Calcula un contexto forestal adaptativo según la distancia al corredor más cercano,
+  sin superar 5 km, y simplifica a 10 m la geometría transferida desde Earth Engine.
+- Reduce el costo de centralidad en redes grandes y muestra el avance por etapa durante
+  la preparación de la preevaluación.
+
 ## [4.2.6] - 2026-10-29 — composición multicapa visible
 
 - Separa el eje categórico de las barras del control temporal para evitar que la escala

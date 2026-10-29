@@ -257,9 +257,9 @@ de parches de la cobertura 2021.
 
 ## Fragmentación del bosque de referencia 2021
 
-La cobertura utilizada corresponde a la capa **Bosque y otros usos**, referencia 2021, publicada por SINIA–MiAMBIENTE. La administración publica el shapefile nacional una sola vez como asset privado de Earth Engine. La aplicación filtra internamente el campo `Categoria` por el valor `Bosques y Otras Tierras Boscosas`; la persona usuaria no carga archivos ni selecciona campos de clase. Para la conectividad se obtiene el área evaluada más un contexto exterior de hasta 5 km. Las geometrías se transforman a EPSG:8857, se validan y se separan en parches poligonales.
+La cobertura utilizada corresponde a la capa **Bosque y otros usos**, referencia 2021, publicada por SINIA–MiAMBIENTE. La administración publica el shapefile nacional una sola vez como asset privado de Earth Engine. La aplicación filtra internamente el campo `Categoria` por el valor `Bosques y Otras Tierras Boscosas`; la persona usuaria no carga archivos ni selecciona campos de clase. Para la conectividad se obtiene el área evaluada más un contexto exterior adaptativo: la distancia al corredor más cercano más el umbral de conexión, sin superar 5 km. Las geometrías se generalizan con una tolerancia de 10 m, se transforman a EPSG:8857, se validan y se separan en parches poligonales.
 
-El bosque del contexto exterior participa únicamente en la construcción de la red. Las hectáreas, la cantidad de fragmentos y los polígonos analíticos entregados se limitan al área original. De esta manera, un fragmento que continúa o se conecta con bosque inmediatamente fuera del límite no se clasifica erróneamente como aislado, sin incorporar superficie exterior al resultado del predio. Para explicar la conexión encontrada, el mapa permite activar una cobertura verde de referencia dentro del área y hasta 5 km alrededor; esta capa visual comienza apagada, no tiene categorías de importancia y no altera ninguna superficie reportada. La ruta potencial hacia un corredor también puede extenderse visualmente fuera del límite.
+El bosque del contexto exterior participa únicamente en la construcción de la red. Las hectáreas, la cantidad de fragmentos y los polígonos analíticos entregados se limitan al área original. De esta manera, un fragmento que continúa o se conecta con bosque inmediatamente fuera del límite no se clasifica erróneamente como aislado, sin incorporar superficie exterior al resultado del predio. Para explicar la conexión encontrada, el mapa permite activar una cobertura verde de referencia dentro del área y el contexto adaptativo calculado, que nunca supera 5 km; esta capa visual comienza apagada, no tiene categorías de importancia y no altera ninguna superficie reportada. La ruta potencial hacia un corredor también puede extenderse visualmente fuera del límite.
 
 Esta capa representa la cobertura clasificada para 2021. Se utiliza para describir la fragmentación y conectividad estructural del bosque de ese año; por sí sola no permite determinar cuándo ocurrió un cambio ni debe interpretarse como una serie anual de deforestación.
 
@@ -298,7 +298,7 @@ El índice conector por parche reproduce los pesos de los ejercicios R:
 + 0.10 × fuerza normalizada
 ```
 
-La importancia `Alta`, `Media` o `Baja` se asigna mediante los cuantiles 75% y 50% del índice dentro del área analizada. Es una clasificación relativa y no equivale a las categorías publicadas por Almanaque Azul. Con más de 400 nodos, la intermediación se aproxima con una muestra reproducible de hasta 200 nodos.
+La importancia `Alta`, `Media` o `Baja` se asigna mediante los cuantiles 75% y 50% del índice dentro del área analizada. Es una clasificación relativa y no equivale a las categorías publicadas por Almanaque Azul. Con más de 250 nodos, la intermediación se aproxima con una muestra reproducible de hasta 64 nodos. La cercanía, que no participa en el índice ni en la lectura principal, se omite en esas redes grandes para evitar un cálculo cuadrático innecesario.
 
 La condición estructural se resume con reglas operativas transparentes:
 
@@ -318,7 +318,7 @@ especies objetivo.
 
 ## Conexión estructural potencial hacia un corredor de referencia
 
-La aplicación examina los corredores publicados por Almanaque Azul que se encuentran dentro del contexto de 5 km. Para cada corredor identifica los fragmentos situados dentro del umbral elegido y busca, sobre la red completa, una cadena desde el área evaluada. La ruta solo se acepta cuando **cada salto** entre fragmentos y el salto final al corredor es menor o igual al umbral seleccionado.
+La aplicación examina los corredores publicados por Almanaque Azul dentro del contexto adaptativo, limitado a un máximo de 5 km. Para cada corredor identifica los fragmentos situados dentro del umbral elegido y busca, sobre la red completa, una cadena desde el área evaluada. La ruta solo se acepta cuando **cada salto** entre fragmentos y el salto final al corredor es menor o igual al umbral seleccionado.
 
 Cuando existe más de una alternativa, se conserva una sola para mantener legible el mapa. Primero se prefieren las categorías originales de Almanaque Azul en el orden alta, mediana y media-baja; dentro de la misma categoría se selecciona la menor suma de separaciones. La ruta se dibuja en naranja con halo blanco y puede incluir bosque exterior al polígono, aunque esa superficie exterior no se suma a las hectáreas del área.
 
