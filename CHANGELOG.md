@@ -4,6 +4,56 @@ Este historial documenta la evolución de la aplicación UX. Las versiones sigue
 el formato `MAJOR.MINOR.PATCH`: una versión principal, mejoras compatibles y
 correcciones compatibles, respectivamente.
 
+## [4.3.1] - 2026-10-29 — corredores recortados y gráficas comparables
+
+- Muestra por defecto únicamente la parte de los corredores que coincide con la finca,
+  subcuenca o polígono analizado.
+- Conserva el corredor completo como contexto regional opcional, con menor opacidad para
+  que no se confunda con bosque ni con la superficie evaluada.
+- Sustituye la comparación ambigua entre corredor y bosque por tres gráficas coherentes:
+  dentro/fuera de corredores, bosque/otros usos de 2021 y fragmentos cercanos/separados.
+- Añade geometrías recortadas al resultado analítico y mantiene tablas con valores como
+  alternativa accesible a las gráficas.
+
+## [4.3.0] - 2026-10-29 — conectividad más rápida y panel simplificado
+
+- Elimina del panel lateral el bloque informativo redundante de fuentes de conectividad;
+  las fuentes y su alcance permanecen disponibles en Metodología y ayuda.
+- Evita serializar 22 polígonos nacionales y 14 puntos críticos cuando sus capas están
+  apagadas, reduciendo aproximadamente 1,2 MB del mapa inicial.
+- Calcula un contexto forestal adaptativo según la distancia al corredor más cercano,
+  sin superar 5 km, y simplifica a 10 m la geometría transferida desde Earth Engine.
+- Reduce el costo de centralidad en redes grandes y muestra el avance por etapa durante
+  la preparación de la preevaluación.
+- Evita retener globalmente los GeoJSON de fragmentación y limita la cantidad y duración
+  de los cachés de series, análisis e imágenes de informe para controlar el uso de memoria.
+
+## [4.2.6] - 2026-10-29 — composición multicapa visible
+
+- Separa el eje categórico de las barras del control temporal para evitar que la escala
+  interactiva comprima todas las series en el borde izquierdo.
+- El navegador inferior filtra los años mediante un campo numérico estable; una, dos o
+  tres capas conservan barras visibles y apiladas.
+- Evita desplazamientos de año causados por conversiones de fecha y zona horaria.
+
+## [4.2.5] - 2026-10-29 — barras visibles desde la carga inicial
+
+- Inicializa el navegador temporal con el intervalo completo de años disponibles para
+  que las barras seleccionadas aparezcan desde la primera renderización.
+- Evita que el control temporal pueda quedar vacío y ocultar accidentalmente todas las
+  series del gráfico principal.
+- Mantiene el selector inferior para enfocar períodos sin alterar los datos del análisis.
+
+## [4.2.4] - 2026-10-29 — gráfica temporal inspirada en MapBiomas
+
+- Presenta las capas anuales comparables mediante barras apiladas, con una leyenda y
+  colores estables para reconocer cada indicador seleccionado.
+- Añade un navegador temporal inferior que permite enfocar un intervalo de años sin
+  convertir la gráfica analítica principal en una gráfica de líneas.
+- Incorpora la etiqueta «Visualizadas en el mapa» para reforzar la relación entre las
+  capas activas, la evidencia cartográfica y las series visibles.
+- Conserva tooltips con valores exactos y una tabla accesible con las mismas series.
+
 ## [4.2.3] - 2026-10-29 — modo de enfoque al cerrar el panel
 
 - Al contraer el panel lateral, su ancho reservado pasa realmente a cero y el mapa con

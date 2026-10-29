@@ -47,6 +47,7 @@ from corredores import (
     URL_MAPA as URL_MAPA_CORREDORES,
     agregar_capas_corredores,
     analizar_interseccion_corredores,
+    calcular_radio_contexto,
     cargar_catalogo as cargar_catalogo_corredores,
     cargar_corredores,
     leyenda_corredores,
@@ -871,13 +872,19 @@ st.markdown(
         background: #ffffff;
     }
     .grafica-contextual-cabecera small {
-        display: block;
-        margin-bottom: .12rem;
-        color: var(--institucional-suave);
-        font-size: .7rem;
+        display: inline-flex;
+        align-items: center;
+        width: fit-content;
+        margin-bottom: .3rem;
+        padding: .18rem .55rem;
+        border: 2px solid #78a9bd;
+        border-radius: 999px;
+        background: #e8f3f7;
+        color: var(--institucional-tinta);
+        font-size: .68rem;
         font-weight: 750;
-        letter-spacing: .055em;
-        text-transform: uppercase;
+        letter-spacing: .025em;
+        text-transform: none;
     }
     .grafica-contextual-cabecera strong {
         display: block;
@@ -987,7 +994,7 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-4.2.3-MODO-ENFOQUE"
+APP_VERSION = "UX-4.3.1-CORREDORES-RECORTADOS"
 
 COLORES_FUENTES = {
     "JRC TMF": "#1F8A70",
@@ -1006,11 +1013,13 @@ COLORES_CAMBIOS = {
 }
 COLORES_CONECTIVIDAD = {
     "En corredores": "#2E7D5B",
+    "Fuera de corredores": "#7B8CA5",
     "Bosque 2021": "#76B72A",
+    "Otros usos 2021": "#B7791F",
     "Cercanos": "#2A9D8F",
     "Separados": "#E76F51",
 }
-METHODOLOGY_VERSION = "MT-2026.15-NDVI-PONDERADO"
+METHODOLOGY_VERSION = "MT-2026.16-CONECTIVIDAD-FOCALIZADA"
 PROYECTO_EE = secreto_opcional("EE_PROJECT", "ee-julissaguevaravega")
 FUENTE_BOSQUE_NOMBRE = "Bosque y otros usos"
 FUENTE_BOSQUE_ORGANIZACION = "SINIA–MiAMBIENTE"
@@ -1022,6 +1031,7 @@ FUENTE_BOSQUE_CORTA = (
 CAMPO_COBERTURA_BOSQUE_2021 = "Categoria"
 VALOR_COBERTURA_BOSQUE_2021 = "Bosques y Otras Tierras Boscosas"
 RADIO_BUSQUEDA_CORREDOR_M = 5_000
+TOLERANCIA_GEOMETRIA_CONECTIVIDAD_M = 10
 
 ASSET_CUENCA = (
     "projects/ee-julissaguevaravega/assets/"
@@ -1222,7 +1232,7 @@ LEYENDAS = {
         (
             "#2f6b45",
             "Bosque 2021 dentro y alrededor del área",
-            "Cobertura institucional visible hasta 5 km fuera; solo el bosque dentro del polígono se suma a las hectáreas",
+            "Cobertura institucional visible en el contexto adaptativo; solo el bosque dentro del polígono se suma a las hectáreas",
         ),
     ],
     "Importancia de parches": [
@@ -1783,7 +1793,7 @@ def clave_orden_natural(valor):
     )
 
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=3600, max_entries=4)
 def obtener_ids_fincas():
     if not ASSET_FINCAS or not acceso_fincas_vigente():
         raise PermissionError("La colección privada requiere un acceso autorizado.")
@@ -1799,7 +1809,7 @@ def obtener_ids_fincas():
     )
 
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=3600, max_entries=4)
 def obtener_ids_subcuencas():
     if not ASSET_SUBCUENCAS:
         raise PermissionError("La colección de subcuencas no está configurada.")
@@ -1877,7 +1887,7 @@ def obtener_area(
     )
 
 
-@st.cache_data(ttl=3600, show_spinner=False)
+@st.cache_data(ttl=3600, max_entries=64, show_spinner=False)
 def obtener_superficies_area_cache(
     tipo_area,
     finca_id=None,
@@ -2345,7 +2355,7 @@ def normalizar_histograma_gedi(histograma):
     }
 
 
-@st.cache_data(ttl=3600, show_spinner=False)
+@st.cache_data(ttl=1800, max_entries=48, show_spinner=False)
 def calcular_serie_fuente(
     tipo_area,
     finca_id,
@@ -2515,25 +2525,27 @@ def calcular_serie_fuente(
     raise ValueError(f"Fuente no reconocida: {fuente}")
 
 
-@st.cache_data(ttl=3600, show_spinner=False)
+@st.cache_data(ttl=3600, max_entries=64, show_spinner=False)
 def analizar_corredores_cache(aoi_geojson_serializado):
     return analizar_interseccion_corredores(json.loads(aoi_geojson_serializado))
 
 
-@st.cache_data(ttl=3600, show_spinner=False)
-def analizar_bosque_asset_cache(
+def analizar_bosque_asset(
     asset_id,
     campo_clase,
     valor_bosque,
     aoi_geojson_serializado,
     umbral_m,
     area_min_ha,
+    radio_contexto_m,
 ):
     aoi_geojson = json.loads(aoi_geojson_serializado)
     aoi_ee = ee.Geometry(aoi_geojson)
-    contexto_ee = aoi_ee.buffer(
-        max(float(umbral_m), float(RADIO_BUSQUEDA_CORREDOR_M))
+    radio_contexto_m = min(
+        float(RADIO_BUSQUEDA_CORREDOR_M),
+        max(float(umbral_m), float(radio_contexto_m)),
     )
+    contexto_ee = aoi_ee.buffer(radio_contexto_m)
     bosque_en_contexto = (
         ee.FeatureCollection(asset_id)
         .filter(ee.Filter.eq(campo_clase, valor_bosque))
@@ -2543,7 +2555,11 @@ def analizar_bosque_asset_cache(
         geometria_bosque = {"type": "FeatureCollection", "features": []}
     else:
         geometria_bosque = (
-            bosque_en_contexto.geometry(1).intersection(contexto_ee, 1).getInfo()
+            bosque_en_contexto
+            .geometry(TOLERANCIA_GEOMETRIA_CONECTIVIDAD_M)
+            .intersection(contexto_ee, TOLERANCIA_GEOMETRIA_CONECTIVIDAD_M)
+            .simplify(TOLERANCIA_GEOMETRIA_CONECTIVIDAD_M)
+            .getInfo()
         )
     return analizar_fragmentacion_geojson(
         bosque_geojson=geometria_bosque,
@@ -2552,11 +2568,11 @@ def analizar_bosque_asset_cache(
         area_min_ha=area_min_ha,
         incluir_contexto_exterior=True,
         corredores_geojson=cargar_corredores(),
-        radio_busqueda_corredor_m=RADIO_BUSQUEDA_CORREDOR_M,
+        radio_busqueda_corredor_m=radio_contexto_m,
     )
 
 
-@st.cache_data(ttl=3600, show_spinner=False)
+@st.cache_data(ttl=1800, max_entries=24, show_spinner=False)
 def ejecutar_analisis(
     tipo_area,
     finca_id,
@@ -2965,7 +2981,7 @@ def descargar_miniaturas(especificaciones, geometria, mapas_existentes=None):
     return resultados, errores
 
 
-@st.cache_data(ttl=3600, show_spinner=False)
+@st.cache_data(ttl=900, max_entries=4, show_spinner=False)
 def generar_mapas_reporte(
     tipo_area,
     finca_id,
@@ -3778,7 +3794,7 @@ def mostrar_panel_dashboard(resultados, modo_analisis):
         )
         izquierda, derecha = st.columns(2)
         izquierda.metric(
-            "Área en corredores",
+            "Dentro de corredores",
             f"{float(corredores.get('area_en_corredores_ha', 0) or 0):,.1f} ha",
             f"{float(corredores.get('porcentaje_aoi_en_corredores', 0) or 0):.1f}% del área",
             delta_color="off",
@@ -3831,7 +3847,7 @@ def mostrar_panel_dashboard(resultados, modo_analisis):
         derecha.metric("Valor del corredor", visita["valor_corredor"])
         izquierda, derecha = st.columns(2)
         izquierda.metric(
-            "Área en corredores",
+            "Dentro de corredores",
             f"{float(corredores.get('area_en_corredores_ha', 0) or 0):,.1f} ha",
         )
         derecha.metric(
@@ -3875,21 +3891,41 @@ def construir_graficas_dashboard(resultados, modo_analisis):
         fragmentacion = resultados.get("fragmentacion") or {}
         clase = fragmentacion.get("metricas_clase") or {}
         red = fragmentacion.get("metricas_red") or {}
+        area_total_ha = float(
+            resultados.get("area_ha") or corredores.get("area_aoi_ha", 0) or 0
+        )
+        area_corredor_ha = min(
+            area_total_ha,
+            max(0.0, float(corredores.get("area_en_corredores_ha", 0) or 0)),
+        )
+        area_fuera_corredor_ha = max(0.0, area_total_ha - area_corredor_ha)
+        area_bosque_ha = min(
+            area_total_ha,
+            max(0.0, float(clase.get("area_total_bosque_ha", 0) or 0)),
+        )
+        area_otros_usos_ha = max(0.0, area_total_ha - area_bosque_ha)
         total_fragmentos = int(clase.get("numero_parches", 0) or 0)
         separados = int(red.get("numero_parches_aislados", 0) or 0)
         cercanos = max(0, total_fragmentos - separados)
+        porcentaje_corredor = (
+            area_corredor_ha / area_total_ha * 100 if area_total_ha else 0.0
+        )
+        porcentaje_bosque = (
+            area_bosque_ha / area_total_ha * 100 if area_total_ha else 0.0
+        )
         return {
             "primaria": {
-                "titulo": "Superficie de interés",
+                "titulo": "Presencia de corredores en el área",
                 "descripcion": (
-                    "Compara la superficie coincidente con corredores publicados y el "
-                    "bosque identificado dentro del área."
+                    "Divide el área analizada entre la parte que coincide con corredores "
+                    "publicados y la parte restante. El corredor es una delimitación "
+                    "estratégica, no una clase de bosque."
                 ),
                 "datos": {
-                    "Categoría": ["En corredores", "Bosque 2021"],
+                    "Categoría": ["En corredores", "Fuera de corredores"],
                     "Hectáreas": [
-                        float(corredores.get("area_en_corredores_ha", 0) or 0),
-                        float(clase.get("area_total_bosque_ha", 0) or 0),
+                        area_corredor_ha,
+                        area_fuera_corredor_ha,
                     ],
                 },
                 "eje_x": "Categoría",
@@ -3897,10 +3933,29 @@ def construir_graficas_dashboard(resultados, modo_analisis):
                 "unidad": "ha",
                 "colores": [
                     COLORES_CONECTIVIDAD["En corredores"],
-                    COLORES_CONECTIVIDAD["Bosque 2021"],
+                    COLORES_CONECTIVIDAD["Fuera de corredores"],
                 ],
             },
             "secundaria": {
+                "titulo": "Cobertura de bosque en 2021",
+                "descripcion": (
+                    "Divide la misma área entre bosque identificado en 2021 y otros usos "
+                    "o coberturas. Esta lectura es independiente del corredor."
+                ),
+                "datos": {
+                    "Cobertura": ["Bosque 2021", "Otros usos 2021"],
+                    "Hectáreas": [area_bosque_ha, area_otros_usos_ha],
+                },
+                "eje_x": "Cobertura",
+                "eje_y": "Hectáreas",
+                "unidad": "ha",
+                "colores": [
+                    COLORES_CONECTIVIDAD["Bosque 2021"],
+                    COLORES_CONECTIVIDAD["Otros usos 2021"],
+                ],
+                "disponible": bool(fragmentacion),
+            },
+            "terciaria": {
                 "titulo": "Relación entre fragmentos",
                 "descripcion": (
                     "Distingue fragmentos cercanos de los que aparecen separados con la "
@@ -3920,8 +3975,14 @@ def construir_graficas_dashboard(resultados, modo_analisis):
                 ],
             },
             "clave": (
-                f"Se identificaron {total_fragmentos:,} fragmentos; "
-                f"{separados:,} aparecen separados."
+                f"El {porcentaje_corredor:.1f}% del área coincide con corredores y el "
+                f"{porcentaje_bosque:.1f}% fue identificado como bosque en 2021. "
+                "Son lecturas diferentes y no se suman entre sí."
+                if fragmentacion
+                else (
+                    f"El {porcentaje_corredor:.1f}% del área coincide con corredores. "
+                    "La cobertura de bosque 2021 no estuvo disponible."
+                )
             ),
         }
 
@@ -4285,7 +4346,7 @@ def configuracion_grafica_contextual_compuesta(capa_principal, capas_activas):
             configuracion_compuesta.update(
                 titulo="Cambios forestales seleccionados por año",
                 descripcion=(
-                    "Las barras agrupadas comparan las capas JRC TMF activadas. "
+                    "Las barras apiladas comparan las capas JRC TMF activadas. "
                     "Cada indicador conserva un color y una etiqueta propios."
                 ),
             )
@@ -4311,7 +4372,7 @@ def crear_grafica_serie_barras(
     anio_max=None,
     altura=245,
 ):
-    """Construye series temporales o distribuciones únicamente con barras."""
+    """Construye barras apiladas y, para años, un navegador temporal inferior."""
 
     columnas = grafica["columnas"]
     eje_x = next(iter(columnas))
@@ -4320,8 +4381,10 @@ def crear_grafica_serie_barras(
     if not series:
         series = series_disponibles
     valores_x = list(columnas.get(eje_x, []))
+    es_serie_anual = eje_x.strip().lower() in {"año", "ano"}
     filas = []
     periodos = []
+    anios_disponibles = []
     for indice, valor_x in enumerate(valores_x):
         try:
             valor_numerico_x = float(valor_x)
@@ -4333,10 +4396,20 @@ def crear_grafica_serie_barras(
             continue
         periodo = str(int(valor_x)) if isinstance(valor_x, int) else str(valor_x)
         periodos.append(periodo)
-        for serie in series:
+        for orden_serie, serie in enumerate(series):
             valores_serie = columnas.get(serie, [])
             valor = float(valores_serie[indice] or 0) if indice < len(valores_serie) else 0.0
-            filas.append({"Periodo": periodo, "Serie": serie, "Valor": valor})
+            fila = {
+                "Periodo": periodo,
+                "Serie": serie,
+                "OrdenSerie": orden_serie,
+                "Valor": valor,
+            }
+            if es_serie_anual and valor_numerico_x is not None:
+                anio_periodo = int(valor_numerico_x)
+                fila["Anio"] = anio_periodo
+                anios_disponibles.append(anio_periodo)
+            filas.append(fila)
 
     colores = list(colores or ["#1F8A70"])
     if len(colores) < len(series):
@@ -4354,12 +4427,43 @@ def crear_grafica_serie_barras(
         titulo_eje = "Valor"
         formato_tooltip = ",.2f"
 
-    base = alt.Chart(alt.Data(values=filas)).mark_bar(
-        cornerRadiusTopLeft=3,
-        cornerRadiusTopRight=3,
-    )
-    codificacion = {
-        "x": alt.X(
+    datos = alt.Data(values=filas)
+    navegador_periodo = None
+    if es_serie_anual and len(set(periodos)) > 8:
+        intervalo_inicial = (
+            min(anios_disponibles),
+            max(anios_disponibles),
+        )
+        navegador_periodo = alt.selection_interval(
+            encodings=["x"],
+            name="periodo_visible",
+            value={"x": intervalo_inicial},
+            clear=False,
+            mark=alt.BrushConfig(
+                fill="#D6DEEB",
+                fillOpacity=0.38,
+                stroke="#3A7CA5",
+                strokeWidth=1.5,
+            ),
+        )
+        eje_periodo = alt.X(
+            "Periodo:O",
+            sort=list(dict.fromkeys(periodos)),
+            title=eje_x,
+            axis=alt.Axis(
+                labelAngle=0,
+                labelOverlap="greedy",
+                labelColor="#566176",
+                labelFontSize=10,
+                titleColor="#566176",
+                titleFontSize=11,
+                tickColor="#D6DEEB",
+                domainColor="#D6DEEB",
+                tickCount=6,
+            ),
+        )
+    else:
+        eje_periodo = alt.X(
             "Periodo:N",
             sort=list(dict.fromkeys(periodos)),
             title=eje_x,
@@ -4373,10 +4477,21 @@ def crear_grafica_serie_barras(
                 tickColor="#D6DEEB",
                 domainColor="#D6DEEB",
             ),
-        ),
+        )
+
+    base = alt.Chart(datos)
+    if navegador_periodo is not None:
+        base = base.transform_filter(navegador_periodo)
+    base = base.mark_bar(
+        cornerRadiusTopLeft=3,
+        cornerRadiusTopRight=3,
+    )
+    codificacion = {
+        "x": eje_periodo,
         "y": alt.Y(
             "Valor:Q",
             title=titulo_eje,
+            stack="zero",
             scale=alt.Scale(zero=True),
             axis=alt.Axis(
                 gridColor="#E1E6EE",
@@ -4408,13 +4523,47 @@ def crear_grafica_serie_barras(
             alt.Tooltip("Serie:N", title="Indicador"),
             alt.Tooltip("Valor:Q", title=titulo_eje, format=formato_tooltip),
         ],
+        "order": alt.Order("OrdenSerie:Q", sort="ascending"),
     }
-    if len(series) > 1:
-        codificacion["xOffset"] = alt.XOffset("Serie:N", sort=series)
+    grafica_principal = base.encode(**codificacion).properties(height=altura)
+
+    if navegador_periodo is not None:
+        navegador = (
+            alt.Chart(datos)
+            .mark_area(
+                color="#78A9BD",
+                opacity=0.3,
+                line=alt.LineConfig(color="#3A7CA5", strokeWidth=1),
+            )
+            .encode(
+                x=alt.X(
+                    "Anio:Q",
+                    title=None,
+                    axis=alt.Axis(
+                        format="d",
+                        labelAngle=0,
+                        labelColor="#566176",
+                        labelFontSize=9,
+                        tickCount=6,
+                        grid=False,
+                        domainColor="#D6DEEB",
+                    ),
+                ),
+                y=alt.Y("sum(Valor):Q", title=None, axis=None),
+            )
+            .properties(height=52)
+            .add_params(navegador_periodo)
+        )
+        grafica_final = alt.vconcat(
+            grafica_principal,
+            navegador,
+            spacing=8,
+        )
+    else:
+        grafica_final = grafica_principal
+
     return (
-        base.encode(**codificacion)
-        .properties(height=altura)
-        .configure_view(stroke=None)
+        grafica_final.configure_view(stroke=None)
         .configure(background="#FFFFFF")
     )
 
@@ -4508,11 +4657,12 @@ def mostrar_grafica_contextual_dashboard(
             capas_activas,
         )
     etiqueta_capa = " · ".join(capas_representadas) or "Resumen del resultado"
-    rotulo_cabecera = (
-        f"{len(capas_representadas)} capas vinculadas al mapa"
-        if len(capas_representadas) > 1
-        else "Gráfica vinculada al mapa"
-    )
+    if capa_contextual in (None, "Sectores para revisión"):
+        rotulo_cabecera = "Resumen visualizado en el mapa"
+    elif len(capas_representadas) > 1:
+        rotulo_cabecera = f"Visualizadas en el mapa · {len(capas_representadas)} capas"
+    else:
+        rotulo_cabecera = "Visualizada en el mapa"
     st.markdown(
         f'<div class="grafica-contextual-cabecera"><small>{rotulo_cabecera}</small>'
         f'<strong>{html_lib.escape(etiqueta_capa)}</strong></div>',
@@ -4631,27 +4781,31 @@ def mostrar_graficas_dashboard(resultados, modo_analisis):
         'analizada. Pase el cursor sobre las barras para consultar valores exactos.</div>',
         unsafe_allow_html=True,
     )
-    nombres = (
-        ["Superficie", "Fragmentos"]
-        if modo_analisis == MODO_CORREDORES
-        else ["Fuentes", "Cambios"]
-    )
-    pestana_primaria, pestana_secundaria = st.tabs(nombres)
-    for pestana, grafica in (
-        (pestana_primaria, graficas["primaria"]),
-        (pestana_secundaria, graficas["secundaria"]),
-    ):
+    if modo_analisis == MODO_CORREDORES:
+        nombres = ["Corredores", "Bosque 2021", "Fragmentos"]
+        claves = ["primaria", "secundaria", "terciaria"]
+    else:
+        nombres = ["Fuentes", "Cambios"]
+        claves = ["primaria", "secundaria"]
+    pestanas = st.tabs(nombres)
+    for pestana, clave in zip(pestanas, claves):
+        grafica = graficas[clave]
         with pestana:
             st.markdown(f"**{grafica['titulo']}**")
             st.caption(grafica["descripcion"])
-            st.altair_chart(
-                crear_grafica_barras_color(grafica),
-                use_container_width=True,
-                theme=None,
-                key=f"dashboard_{grafica['eje_x']}_{grafica['eje_y']}",
-            )
-            with st.expander("Ver valores de la gráfica", expanded=False):
-                st.dataframe(grafica["datos"], hide_index=True, use_container_width=True)
+            if grafica.get("disponible", True):
+                st.altair_chart(
+                    crear_grafica_barras_color(grafica),
+                    use_container_width=True,
+                    theme=None,
+                    key=f"dashboard_{grafica['eje_x']}_{grafica['eje_y']}",
+                )
+                with st.expander("Ver valores de la gráfica", expanded=False):
+                    st.dataframe(
+                        grafica["datos"], hide_index=True, use_container_width=True
+                    )
+            else:
+                st.info("La cobertura de bosque 2021 no estuvo disponible en esta ejecución.")
     st.markdown(
         f'<div class="dashboard-dato-clave"><b>Lectura clave:</b> '
         f'{html_lib.escape(graficas["clave"])}</div>',
@@ -5134,7 +5288,7 @@ def mostrar_resumen_integral(resultados):
         delta_color="off",
     )
     col_corredor.metric(
-        "Área en corredores",
+        "Dentro de corredores",
         f"{area_corredor_ha:,.1f} ha",
         f"{porcentaje_corredor:.1f}% del área",
         delta_color="off",
@@ -5222,7 +5376,7 @@ def mostrar_resumen_conectividad(resultados):
     )
     col_corredor, col_bosque, col_parches, col_separados = st.columns(4)
     col_corredor.metric(
-        "Área en corredores",
+        "Dentro de corredores",
         f"{float(corredores.get('area_en_corredores_ha', 0)):,.1f} ha",
         f"{float(corredores.get('porcentaje_aoi_en_corredores', 0)):.1f}% del área",
         delta_color="off",
@@ -6270,30 +6424,15 @@ try:
 
     st.sidebar.markdown("---")
     if analiza_conectividad:
-        with st.sidebar.expander("Fuentes de conectividad", expanded=False):
-            st.caption(
-                f"Corredores públicos: {catalogo_corredores['corredores_poligonos']} "
-                f"polígonos y {catalogo_corredores['puntos_criticos']} puntos críticos."
-            )
-            if bosque_automatico_disponible:
-                st.success(
-                    "Cobertura lista. La aplicación consultará automáticamente el área "
-                    "elegida y su entorno de conectividad."
-                )
-            else:
-                st.warning(
-                    "La cobertura institucional todavía no fue configurada por la administración. "
-                    "Se revisarán los corredores, pero no se mostrará la red de fragmentos."
-                )
-            st.caption(
-                f"Fuente: {FUENTE_BOSQUE_CORTA}. Se usa automáticamente la categoría "
-                f"«{VALOR_COBERTURA_BOSQUE_2021}»; no necesita cargar archivos."
+        if not bosque_automatico_disponible:
+            st.sidebar.warning(
+                "La red de fragmentos no está disponible. Aun puede consultar los "
+                "corredores publicados."
             )
 
-        with st.sidebar.expander("Ajustes avanzados de conectividad", expanded=False):
+        with st.sidebar.expander("Opciones técnicas · opcional", expanded=False):
             st.caption(
-                "Para un análisis rápido conserve los valores recomendados. Estos ajustes "
-                "solo cambian cómo se agrupan y relacionan los fragmentos de bosque."
+                "Conserve los valores recomendados salvo que necesite una lectura técnica."
             )
             umbral_conectividad_m = st.select_slider(
                 "Distancia para considerar cercanos dos fragmentos",
@@ -6400,7 +6539,8 @@ try:
     anio_tmf_capa = ANO_TMF_MAX
     anio_esri_capa = ANO_ESRI_MAX
     anio_ndvi_capa = ANO_NDVI_MAX
-    mostrar_corredores_mapa = False
+    mostrar_interseccion_corredores_mapa = False
+    mostrar_corredores_contexto_mapa = False
     mostrar_puntos_criticos_mapa = False
     mostrar_fragmentos_bosque = False
     mostrar_bosque_contexto = False
@@ -6596,10 +6736,23 @@ try:
 
         if analiza_conectividad:
             with st.sidebar.expander("Almanaque Azul · corredores", expanded=True):
-                mostrar_corredores_mapa = st.checkbox(
-                    "Corredores estratégicos",
+                mostrar_interseccion_corredores_mapa = st.checkbox(
+                    "Coincidencia dentro del área analizada",
                     value=True,
-                    key=f"capa_corredores_{modo_analisis}",
+                    key=f"capa_interseccion_corredores_{modo_analisis}",
+                    help=(
+                        "Después de crear el análisis muestra únicamente la parte de los "
+                        "corredores que queda dentro de la finca o subcuenca."
+                    ),
+                )
+                mostrar_corredores_contexto_mapa = st.checkbox(
+                    "Corredores completos · contexto regional",
+                    value=False,
+                    key=f"capa_contexto_corredores_{modo_analisis}",
+                    help=(
+                        "Vista opcional. Puede extenderse fuera del área seleccionada y no "
+                        "representa cobertura de bosque."
+                    ),
                 )
                 mostrar_puntos_criticos_mapa = st.checkbox(
                     "Puntos críticos publicados",
@@ -6688,7 +6841,8 @@ try:
         mostrar_conexiones_bosque,
         mostrar_brechas_bosque,
         mostrar_ruta_corredor,
-        mostrar_corredores_mapa,
+        mostrar_interseccion_corredores_mapa,
+        mostrar_corredores_contexto_mapa,
         mostrar_puntos_criticos_mapa,
     )
     analisis_actual = (
@@ -6816,8 +6970,12 @@ try:
 
         if solicitar_analisis:
             firma_anterior = st.session_state.get("firma_analisis")
-            with st.spinner(f"Preparando {contenido_modo['titulo'].lower()}..."):
+            with st.status(
+                f"Preparando {contenido_modo['titulo'].lower()}...",
+                expanded=True,
+            ) as estado_analisis:
                 if analiza_cambios:
+                    estado_analisis.write("Calculando las señales territoriales seleccionadas.")
                     resultados_nuevos = ejecutar_analisis(
                         tipo_area=tipo_area,
                         finca_id=finca_seleccionada,
@@ -6831,6 +6989,7 @@ try:
                     resultados_nuevos = {"area_ha": superficie_ha}
 
                 if analiza_conectividad:
+                    estado_analisis.write("Revisando la relación con los corredores publicados.")
                     aoi_geojson_serializado = json.dumps(
                         geometria.getInfo(),
                         ensure_ascii=False,
@@ -6841,13 +7000,29 @@ try:
                     )
                     if bosque_automatico_disponible:
                         try:
-                            resultados_nuevos["fragmentacion"] = analizar_bosque_asset_cache(
+                            distancia_corredor_m = resultados_nuevos["corredores"].get(
+                                "distancia_corredor_mas_cercano_m"
+                            )
+                            radio_contexto_m = calcular_radio_contexto(
+                                distancia_corredor_m,
+                                umbral_conectividad_m,
+                                RADIO_BUSQUEDA_CORREDOR_M,
+                            )
+                            resultados_nuevos["radio_contexto_conectividad_m"] = (
+                                radio_contexto_m
+                            )
+                            estado_analisis.write(
+                                "Analizando fragmentos de bosque en el área y solo el "
+                                f"entorno necesario ({radio_contexto_m / 1000:.1f} km)."
+                            )
+                            resultados_nuevos["fragmentacion"] = analizar_bosque_asset(
                                 ASSET_BOSQUE_2021,
                                 CAMPO_COBERTURA_BOSQUE_2021,
                                 VALOR_COBERTURA_BOSQUE_2021,
                                 aoi_geojson_serializado,
                                 umbral_conectividad_m,
                                 area_min_parche_ha,
+                                radio_contexto_m,
                             )
                             resultados_nuevos["fragmentacion"][
                                 "fuente_cobertura"
@@ -6876,6 +7051,11 @@ try:
                     st.session_state.pop("errores_mapas", None)
                     st.session_state.pop("intento_informe", None)
                     st.session_state.pop("mapas_reporte", None)
+                estado_analisis.update(
+                    label="Preevaluación preparada.",
+                    state="complete",
+                    expanded=False,
+                )
             st.rerun()
 
         analisis_actual = (
@@ -7395,6 +7575,16 @@ try:
             f"Vegetación NDVI {anio_ndvi_capa}",
         )
 
+    resultados_mapa = (
+        st.session_state.get("resultados_analisis", {})
+        if st.session_state.get("firma_analisis") == firma_analisis_actual
+        else {}
+    )
+    fragmentacion_mapa = resultados_mapa.get("fragmentacion") or {}
+    radio_contexto_mapa = float(
+        fragmentacion_mapa.get("distancia_contexto_m", RADIO_BUSQUEDA_CORREDOR_M)
+    )
+
     capa_bosque_contexto = None
     if (
         modo_mapa == "Explorar capas"
@@ -7403,7 +7593,7 @@ try:
     ):
         capa_bosque_contexto = capa_gee(
             mapa,
-            imagen_bosque_contexto(geometria),
+            imagen_bosque_contexto(geometria, radio_contexto_mapa),
             {"min": 1, "max": 1, "palette": ["2f6b45"]},
             f"Bosque {ANO_BOSQUE_REFERENCIA} · área y entorno",
             mostrar=True,
@@ -7412,23 +7602,40 @@ try:
             z_index=310,
         )
 
+    corredores_resultado_mapa = resultados_mapa.get("corredores") or {}
+    intersecciones_corredores_mapa = corredores_resultado_mapa.get(
+        "intersecciones_geojson"
+    )
     capas_corredores_mapa = agregar_capas_corredores(
         mapa,
-        mostrar=mostrar_corredores_mapa,
-        mostrar_puntos_criticos=mostrar_puntos_criticos_mapa,
+        mostrar=(
+            mostrar_interseccion_corredores_mapa
+            and bool((intersecciones_corredores_mapa or {}).get("features"))
+        ),
+        corredores_geojson=intersecciones_corredores_mapa,
+        etiqueta_contexto="Dentro del área analizada",
+        opacidad_relleno=0.42,
+        grosor_linea=2.4,
+    )
+    capas_corredores_mapa.extend(
+        agregar_capas_corredores(
+            mapa,
+            mostrar=mostrar_corredores_contexto_mapa,
+            mostrar_puntos_criticos=mostrar_puntos_criticos_mapa,
+            opacidad_relleno=0.10,
+            grosor_linea=1.2,
+        )
     )
     capas_fragmentacion_mapa = []
-    if st.session_state.get("firma_analisis") == firma_analisis_actual:
-        resultados_mapa = st.session_state.get("resultados_analisis", {})
-        if resultados_mapa.get("fragmentacion"):
-            capas_fragmentacion_mapa = agregar_resultados_fragmentacion(
-                mapa,
-                resultados_mapa["fragmentacion"],
-                mostrar_parches=mostrar_fragmentos_bosque,
-                mostrar_conexiones=mostrar_conexiones_bosque,
-                mostrar_brechas=mostrar_brechas_bosque,
-                mostrar_ruta_corredor=mostrar_ruta_corredor,
-            )
+    if fragmentacion_mapa:
+        capas_fragmentacion_mapa = agregar_resultados_fragmentacion(
+            mapa,
+            fragmentacion_mapa,
+            mostrar_parches=mostrar_fragmentos_bosque,
+            mostrar_conexiones=mostrar_conexiones_bosque,
+            mostrar_brechas=mostrar_brechas_bosque,
+            mostrar_ruta_corredor=mostrar_ruta_corredor,
+        )
 
     cuenca = ee.FeatureCollection(ASSET_CUENCA)
     capa_limite_cuenca = capa_gee(
@@ -7456,7 +7663,7 @@ try:
     limites_mapa = limites_area
     if mostrar_bosque_contexto and bosque_automatico_disponible:
         contexto_mapa = ee.FeatureCollection(
-            [ee.Feature(geometria.buffer(RADIO_BUSQUEDA_CORREDOR_M))]
+            [ee.Feature(geometria.buffer(radio_contexto_mapa))]
         )
         limites_mapa = obtener_limites(contexto_mapa)
     if mostrar_ruta_corredor and analisis_actual:
@@ -7505,8 +7712,8 @@ try:
                 )
         elif analiza_conectividad:
             mapa_resultados_contenedor.caption(
-                "Elija las capas desde el panel lateral. La ruta naranja, cuando existe, "
-                "muestra una conexión estructural potencial hacia un corredor de referencia."
+                "La vista principal recorta los corredores al área analizada. Active el "
+                "contexto regional solo si necesita ver su extensión completa."
             )
         else:
             mapa_resultados_contenedor.caption(
@@ -7531,7 +7738,8 @@ try:
                 f"{mostrar_fragmentos_bosque}-{mostrar_conexiones_bosque}-"
                 f"{mostrar_bosque_contexto}-"
                 f"{mostrar_brechas_bosque}-{mostrar_ruta_corredor}-"
-                f"{mostrar_corredores_mapa}-"
+                f"{mostrar_interseccion_corredores_mapa}-"
+                f"{mostrar_corredores_contexto_mapa}-"
                 f"{mostrar_puntos_criticos_mapa}-"
                 f"{hash(geometria_dibujada_json or '')}"
             ),
@@ -7545,14 +7753,12 @@ try:
             "las demás capas y resultados permanecen disponibles."
         )
 
-    fragmentacion_actual = st.session_state.get("resultados_analisis", {}).get(
-        "fragmentacion"
-    )
+    fragmentacion_actual = fragmentacion_mapa or None
     if mostrar_bosque_contexto and bosque_automatico_disponible:
         mapa_resultados_contenedor.info(
             f"Contexto forestal visible: el verde muestra la cobertura de bosque "
             f"{ANO_BOSQUE_REFERENCIA} dentro del área y hasta "
-            f"{RADIO_BUSQUEDA_CORREDOR_M / 1000:,.0f} km alrededor. El bosque exterior "
+            f"{radio_contexto_mapa / 1000:,.1f} km alrededor. El bosque exterior "
             "ayuda a interpretar la ruta naranja, pero no aumenta las hectáreas reportadas."
         )
     if (
@@ -7587,7 +7793,7 @@ try:
     ):
         mapa_resultados_contenedor.info(
             f"No hay una ruta estructural visible hacia los corredores publicados dentro "
-            f"de {RADIO_BUSQUEDA_CORREDOR_M / 1000:,.0f} km con saltos máximos de "
+            f"de {radio_contexto_mapa / 1000:,.1f} km con saltos máximos de "
             f"{umbral_conectividad_m:,.0f} m."
         )
 
@@ -7605,9 +7811,22 @@ try:
             leyendas_activas.append(
                 ("Cobertura completa de bosque 2021", LEYENDAS["Bosque 2021 de contexto"])
             )
-        if mostrar_corredores_mapa or mostrar_puntos_criticos_mapa:
+        if (
+            mostrar_interseccion_corredores_mapa
+            and bool((intersecciones_corredores_mapa or {}).get("features"))
+        ):
             leyendas_activas.append(
-                ("Corredores · Almanaque Azul", LEYENDAS["Corredores Almanaque Azul"])
+                (
+                    "Corredor dentro del área analizada",
+                    LEYENDAS["Corredores Almanaque Azul"],
+                )
+            )
+        if mostrar_corredores_contexto_mapa or mostrar_puntos_criticos_mapa:
+            leyendas_activas.append(
+                (
+                    "Contexto regional · Almanaque Azul",
+                    LEYENDAS["Corredores Almanaque Azul"],
+                )
             )
         if capas_fragmentacion_mapa and mostrar_fragmentos_bosque:
             leyendas_activas.append(

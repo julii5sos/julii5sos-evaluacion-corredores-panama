@@ -77,7 +77,7 @@ ESRI, GEDI, NDVI y Almanaque Azul conservan su significado.
 - La gráfica contextual responde al conjunto de capas activas, no únicamente a la
   última casilla seleccionada.
 - Deforestación, degradación y regeneración forestal de JRC TMF se comparan mediante
-  barras agrupadas, con una leyenda visible y colores estables.
+  barras apiladas, con una leyenda visible y colores estables.
 - Al desactivar una capa, su serie desaparece de la gráfica y de la tabla de valores.
 - Capas de fuentes o unidades distintas no comparten un mismo eje; la vista conserva
   como contexto principal la fuente de la última evidencia activada.
@@ -89,3 +89,42 @@ ESRI, GEDI, NDVI y Almanaque Azul conservan su significado.
   perder la selección actual.
 - El botón para reabrir el panel permanece en la barra superior y conserva un área de
   interacción mínima de 44 px.
+
+## Navegador temporal 4.2.4
+
+- La cabecera de la gráfica identifica las capas «Visualizadas en el mapa» mediante una
+  etiqueta compacta de alto contraste.
+- Las capas comparables activas se apilan por año para presentar composición y total sin
+  perder la identidad cromática de cada indicador.
+- Un navegador inferior permite seleccionar el período visible; la línea de contexto es
+  un control y la evidencia principal continúa representada mediante barras.
+- El intervalo se inicializa con todos los años disponibles y no puede quedar vacío, de
+  modo que las barras siempre sean visibles antes de cualquier interacción.
+- Las barras usan un eje anual categórico y el navegador filtra mediante el año numérico;
+  así se evita que una escala temporal dinámica oculte la composición multicapa.
+
+## Conectividad ligera 4.3
+
+- El panel de trabajo no repite conteos, estados de configuración ni descripciones
+  metodológicas de las fuentes; esa información permanece en Metodología y ayuda.
+- Las geometrías nacionales de Almanaque Azul se incorporan al mapa únicamente cuando
+  la persona activa la capa. Una capa apagada no se serializa de forma invisible.
+- El análisis forestal usa un contexto adaptativo: la distancia al corredor más cercano
+  más el umbral de conexión, con un máximo de 5 km. Si el área ya toca un corredor, no
+  procesa innecesariamente los 5 km completos.
+- Earth Engine generaliza la geometría vectorial con una tolerancia de 10 m antes de
+  transferirla; las superficies reportadas continúan limitadas al área elegida.
+- Durante el cálculo se informa si se están procesando señales, corredores o fragmentos,
+  evitando una espera sin retroalimentación.
+
+## Corredores recortados y gráficas coherentes 4.3.1
+
+- La capa principal de corredores muestra únicamente la intersección con el área analizada;
+  el polígono regional completo permanece apagado y se identifica como contexto opcional.
+- La intersección usa mayor opacidad y el contexto regional una opacidad tenue, de modo
+  que no se interpreten como cobertura de bosque ni como superficie de la finca.
+- Corredor y bosque no se enfrentan como categorías equivalentes en una misma gráfica.
+  Se presentan tres composiciones independientes: dentro/fuera de corredores,
+  bosque/otros usos de 2021 y fragmentos cercanos/separados.
+- Cada gráfica conserva valores directos, unidad, descripción metodológica y tabla
+  accesible; la lectura clave aclara que corredor y bosque no se suman entre sí.

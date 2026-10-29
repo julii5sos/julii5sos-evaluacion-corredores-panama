@@ -2,6 +2,7 @@ import ast
 import unittest
 from pathlib import Path
 
+import altair as alt
 from streamlit.testing.v1 import AppTest
 
 from modos_app import (
@@ -22,6 +23,61 @@ class GeometriaPrueba:
 
 
 class ModosInterfazTests(unittest.TestCase):
+    def test_grafica_anual_inicia_con_todo_el_periodo_visible(self):
+        arbol = ast.parse(Path("app_experiencia.py").read_text(encoding="utf-8"))
+        funcion = next(
+            nodo
+            for nodo in arbol.body
+            if isinstance(nodo, ast.FunctionDef)
+            and nodo.name == "crear_grafica_serie_barras"
+        )
+        espacio = {"alt": alt}
+        exec(
+            compile(
+                ast.Module(body=[funcion], type_ignores=[]),
+                "grafica_prueba",
+                "exec",
+            ),
+            espacio,
+        )
+        grafica = espacio["crear_grafica_serie_barras"](
+            {
+                "columnas": {
+                    "Año": list(range(2000, 2026)),
+                    "Deforestación (ha)": [10] * 26,
+                    "Degradación (ha)": [5] * 26,
+                    "Regeneración forestal (ha)": [3] * 26,
+                }
+            },
+            series=[
+                "Deforestación (ha)",
+                "Degradación (ha)",
+                "Regeneración forestal (ha)",
+            ],
+            colores=["#C73E3A", "#F2A541", "#2E8B57"],
+        ).to_dict()
+
+        seleccion = grafica["params"][0]
+        self.assertEqual(seleccion["value"]["x"], [2000, 2025])
+        self.assertFalse(seleccion["select"]["clear"])
+        self.assertEqual(
+            grafica["vconcat"][0]["encoding"]["x"]["field"],
+            "Periodo",
+        )
+        self.assertEqual(
+            grafica["vconcat"][0]["transform"][0]["filter"]["param"],
+            "periodo_visible",
+        )
+        self.assertEqual(
+            grafica["vconcat"][0]["encoding"]["color"]["scale"]["domain"],
+            [
+                "Deforestación (ha)",
+                "Degradación (ha)",
+                "Regeneración forestal (ha)",
+            ],
+        )
+        self.assertEqual(grafica["vconcat"][0]["encoding"]["y"]["stack"], "zero")
+
     def test_aplicacion_importa_la_regla_de_recorte(self):
         arbol = ast.parse(
             Path("app_experiencia.py").read_text(encoding="utf-8")
@@ -92,7 +148,7 @@ class ModosInterfazTests(unittest.TestCase):
         self.assertIn("mapa-cabecera", codigo)
         self.assertIn("Resultado de la preevaluación", codigo)
         self.assertIn("Estadísticas del área", codigo)
-        self.assertIn("Gráfica vinculada al mapa", codigo)
+        self.assertIn("Visualizada en el mapa", codigo)
         self.assertIn("mostrar_grafica_contextual_dashboard", codigo)
         self.assertIn("resolver_capa_contextual", codigo)
         self.assertIn("configuracion_grafica_contextual_compuesta", codigo)
@@ -107,8 +163,14 @@ class ModosInterfazTests(unittest.TestCase):
         self.assertIn("Regeneración forestal por año", codigo)
         self.assertIn("Regeneración forestal (ha)", codigo)
         self.assertIn("Cambios forestales seleccionados por año", codigo)
-        self.assertIn("Las barras agrupadas comparan las capas JRC TMF activadas", codigo)
-        self.assertIn('codificacion["xOffset"]', codigo)
+        self.assertIn("Las barras apiladas comparan las capas JRC TMF activadas", codigo)
+        self.assertIn('stack="zero"', codigo)
+        self.assertIn("alt.selection_interval", codigo)
+        self.assertIn('value={"x": intervalo_inicial}', codigo)
+        self.assertIn("clear=False", codigo)
+        self.assertIn("alt.vconcat", codigo)
+        self.assertIn("Visualizadas en el mapa", codigo)
+        self.assertNotIn('codificacion["xOffset"]', codigo)
         self.assertIn("capas_activas=capas_activas", codigo)
         self.assertIn("construir_grafica_estado_tmf", codigo)
         self.assertIn("Forest regrowth", codigo)
@@ -154,7 +216,7 @@ class ModosInterfazTests(unittest.TestCase):
         self.assertIn("WGS 84 · EPSG:4326", portada)
         self.assertIn("#0a4393", portada.lower())
         self.assertIn("#77cc09", portada.lower())
-        self.assertIn('APP_VERSION = "UX-4.2.3-MODO-ENFOQUE"', visor)
+        self.assertIn('APP_VERSION = "UX-4.3.1-CORREDORES-RECORTADOS"', visor)
         self.assertIn("st.columns([2.55, 1]", visor)
         self.assertIn('[data-collapsed="true"]', visor)
         self.assertIn("width: 0 !important", visor)
@@ -162,6 +224,93 @@ class ModosInterfazTests(unittest.TestCase):
         self.assertNotIn('st.markdown("### Visor cartográfico")', visor)
         for fuente in ("JRC", "Hansen", "ESRI", "GEDI", "NDVI"):
             self.assertIn(fuente, visor)
+
+    def test_conectividad_evitar_carga_y_texto_tecnico_innecesarios(self):
+        visor = Path("app_experiencia.py").read_text(encoding="utf-8")
+        corredores = Path("corredores.py").read_text(encoding="utf-8")
+        arbol = ast.parse(visor)
+        funcion_bosque = next(
+            nodo
+            for nodo in arbol.body
+            if isinstance(nodo, ast.FunctionDef)
+            and nodo.name == "analizar_bosque_asset"
+        )
+
+        self.assertNotIn('st.sidebar.expander("Fuentes de conectividad"', visor)
+        self.assertNotIn("Cobertura lista. La aplicación consultará", visor)
+        self.assertIn("Opciones técnicas · opcional", visor)
+        self.assertIn("Coincidencia dentro del área analizada", visor)
+        self.assertIn("Corredores completos · contexto regional", visor)
+        self.assertIn("value=False", visor)
+        self.assertIn("distancia_corredor_mas_cercano_m", visor)
+        self.assertIn("radio_contexto_m", visor)
+        self.assertEqual(funcion_bosque.decorator_list, [])
+        self.assertIn("max_entries=24", visor)
+        self.assertIn("max_entries=4", visor)
+        self.assertIn("if mostrar:", corredores)
+        self.assertIn("if mostrar_puntos_criticos:", corredores)
+
+    def test_graficas_de_corredores_comparan_partes_del_mismo_total(self):
+        arbol = ast.parse(Path("app_experiencia.py").read_text(encoding="utf-8"))
+        funcion = next(
+            nodo
+            for nodo in arbol.body
+            if isinstance(nodo, ast.FunctionDef)
+            and nodo.name == "construir_graficas_dashboard"
+        )
+        colores = {
+            "En corredores": "#2E7D5B",
+            "Fuera de corredores": "#7B8CA5",
+            "Bosque 2021": "#76B72A",
+            "Otros usos 2021": "#B7791F",
+            "Cercanos": "#2A9D8F",
+            "Separados": "#E76F51",
+        }
+        espacio = {
+            "MODO_CORREDORES": "Corredores",
+            "COLORES_CONECTIVIDAD": colores,
+        }
+        exec(
+            compile(
+                ast.Module(body=[funcion], type_ignores=[]),
+                "graficas_corredores_prueba",
+                "exec",
+            ),
+            espacio,
+        )
+        graficas = espacio["construir_graficas_dashboard"](
+            {
+                "area_ha": 100,
+                "corredores": {"area_en_corredores_ha": 40},
+                "fragmentacion": {
+                    "metricas_clase": {
+                        "area_total_bosque_ha": 30,
+                        "numero_parches": 10,
+                    },
+                    "metricas_red": {"numero_parches_aislados": 2},
+                },
+            },
+            "Corredores",
+        )
+
+        self.assertEqual(
+            graficas["primaria"]["datos"],
+            {
+                "Categoría": ["En corredores", "Fuera de corredores"],
+                "Hectáreas": [40.0, 60.0],
+            },
+        )
+        self.assertEqual(
+            graficas["secundaria"]["datos"],
+            {
+                "Cobertura": ["Bosque 2021", "Otros usos 2021"],
+                "Hectáreas": [30.0, 70.0],
+            },
+        )
+        self.assertEqual(
+            graficas["terciaria"]["datos"]["Fragmentos"], [8, 2]
+        )
+        self.assertIn("no se suman entre sí", graficas["clave"])
 
     def test_subcuenca_se_recorta_a_la_cuenca(self):
         geometria = GeometriaPrueba()

@@ -19,6 +19,10 @@ from typing import Any, Iterable
 from zipfile import BadZipFile, ZipFile
 
 
+MAX_NODOS_CENTRALIDAD_EXACTA = 250
+MUESTRA_NODOS_INTERMEDIACION = 64
+
+
 def _dependencias():
     try:
         import networkx as nx
@@ -457,6 +461,7 @@ def _resultado_sin_parches(
             "distancia_media_brechas_potenciales_m": 0.0,
             "red_totalmente_conectada": False,
             "intermediacion_aproximada": False,
+            "cercania_calculada": False,
         },
         "top_conectores": [],
         "parches_geojson": {"type": "FeatureCollection", "features": []},
@@ -547,10 +552,10 @@ def _calcular_metricas_parches(
     grados = dict(grafo.degree())
     fuerza = dict(grafo.degree(weight="peso"))
     vecinos_mas_cercanos = _vecinos_mas_cercanos(parches, arbol)
-    if grafo.number_of_nodes() > 400:
+    if grafo.number_of_nodes() > MAX_NODOS_CENTRALIDAD_EXACTA:
         intermediacion = nx.betweenness_centrality(
             grafo,
-            k=min(200, grafo.number_of_nodes()),
+            k=min(MUESTRA_NODOS_INTERMEDIACION, grafo.number_of_nodes()),
             weight="costo",
             normalized=True,
             seed=123,
@@ -561,7 +566,15 @@ def _calcular_metricas_parches(
             grafo, weight="costo", normalized=True
         )
         intermediacion_aproximada = False
-    cercania = nx.closeness_centrality(grafo, distance="costo")
+    # La cercanía no participa en el índice ni en la lectura principal. Su
+    # cálculo exacto recorre el grafo desde cada nodo, por lo que se reserva a
+    # redes pequeñas y se omite en las grandes para mantener la app interactiva.
+    cercania_calculada = grafo.number_of_nodes() <= MAX_NODOS_CENTRALIDAD_EXACTA
+    cercania = (
+        nx.closeness_centrality(grafo, distance="costo")
+        if cercania_calculada
+        else {nodo: None for nodo in grafo.nodes}
+    )
     componentes = list(nx.connected_components(grafo))
     componente_por_nodo = {
         nodo: indice + 1
@@ -642,7 +655,9 @@ def _calcular_metricas_parches(
             "grado": int(grados[i]),
             "grado_ponderado": round(float(fuerza[i]), 6),
             "intermediacion": round(float(intermediacion[i]), 6),
-            "cercania": round(float(cercania[i]), 6),
+            "cercania": (
+                round(float(cercania[i]), 6) if cercania[i] is not None else None
+            ),
             "componente": componente_por_nodo[i],
             "indice_conector": round(indices[i], 6),
             "prioridad_conectividad": prioridad,
@@ -847,6 +862,7 @@ def _calcular_metricas_parches(
         else 0.0,
         "red_totalmente_conectada": len(tamanos_componentes_objetivo) == 1,
         "intermediacion_aproximada": intermediacion_aproximada,
+        "cercania_calculada": cercania_calculada,
     }
     nodos.sort(key=lambda item: item["indice_conector"], reverse=True)
     return {
@@ -956,10 +972,10 @@ def analizar_fragmentacion_conectividad(
 
     grados = dict(grafo.degree())
     fuerza = dict(grafo.degree(weight="peso"))
-    if grafo.number_of_nodes() > 400:
+    if grafo.number_of_nodes() > MAX_NODOS_CENTRALIDAD_EXACTA:
         intermediacion = nx.betweenness_centrality(
             grafo,
-            k=min(200, grafo.number_of_nodes()),
+            k=min(MUESTRA_NODOS_INTERMEDIACION, grafo.number_of_nodes()),
             weight="costo",
             normalized=True,
             seed=123,
@@ -970,7 +986,12 @@ def analizar_fragmentacion_conectividad(
             grafo, weight="costo", normalized=True
         )
         intermediacion_aproximada = False
-    cercania = nx.closeness_centrality(grafo, distance="costo")
+    cercania_calculada = grafo.number_of_nodes() <= MAX_NODOS_CENTRALIDAD_EXACTA
+    cercania = (
+        nx.closeness_centrality(grafo, distance="costo")
+        if cercania_calculada
+        else {nodo: None for nodo in grafo.nodes}
+    )
     componentes = list(nx.connected_components(grafo))
     componente_por_nodo = {
         nodo: indice + 1
@@ -1003,7 +1024,9 @@ def analizar_fragmentacion_conectividad(
             "grado": int(grados[i]),
             "grado_ponderado": round(float(fuerza[i]), 6),
             "intermediacion": round(float(intermediacion[i]), 6),
-            "cercania": round(float(cercania[i]), 6),
+            "cercania": (
+                round(float(cercania[i]), 6) if cercania[i] is not None else None
+            ),
             "componente": componente_por_nodo[i],
             "indice_conector": round(indices[i], 6),
             "prioridad_conectividad": prioridad,
@@ -1060,6 +1083,7 @@ def analizar_fragmentacion_conectividad(
         "densidad_red": round(nx.density(grafo), 8),
         "red_totalmente_conectada": nx.is_connected(grafo),
         "intermediacion_aproximada": intermediacion_aproximada,
+        "cercania_calculada": cercania_calculada,
     }
     nodos.sort(key=lambda item: item["indice_conector"], reverse=True)
     return {
