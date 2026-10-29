@@ -4,6 +4,20 @@ Este historial documenta la evolución de la aplicación UX. Las versiones sigue
 el formato `MAJOR.MINOR.PATCH`: una versión principal, mejoras compatibles y
 correcciones compatibles, respectivamente.
 
+## [5.0.0] - 2026-10-29 — portal cartográfico con ERI indicativo
+
+- Incorpora el Índice de Resiliencia Ecológica (ERI) como lectura complementaria entre
+  0 y 1, separada del índice de indicios y de la prioridad de visita.
+- Combina cuatro componentes documentados: integridad estructural, conectividad local,
+  estabilidad topográfica y proximidad riparia; sus pesos, clases y limitaciones quedan
+  incluidos en el registro metodológico.
+- Añade una capa ERI de cinco clases al mapa y gráficas de barras para comparar sus
+  componentes y la superficie por clase.
+- Organiza el panel derecho en Lectura, ERI y Gráfica para mantener el mapa como centro
+  del portal y evitar una página larga.
+- Conserva los análisis vigentes del repositorio y utiliza el HTML únicamente como modelo
+  de composición visual.
+
 ## [4.3.1] - 2026-10-29 — corredores recortados y gráficas comparables
 
 - Muestra por defecto únicamente la parte de los corredores que coincide con la finca,

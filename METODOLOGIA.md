@@ -323,3 +323,20 @@ La aplicación examina los corredores publicados por Almanaque Azul dentro del c
 Cuando existe más de una alternativa, se conserva una sola para mantener legible el mapa. Primero se prefieren las categorías originales de Almanaque Azul en el orden alta, mediana y media-baja; dentro de la misma categoría se selecciona la menor suma de separaciones. La ruta se dibuja en naranja con halo blanco y puede incluir bosque exterior al polígono, aunque esa superficie exterior no se suma a las hectáreas del área.
 
 Esta salida responde a una pregunta limitada: si la geometría del bosque clasificado en 2021 permite encadenar fragmentos hasta un corredor de referencia usando el umbral indicado. No es una ruta de menor costo del paisaje, no incorpora resistencia de coberturas, topografía o requerimientos de especies, no crea un nuevo corredor oficial y no demuestra conectividad funcional ni movimiento de fauna. Por esa razón orienta el foco de revisión, pero no añade puntos al índice de prioridad.
+
+## Índice de Resiliencia Ecológica indicativo (ERI)
+
+El ERI es una lectura complementaria entre 0 y 1 y se mantiene separado del índice de
+indicios y de la prioridad de visita. Combina cuatro componentes normalizados:
+
+| Componente | Peso | Aproximación utilizada |
+|---|---:|---|
+| Integridad estructural | 35 % | Probabilidad de árboles de Dynamic World y altura GEDI normalizada |
+| Conectividad local | 25 % | Proporción de bosque en una ventana circular de 1,5 km |
+| Estabilidad topográfica | 20 % | Pendiente Copernicus DEM ponderada por cobertura arbórea |
+| Proximidad riparia | 20 % | Distancia a cauces derivados de MERIT Hydro hasta 1 km |
+
+El resultado se clasifica como muy bajo, bajo, medio, alto o muy alto y el visor también
+identifica el componente con menor valor. La conectividad es un proxy espacial ligero:
+no equivale a ECA/A, no modela resistencia ni demuestra movimiento de fauna. Los pesos
+y las clases deben calibrarse con información de campo antes de cualquier uso normativo.

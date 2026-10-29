@@ -202,7 +202,7 @@ class ModosInterfazTests(unittest.TestCase):
         self.assertIn("Sentinel-2 · NDVI", codigo)
         self.assertIn("GEDI · altura del dosel", codigo)
         self.assertIn('if seccion_tablero == "Análisis":', codigo)
-        self.assertIn('["Resumen"]', codigo)
+        self.assertIn('["Resumen", "ERI indicativo"]', codigo)
         self.assertNotIn("mostrar_flujo(2)", codigo)
         self.assertNotIn("Ver detalles del análisis · opcional", codigo)
 
@@ -216,7 +216,7 @@ class ModosInterfazTests(unittest.TestCase):
         self.assertIn("WGS 84 · EPSG:4326", portada)
         self.assertIn("#0a4393", portada.lower())
         self.assertIn("#77cc09", portada.lower())
-        self.assertIn('APP_VERSION = "UX-4.3.1-CORREDORES-RECORTADOS"', visor)
+        self.assertIn('APP_VERSION = "UX-5.0-PORTAL-ERI"', visor)
         self.assertIn("st.columns([2.55, 1]", visor)
         self.assertIn('[data-collapsed="true"]', visor)
         self.assertIn("width: 0 !important", visor)
@@ -224,6 +224,18 @@ class ModosInterfazTests(unittest.TestCase):
         self.assertNotIn('st.markdown("### Visor cartográfico")', visor)
         for fuente in ("JRC", "Hansen", "ESRI", "GEDI", "NDVI"):
             self.assertIn(fuente, visor)
+
+    def test_eri_se_presenta_como_indicador_complementario(self):
+        visor = Path("app_experiencia.py").read_text(encoding="utf-8")
+
+        self.assertIn("ERI · resiliencia ecológica", visor)
+        self.assertIn("ERI complementario", visor)
+        self.assertIn('"ERI indicativo": {', visor)
+        self.assertIn('"tipo": "eri"', visor)
+        self.assertIn("clasificar_imagen_eri", visor)
+        self.assertIn('"participa_en_prioridad": False', visor)
+        self.assertIn('["Lectura", "ERI", "Gráfica"]', visor)
+        self.assertIn("El ERI no modifica el índice de indicios", visor)
 
     def test_conectividad_evitar_carga_y_texto_tecnico_innecesarios(self):
         visor = Path("app_experiencia.py").read_text(encoding="utf-8")

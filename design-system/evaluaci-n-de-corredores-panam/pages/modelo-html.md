@@ -128,3 +128,15 @@ ESRI, GEDI, NDVI y Almanaque Azul conservan su significado.
   bosque/otros usos de 2021 y fragmentos cercanos/separados.
 - Cada gráfica conserva valores directos, unidad, descripción metodológica y tabla
   accesible; la lectura clave aclara que corredor y bosque no se suman entre sí.
+
+## Portal cartográfico y ERI indicativo 5.0
+
+- La columna derecha usa tres pestañas compactas —Lectura, ERI y Gráfica— para mantener
+  la evidencia cartográfica como superficie dominante sin perder información.
+- El ERI aparece como indicador complementario y separado; nunca se suma al índice de
+  indicios ni a la prioridad de visita mientras no exista calibración de campo.
+- Sus cuatro componentes se comparan con barras etiquetadas entre 0 y 1. La superficie
+  por clase emplea cinco colores ordenados de muy baja a muy alta y conserva texto,
+  leyenda y tabla accesible para no depender únicamente del color.
+- La capa ERI se activa bajo demanda desde el panel lateral para evitar sobrecargar la
+  vista inicial y se acompaña de retroalimentación durante su cálculo.

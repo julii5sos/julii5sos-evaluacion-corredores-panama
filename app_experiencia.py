@@ -52,6 +52,13 @@ from corredores import (
     cargar_corredores,
     leyenda_corredores,
 )
+from eri_indicativo import (
+    CLASES_ERI,
+    COLORES_COMPONENTES_ERI,
+    ETIQUETAS_COMPONENTES_ERI,
+    PESOS_ERI,
+    construir_resultado_eri,
+)
 from metodologia_indice import (
     CLASES_VIGOR_NDVI,
     JUSTIFICACION_PESOS,
@@ -550,6 +557,51 @@ st.markdown(
         color: var(--institucional-tinta);
         line-height: 1.5;
     }
+    .eri-resumen {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: .75rem;
+        align-items: center;
+        margin: .8rem 0 .45rem;
+        padding: .85rem .9rem;
+        border: 1px solid var(--institucional-borde);
+        border-left: 6px solid var(--eri-color);
+        border-radius: .3rem;
+        background: #ffffff;
+    }
+    .eri-resumen small {
+        display: block;
+        color: var(--institucional-suave);
+        font-size: .72rem;
+        font-weight: 750;
+        letter-spacing: .045em;
+        text-transform: uppercase;
+    }
+    .eri-resumen strong {
+        display: block;
+        margin-top: .16rem;
+        color: var(--eri-color);
+        font-size: 1.08rem;
+        line-height: 1.25;
+    }
+    .eri-resumen p {
+        margin: .28rem 0 0;
+        color: var(--institucional-suave);
+        font-size: .82rem;
+        line-height: 1.4;
+    }
+    .eri-resumen > span {
+        display: grid;
+        place-items: center;
+        width: 3.2rem;
+        height: 3.2rem;
+        border: 3px solid var(--eri-color);
+        border-radius: 50%;
+        color: var(--eri-color);
+        font-size: 1rem;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+    }
     .recuperacion-error {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -994,7 +1046,7 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-4.3.1-CORREDORES-RECORTADOS"
+APP_VERSION = "UX-5.0-PORTAL-ERI"
 
 COLORES_FUENTES = {
     "JRC TMF": "#1F8A70",
@@ -1019,7 +1071,7 @@ COLORES_CONECTIVIDAD = {
     "Cercanos": "#2A9D8F",
     "Separados": "#E76F51",
 }
-METHODOLOGY_VERSION = "MT-2026.16-CONECTIVIDAD-FOCALIZADA"
+METHODOLOGY_VERSION = "MT-2026.17-PORTAL-ERI-INDICATIVO"
 PROYECTO_EE = secreto_opcional("EE_PROJECT", "ee-julissaguevaravega")
 FUENTE_BOSQUE_NOMBRE = "Bosque y otros usos"
 FUENTE_BOSQUE_ORGANIZACION = "SINIA–MiAMBIENTE"
@@ -1064,6 +1116,12 @@ ANO_NDVI_INICIAL_ANALISIS = PERIODOS_ANALISIS["ndvi_inicial"]
 ANO_NDVI_FINAL_ANALISIS = PERIODOS_ANALISIS["ndvi_final"]
 ANO_NDVI_MAX = PERIODOS_ANALISIS["ndvi_final_visual"]
 ESCALA_ANALISIS_NDVI_M = 20
+ANO_ERI_REFERENCIA = min(2024, ANO_ESRI_MAX)
+ESCALA_ERI_M = 90
+RADIO_CONECTIVIDAD_ERI_M = 1_500
+DISTANCIA_RIPARIA_ERI_M = 1_000
+ALTURA_REFERENCIA_ERI_M = 35
+AREA_DRENAJE_ERI_KM2 = 1.0
 CUTOFF_YEAR = 20
 CUTOFF_LABEL = "31/12/2020"
 
@@ -1128,6 +1186,11 @@ VIS_GEDI = {
     "min": 0,
     "max": 35,
     "palette": ["FFFFCC", "C2E699", "78C679", "31A354", "006837"],
+}
+VIS_ERI = {
+    "min": 1,
+    "max": 5,
+    "palette": [clase["color"].lstrip("#") for clase in CLASES_ERI],
 }
 VIS_NDVI_DELTA = {
     "min": -0.3,
@@ -1327,6 +1390,14 @@ LEYENDAS = {
             "Área antes deforestada que JRC TMF clasifica actualmente como bosque en regeneración",
         )
     ],
+    "ERI indicativo": [
+        (
+            clase["color"],
+            f"{clase['etiqueta']} · {clase['minimo']:.2f}–{min(clase['maximo'], 1):.2f}",
+            clase["lectura"],
+        )
+        for clase in CLASES_ERI
+    ],
     "Transiciones ESRI": [
         ("#00FF00", "No árbol → árboles"),
         ("#FF0000", "Árboles → no árbol"),
@@ -1467,6 +1538,27 @@ def construir_registro_metodologico(
                 "uso": "contexto",
             },
             {
+                "nombre": "Índice de Resiliencia Ecológica indicativo",
+                "componentes": [
+                    "integridad estructural",
+                    "conectividad local del bosque",
+                    "estabilidad topográfica",
+                    "proximidad riparia",
+                ],
+                "fuentes": [
+                    "Dynamic World",
+                    "GEDI / OpenForis",
+                    "Copernicus DEM GLO-30",
+                    "MERIT Hydro",
+                ],
+                "escala_resumen_m": ESCALA_ERI_M,
+                "pesos": dict(PESOS_ERI),
+                "uso": (
+                    "lectura ecologica complementaria; no modifica el indice de indicios "
+                    "ni la prioridad de visita"
+                ),
+            },
+            {
                 "nombre": "Sentinel-2 Surface Reflectance Harmonized",
                 "asset": "COPERNICUS/S2_SR_HARMONIZED",
                 "bandas": ["B8", "B4", "SCL"],
@@ -1522,6 +1614,17 @@ def construir_registro_metodologico(
             "limitacion": REGLAS_MAPA_COINCIDENCIA["limitacion"],
         },
         "clases_vigor_ndvi": [dict(clase) for clase in CLASES_VIGOR_NDVI],
+        "eri_indicativo": {
+            "clases": [dict(clase) for clase in CLASES_ERI],
+            "pesos": dict(PESOS_ERI),
+            "radio_conectividad_m": RADIO_CONECTIVIDAD_ERI_M,
+            "distancia_riparia_m": DISTANCIA_RIPARIA_ERI_M,
+            "participa_en_prioridad": False,
+            "limitacion": (
+                "Indicador exploratorio que requiere validacion de campo. La conectividad "
+                "es un proxy de cobertura local y no demuestra movimiento de fauna."
+            ),
+        },
         "procesamiento": {
             "unidad_area": "hectareas",
             "reduccion": "suma de area por clase en la proyeccion de cada fuente",
@@ -1544,6 +1647,11 @@ def construir_registro_metodologico(
                 "Los parches de Bosque y otros usos 2021 forman una red según el "
                 "umbral seleccionado. Su condición orienta la focalización de la "
                 "visita sin añadir un peso ecológico no calibrado."
+            ),
+            "eri": (
+                "Promedio ponderado normalizado entre 0 y 1: integridad estructural 35 %, "
+                "conectividad local 25 %, estabilidad topográfica 20 % y proximidad "
+                "riparia 20 %. Se reporta por separado del puntaje operativo."
             ),
         },
     }
@@ -1578,6 +1686,18 @@ def construir_registro_metodologico(
             "consistencia": resultados["consistencia"],
             "corredores": resultados.get("corredores"),
             "prioridad_visita": resultados.get("prioridad_visita"),
+            "eri_indicativo": (
+                {
+                    "valor": resultados["eri"].get("valor"),
+                    "clase": resultados["eri"].get("clase"),
+                    "componente_limitante": resultados["eri"].get(
+                        "componente_limitante"
+                    ),
+                    "participa_en_prioridad": False,
+                }
+                if resultados.get("eri")
+                else None
+            ),
             "estadisticas": {
                 "cobertura_arborea_persistente_2020_ha": resultados["linea_base"],
                 "hansen_pre_2021_ha": resultados["hansen_pre"],
@@ -1615,6 +1735,7 @@ def construir_registro_metodologico(
         registro["resultados_resumen"] = {
             "area_ha": resultados.get("area_ha"),
             "corredores": resultados.get("corredores"),
+            "eri_indicativo": resultados.get("eri"),
         }
 
     if resultados and resultados.get("fragmentacion"):
@@ -2239,6 +2360,146 @@ def imagen_gedi(geometria):
     )
 
 
+def convertir_probabilidad_arboles_float(imagen):
+    """Uniforma Dynamic World antes de calcular la probabilidad anual de árboles."""
+
+    return ee.Image(imagen).select(["trees"], ["p_arboles"]).toFloat()
+
+
+def obtener_probabilidad_arboles(anio, geometria):
+    """Probabilidad media anual de la clase árboles según Dynamic World."""
+
+    coleccion = (
+        ee.ImageCollection("GOOGLE/DYNAMICWORLD/V1")
+        .filterBounds(geometria)
+        .filterDate(f"{anio}-01-01", f"{anio + 1}-01-01")
+        .map(convertir_probabilidad_arboles_float)
+    )
+    respaldo = (
+        ee.Image.constant(0)
+        .rename("p_arboles")
+        .updateMask(ee.Image(0))
+        .toFloat()
+        .setDefaultProjection("EPSG:4326", None, 10)
+    )
+    return (
+        coleccion.merge(ee.ImageCollection.fromImages([respaldo]))
+        .mean()
+        .setDefaultProjection("EPSG:4326", None, 10)
+        .rename("p_arboles")
+        .clip(geometria)
+    )
+
+
+def construir_imagenes_eri(geometria):
+    """Construye un ERI indicativo y sus cuatro componentes en Earth Engine.
+
+    La conectividad se representa con la proporción local de bosque en una ventana
+    de 1.5 km. Es un proxy espacial ligero, no reemplaza ECA/A ni una evaluación
+    funcional por especie. Esta decisión mantiene el cálculo viable en Streamlit y
+    se declara de forma explícita en la interfaz.
+    """
+
+    p_arboles = obtener_probabilidad_arboles(
+        ANO_ERI_REFERENCIA,
+        geometria,
+    ).unmask(0).clamp(0, 1)
+
+    altura_normalizada = (
+        imagen_gedi(geometria)
+        .divide(ALTURA_REFERENCIA_ERI_M)
+        .clamp(0, 1)
+        .unmask(p_arboles)
+    )
+    integridad = (
+        altura_normalizada.multiply(0.5)
+        .add(p_arboles.multiply(0.5))
+        .rename("integridad_estructural")
+    )
+
+    proyeccion_eri = ee.Projection("EPSG:4326").atScale(ESCALA_ERI_M)
+    bosque = (
+        p_arboles.gte(0.5)
+        .toFloat()
+        .setDefaultProjection("EPSG:4326", None, 10)
+    )
+    bosque_eri = (
+        bosque.reduceResolution(
+            reducer=ee.Reducer.mean(),
+            bestEffort=True,
+            maxPixels=1024,
+        )
+        .reproject(crs=proyeccion_eri)
+    )
+    conectividad = (
+        bosque_eri.focalMean(
+            radius=RADIO_CONECTIVIDAD_ERI_M,
+            kernelType="circle",
+            units="meters",
+        )
+        .clamp(0, 1)
+        .rename("conectividad")
+    )
+
+    dem_coleccion = (
+        ee.ImageCollection("COPERNICUS/DEM/GLO30")
+        .filterBounds(geometria)
+        .select("DEM")
+    )
+    dem = (
+        dem_coleccion.mosaic()
+        .setDefaultProjection(ee.Image(dem_coleccion.first()).projection())
+        .clip(geometria)
+    )
+    pendiente = ee.Terrain.slope(dem).divide(45).clamp(0, 1)
+    estabilidad = (
+        ee.Image(1)
+        .subtract(pendiente.multiply(ee.Image(1).subtract(p_arboles)))
+        .clamp(0, 1)
+        .rename("estabilidad_topografica")
+    )
+
+    acumulacion = ee.Image("MERIT/Hydro/v1_0_1").select("upa")
+    proyeccion_merit = acumulacion.projection()
+    cauces = (
+        acumulacion.gte(AREA_DRENAJE_ERI_KM2)
+        .unmask(0)
+        .setDefaultProjection(proyeccion_merit)
+    )
+    distancia_cauce_m = (
+        cauces.fastDistanceTransform(256, "pixels", "squared_euclidean")
+        .sqrt()
+        .multiply(proyeccion_merit.nominalScale())
+    )
+    proximidad_riparia = (
+        ee.Image(1)
+        .subtract(distancia_cauce_m.divide(DISTANCIA_RIPARIA_ERI_M).clamp(0, 1))
+        .rename("proximidad_riparia")
+        .clip(geometria)
+    )
+
+    componentes = {
+        "integridad_estructural": integridad.clip(geometria),
+        "conectividad": conectividad.clip(geometria),
+        "estabilidad_topografica": estabilidad.clip(geometria),
+        "proximidad_riparia": proximidad_riparia,
+    }
+    eri = ee.Image(0)
+    for clave, peso in PESOS_ERI.items():
+        eri = eri.add(componentes[clave].multiply(peso))
+    eri = eri.clamp(0, 1).rename("eri").clip(geometria)
+    return eri, componentes
+
+
+def clasificar_imagen_eri(eri):
+    """Convierte el ERI continuo en cinco clases cartográficas etiquetadas."""
+
+    clases = ee.Image(1)
+    for indice, clase in enumerate(CLASES_ERI[1:], start=2):
+        clases = clases.where(ee.Image(eri).gte(clase["minimo"]), indice)
+    return clases.updateMask(ee.Image(eri).mask()).rename("eri_clase").toByte()
+
+
 def capa_gee(
     mapa,
     imagen,
@@ -2570,6 +2831,80 @@ def analizar_bosque_asset(
         corredores_geojson=cargar_corredores(),
         radio_busqueda_corredor_m=radio_contexto_m,
     )
+
+
+@st.cache_data(ttl=1800, max_entries=24, show_spinner=False)
+def calcular_eri_indicativo(
+    tipo_area,
+    finca_id,
+    subcuenca_nombre,
+    geometria_geojson,
+):
+    """Resume el ERI y su distribución sin alterar el puntaje de prioridad."""
+
+    area_fc = obtener_area(
+        tipo_area=tipo_area,
+        finca_id=finca_id,
+        subcuenca_nombre=subcuenca_nombre,
+        geometria_geojson=geometria_geojson,
+    )
+    geometria = area_fc.geometry(TOLERANCIA_RECORTE_M)
+    eri, componentes = construir_imagenes_eri(geometria)
+    imagen_medias = ee.Image.cat(
+        [componentes[clave].rename(clave) for clave in PESOS_ERI]
+        + [eri.rename("eri")]
+    )
+    medias = ee.Dictionary(
+        imagen_medias.reduceRegion(
+            reducer=ee.Reducer.mean(),
+            geometry=geometria,
+            scale=ESCALA_ERI_M,
+            bestEffort=True,
+            maxPixels=1e9,
+            tileScale=4,
+        )
+    )
+    clases = clasificar_imagen_eri(eri)
+    pixel_ha = ee.Image.pixelArea().divide(10000)
+    bandas_areas = []
+    for indice, clase in enumerate(CLASES_ERI, start=1):
+        bandas_areas.append(
+            clases.eq(indice)
+            .unmask(0)
+            .multiply(pixel_ha)
+            .rename(f"eri_{clase['clave']}_ha")
+        )
+    areas = reducir_superficies(
+        ee.Image.cat(bandas_areas),
+        geometria,
+        ESCALA_ERI_M,
+    )
+    resumen = medias.combine(areas, True).getInfo()
+    resultado = construir_resultado_eri(resumen)
+    resultado.update(
+        {
+            "anio_referencia": ANO_ERI_REFERENCIA,
+            "escala_resumen_m": ESCALA_ERI_M,
+            "radio_conectividad_m": RADIO_CONECTIVIDAD_ERI_M,
+            "distancia_riparia_m": DISTANCIA_RIPARIA_ERI_M,
+            "fuentes": [
+                "Dynamic World",
+                "GEDI / OpenForis",
+                "Copernicus DEM GLO-30",
+                "MERIT Hydro",
+            ],
+            "nota_conectividad": (
+                "La conectividad usa la proporción local de bosque en una ventana de "
+                "1.5 km como proxy espacial ligero. No representa conectividad funcional "
+                "por especie ni sustituye ECA/A."
+            ),
+            "nota_estructura": (
+                "La integridad combina altura GEDI normalizada y probabilidad de árboles. "
+                "Cuando GEDI no tiene cobertura, la probabilidad de árboles actúa como respaldo."
+            ),
+        }
+    )
+    return resultado
 
 
 @st.cache_data(ttl=1800, max_entries=24, show_spinner=False)
@@ -3383,6 +3718,21 @@ def generar_pdf(
         )
     )
     historia.extend([tabla_puntaje, Spacer(1, 7)])
+    eri_pdf = r.get("eri") or {}
+    if eri_pdf:
+        historia.extend(
+            [
+                tarjeta(
+                    "<b>ERI indicativo · lectura complementaria</b><br/>"
+                    f"{float(eri_pdf.get('valor', 0) or 0):.2f} / 1.00 · "
+                    f"clase {eri_pdf.get('clase', 'sin clasificar')}. "
+                    "Se reporta por separado y no modifica la prioridad anterior.",
+                    fondo=azul_claro,
+                    acento=colors.HexColor(str(eri_pdf.get("color", "#0A4393"))),
+                ),
+                Spacer(1, 7),
+            ]
+        )
 
     historia.extend(
         [
@@ -3754,6 +4104,7 @@ def mostrar_barra_visor(contenido_modo):
           </div>
           <div class="visor-contexto">
             <span class="visor-etiqueta">{html_lib.escape(contenido_modo['titulo'])}</span>
+            <span class="visor-etiqueta">ERI complementario</span>
             <span class="visor-etiqueta">Resultado indicativo</span>
           </div>
         </header>
@@ -3880,6 +4231,157 @@ def mostrar_panel_dashboard(resultados, modo_analisis):
         derecha.metric(
             "Pérdida post-2020",
             f"{float(resultados.get('hansen_post', 0) or 0):,.2f} ha",
+        )
+
+
+def construir_grafica_componentes_eri(resultados):
+    eri = resultados.get("eri") or {}
+    componentes = eri.get("componentes") or {}
+    claves = list(PESOS_ERI)
+    return {
+        "titulo": "Componentes del ERI indicativo",
+        "descripcion": (
+            "Cada barra se expresa entre 0 y 1. Un valor menor identifica el componente "
+            "que más limita la lectura ecológica del área."
+        ),
+        "datos": {
+            "Componente": [ETIQUETAS_COMPONENTES_ERI[clave] for clave in claves],
+            "Valor": [float(componentes.get(clave, 0) or 0) for clave in claves],
+        },
+        "eje_x": "Componente",
+        "eje_y": "Valor",
+        "unidad": "",
+        "decimales": 2,
+        "colores": [COLORES_COMPONENTES_ERI[clave] for clave in claves],
+    }
+
+
+def construir_grafica_distribucion_eri(resultados):
+    distribucion = (resultados.get("eri") or {}).get("distribucion_clases") or []
+    return {
+        "titulo": "Superficie por clase de ERI",
+        "descripcion": (
+            "Distribución de la superficie analizada según las cinco clases del ERI."
+        ),
+        "datos": {
+            "Clase": [item["clase"] for item in distribucion],
+            "Hectáreas": [float(item.get("area_ha", 0) or 0) for item in distribucion],
+        },
+        "eje_x": "Clase",
+        "eje_y": "Hectáreas",
+        "unidad": "ha",
+        "colores": [item["color"] for item in distribucion],
+    }
+
+
+def mostrar_resumen_eri(resultados):
+    """Presenta el ERI junto al mapa sin convertirlo en un segundo índice de prioridad."""
+
+    eri = resultados.get("eri") or {}
+    if not eri:
+        if resultados.get("eri_error"):
+            st.info(
+                "El análisis principal está disponible, pero el ERI indicativo no pudo "
+                "calcularse en esta ejecución."
+            )
+            with st.expander("Detalle técnico del ERI", expanded=False):
+                st.code(resultados["eri_error"])
+        return
+    valor = float(eri.get("valor", 0) or 0)
+    clase = str(eri.get("clase", "Sin clasificar"))
+    color = str(eri.get("color", "#0A4393"))
+    limitante = str(eri.get("componente_limitante_etiqueta", "No disponible"))
+    st.markdown(
+        f"""
+        <div class="eri-resumen" style="--eri-color:{html_lib.escape(color)};">
+          <div>
+            <small>Resiliencia ecológica · lectura complementaria</small>
+            <strong>ERI {valor:.2f} · {html_lib.escape(clase)}</strong>
+            <p>Componente que requiere mayor atención: <b>{html_lib.escape(limitante)}</b>.</p>
+          </div>
+          <span>{valor:.2f}</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    grafica = construir_grafica_componentes_eri(resultados)
+    st.altair_chart(
+        crear_grafica_barras_color(grafica, altura=158),
+        use_container_width=True,
+        theme=None,
+        key="eri_componentes_panel",
+    )
+    st.caption(
+        "El ERI no modifica el índice de indicios ni la prioridad de visita. "
+        "Se interpreta como contexto ecológico indicativo."
+    )
+
+
+def mostrar_detalle_eri(resultados):
+    """Desglosa método, componentes y clases del ERI para usuarios técnicos."""
+
+    eri = resultados.get("eri") or {}
+    if not eri:
+        st.warning("El ERI indicativo no estuvo disponible en esta ejecución.")
+        if resultados.get("eri_error"):
+            with st.expander("Detalle para soporte", expanded=False):
+                st.code(resultados["eri_error"])
+        return
+    st.markdown("### Índice de Resiliencia Ecológica indicativo")
+    st.caption(
+        "Lectura complementaria entre 0 y 1. No certifica condición ecológica, no "
+        "demuestra conectividad funcional y requiere validación de campo."
+    )
+    valor = float(eri.get("valor", 0) or 0)
+    primera, segunda, tercera = st.columns([1, 1, 1.4])
+    primera.metric("ERI", f"{valor:.2f} / 1.00")
+    segunda.metric("Clase", eri.get("clase", "—"))
+    tercera.metric(
+        "Componente limitante",
+        eri.get("componente_limitante_etiqueta", "—"),
+    )
+    grafica_componentes = construir_grafica_componentes_eri(resultados)
+    grafica_distribucion = construir_grafica_distribucion_eri(resultados)
+    columna_componentes, columna_clases = st.columns(2)
+    with columna_componentes:
+        st.markdown(f"**{grafica_componentes['titulo']}**")
+        st.caption(grafica_componentes["descripcion"])
+        st.altair_chart(
+            crear_grafica_barras_color(grafica_componentes, altura=230),
+            use_container_width=True,
+            theme=None,
+            key="eri_componentes_detalle",
+        )
+    with columna_clases:
+        st.markdown(f"**{grafica_distribucion['titulo']}**")
+        st.caption(grafica_distribucion["descripcion"])
+        st.altair_chart(
+            crear_grafica_barras_color(grafica_distribucion, altura=230),
+            use_container_width=True,
+            theme=None,
+            key="eri_clases_detalle",
+        )
+    with st.expander("Método y limitaciones del ERI", expanded=False):
+        st.markdown(
+            f"""
+            - **Integridad estructural · 35 %:** altura del dosel GEDI normalizada y
+              probabilidad anual de árboles de Dynamic World.
+            - **Conectividad · 25 %:** proporción local de bosque en una ventana de
+              {float(eri.get('radio_conectividad_m', RADIO_CONECTIVIDAD_ERI_M)) / 1000:.1f} km.
+            - **Estabilidad topográfica · 20 %:** pendiente Copernicus DEM ponderada por
+              la probabilidad de cobertura arbórea.
+            - **Proximidad riparia · 20 %:** distancia a cauces derivados de MERIT Hydro,
+              limitada a {int(eri.get('distancia_riparia_m', DISTANCIA_RIPARIA_ERI_M)):,} m.
+
+            {eri.get('nota_conectividad', '')}
+
+            Año de referencia de la cobertura: **{eri.get('anio_referencia', ANO_ERI_REFERENCIA)}**.
+            Resolución del resumen: aproximadamente **{int(eri.get('escala_resumen_m', ESCALA_ERI_M))} m**.
+            """
+        )
+        st.info(
+            "El ERI se mantiene separado del índice de indicios. Sus pesos y umbrales "
+            "deben validarse con información de campo antes de emplearlo para decisiones normativas."
         )
 
 
@@ -4277,6 +4779,14 @@ def configuracion_grafica_contextual(capa):
             "titulo": "Distribución de la altura del dosel",
             "descripcion": "Número de observaciones disponibles por intervalo de altura; GEDI no es una serie anual.",
             "colores": [COLORES_FUENTES["GEDI"]],
+        },
+        "ERI indicativo": {
+            "tipo": "eri",
+            "titulo": "Componentes del ERI indicativo",
+            "descripcion": (
+                "Comparación normalizada de los cuatro componentes ecológicos. "
+                "El valor menor señala el componente que conviene revisar primero."
+            ),
         },
     }
     return configuraciones.get(capa)
@@ -4714,6 +5224,21 @@ def mostrar_grafica_contextual_dashboard(
             use_container_width=True,
             theme=None,
             key="grafica_contextual_estado_tmf",
+        )
+        with st.expander("Ver valores de la gráfica", expanded=False):
+            st.dataframe(grafica["datos"], hide_index=True, use_container_width=True)
+        return
+
+    if configuracion.get("tipo") == "eri":
+        if not resultados.get("eri"):
+            mostrar_resumen_eri(resultados)
+            return
+        grafica = construir_grafica_componentes_eri(resultados)
+        st.altair_chart(
+            crear_grafica_barras_color(grafica, altura=245),
+            use_container_width=True,
+            theme=None,
+            key="grafica_contextual_eri",
         )
         with st.expander("Ver valores de la gráfica", expanded=False):
             st.dataframe(grafica["datos"], hide_index=True, use_container_width=True)
@@ -6509,6 +7034,7 @@ try:
         "Altura GEDI",
         "ΔNDVI",
         "Vegetación NDVI",
+        "ERI indicativo",
     ]
     nombres_capas = {
         "Sectores para revisión": "Sectores que requieren revisión (3 fuentes)",
@@ -6524,6 +7050,7 @@ try:
         "Altura GEDI": "Altura del dosel (GEDI)",
         "ΔNDVI": "Cambio del vigor vegetal (ΔNDVI)",
         "Vegetación NDVI": "Vigor vegetal de un año (NDVI)",
+        "ERI indicativo": "Resiliencia ecológica indicativa (ERI)",
     }
 
     modo_comparador = perfil["comparador"]
@@ -6733,6 +7260,22 @@ try:
                     key=f"capa_gedi_{modo_analisis}",
                 ):
                     capas_activas.append("Altura GEDI")
+
+        with st.sidebar.expander("ERI · resiliencia ecológica", expanded=False):
+            st.caption(
+                "Síntesis complementaria de estructura, conectividad local, estabilidad "
+                "topográfica y proximidad riparia."
+            )
+            if st.checkbox(
+                "Índice ERI indicativo",
+                value="ERI indicativo" in perfil["capas"],
+                key=f"capa_eri_{modo_analisis}",
+                help=(
+                    "Muestra cinco clases entre muy baja y muy alta. No modifica el "
+                    "índice de indicios ni la prioridad de visita."
+                ),
+            ):
+                capas_activas.append("ERI indicativo")
 
         if analiza_conectividad:
             with st.sidebar.expander("Almanaque Azul · corredores", expanded=True):
@@ -6946,17 +7489,24 @@ try:
                     )
         else:
             resultados = st.session_state["resultados_analisis"]
-            mostrar_panel_dashboard(resultados, modo_analisis)
-            mostrar_grafica_contextual_dashboard(
-                resultados=resultados,
-                modo_analisis=modo_analisis,
-                capa_contextual=capa_contextual,
-                tipo_area=tipo_area,
-                finca_id=finca_seleccionada,
-                subcuenca_nombre=subcuenca_seleccionada,
-                geometria_geojson=geometria_dibujada_json,
-                capas_activas=capas_activas,
+            pestana_lectura, pestana_eri, pestana_grafica = st.tabs(
+                ["Lectura", "ERI", "Gráfica"]
             )
+            with pestana_lectura:
+                mostrar_panel_dashboard(resultados, modo_analisis)
+            with pestana_eri:
+                mostrar_resumen_eri(resultados)
+            with pestana_grafica:
+                mostrar_grafica_contextual_dashboard(
+                    resultados=resultados,
+                    modo_analisis=modo_analisis,
+                    capa_contextual=capa_contextual,
+                    tipo_area=tipo_area,
+                    finca_id=finca_seleccionada,
+                    subcuenca_nombre=subcuenca_seleccionada,
+                    geometria_geojson=geometria_dibujada_json,
+                    capas_activas=capas_activas,
+                )
             st.button(
                 "Abrir detalle completo y descargas",
                 use_container_width=True,
@@ -7033,6 +7583,19 @@ try:
                         except Exception as error:
                             resultados_nuevos["fragmentacion_error"] = str(error)
 
+                estado_analisis.write(
+                    "Calculando el Índice de Resiliencia Ecológica indicativo."
+                )
+                try:
+                    resultados_nuevos["eri"] = calcular_eri_indicativo(
+                        tipo_area=tipo_area,
+                        finca_id=finca_seleccionada,
+                        subcuenca_nombre=subcuenca_seleccionada,
+                        geometria_geojson=geometria_dibujada_json,
+                    )
+                except Exception as error:
+                    resultados_nuevos["eri_error"] = str(error)
+
                 if modo_analisis == MODO_INTEGRAL:
                     resultados_nuevos["prioridad_visita"] = calcular_prioridad_visita(
                         puntaje_cambios=resultados_nuevos["puntaje"],
@@ -7069,7 +7632,7 @@ try:
             "Toda la información permanece disponible, organizada por tema para evitar "
             "una pantalla extensa y difícil de interpretar."
         )
-        nombres_pestanas = ["Resumen"]
+        nombres_pestanas = ["Resumen", "ERI indicativo"]
         if analiza_cambios:
             nombres_pestanas.append("Cambios territoriales")
         if analiza_conectividad:
@@ -7083,6 +7646,9 @@ try:
                 mostrar_resumen_integral(resultados)
             else:
                 mostrar_resumen_ejecutivo(resultados)
+        indice_pestana += 1
+        with pestanas[indice_pestana]:
+            mostrar_detalle_eri(resultados)
         indice_pestana += 1
         if analiza_cambios:
             with pestanas[indice_pestana]:
@@ -7574,6 +8140,14 @@ try:
             VIS_NDVI_CLASES,
             f"Vegetación NDVI {anio_ndvi_capa}",
         )
+    if "ERI indicativo" in capas_activas:
+        eri_mapa, _ = construir_imagenes_eri(geometria)
+        agregar_tematica(
+            "ERI indicativo",
+            clasificar_imagen_eri(eri_mapa),
+            VIS_ERI,
+            "Índice de Resiliencia Ecológica indicativo",
+        )
 
     resultados_mapa = (
         st.session_state.get("resultados_analisis", {})
@@ -7899,6 +8473,7 @@ try:
                 | ESRI Land Use/Land Cover | Diagnóstico {ANO_ESRI_MIN}-{ANO_ESRI_MAX} | 10 m | Transiciones de la clase árboles |
                 | GEDI / OpenForis | Producto disponible | 100 m | Altura y cobertura válida del dosel |
                 | Sentinel-2 SR Harmonized | Diagnóstico {ANO_NDVI_INICIAL_ANALISIS}-{ANO_NDVI_FINAL_ANALISIS}; mapa {periodo_ndvi_visual} | 10 m; resumen a {ESCALA_ANALISIS_NDVI_M} m | Disminución del vigor vegetal; señal corroborativa |
+                | ERI indicativo · Dynamic World + GEDI + Copernicus DEM + MERIT Hydro | Cobertura {ANO_ERI_REFERENCIA} y productos de referencia | Resumen aproximado a {ESCALA_ERI_M} m | Contexto ecológico complementario; no cambia la prioridad |
                 | Almanaque Azul | {catalogo_corredores['version_publicada']} | Vector interpretado | Valor estratégico para planificar visitas |
                 | SINIA–MiAMBIENTE · Bosque y otros usos | {ANO_BOSQUE_REFERENCIA if bosque_automatico_disponible else 'Pendiente de configuración'} | Vector institucional en Earth Engine | Fragmentación y red de parches; contexto |
                 """
@@ -8017,6 +8592,22 @@ try:
                     ]
                 )
             )
+            st.markdown("**Índice de Resiliencia Ecológica indicativo (ERI)**")
+            st.markdown(
+                "\n".join(
+                    [
+                        "- **Integridad estructural · 35 %:** probabilidad de árboles y altura GEDI normalizada.",
+                        f"- **Conectividad local · 25 %:** proporción de bosque en una ventana de {RADIO_CONECTIVIDAD_ERI_M / 1000:.1f} km.",
+                        "- **Estabilidad topográfica · 20 %:** pendiente ponderada por la cobertura arbórea.",
+                        f"- **Proximidad riparia · 20 %:** cercanía a cauces hasta {DISTANCIA_RIPARIA_ERI_M:,} m.",
+                    ]
+                )
+            )
+            st.caption(
+                "El ERI se expresa entre 0 y 1, se presenta en cinco clases y permanece "
+                "separado del índice de indicios y de la prioridad de visita. La conectividad "
+                "es un proxy espacial y no demuestra conectividad funcional por especie."
+            )
         with tab_limites:
             st.markdown(
                 """
@@ -8029,6 +8620,8 @@ try:
                   no garantizan movimiento efectivo de una especie concreta.
                 - La cobertura SINIA–MiAMBIENTE representa bosque y otros usos en 2021; no indica por sí sola el año de una pérdida.
                 - La calidad del análisis de fragmentación depende de la escala, topología y clasificación del asset institucional configurado.
+                - El ERI es exploratorio: sus pesos y clases requieren calibración y validación de campo antes de cualquier uso normativo.
+                - El componente de conectividad del ERI resume cobertura local; no reemplaza ECA/A ni un modelo funcional por especie.
 
                 **Esta herramienta orienta revisiones. No es una certificación, una validación de
                 campo ni una determinación de cumplimiento EUDR.**
