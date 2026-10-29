@@ -4,6 +4,14 @@ Este historial documenta la evolución de la aplicación UX. Las versiones sigue
 el formato `MAJOR.MINOR.PATCH`: una versión principal, mejoras compatibles y
 correcciones compatibles, respectivamente.
 
+## [4.2.5] - 2026-10-29 — barras visibles desde la carga inicial
+
+- Inicializa el navegador temporal con el intervalo completo de años disponibles para
+  que las barras seleccionadas aparezcan desde la primera renderización.
+- Evita que el control temporal pueda quedar vacío y ocultar accidentalmente todas las
+  series del gráfico principal.
+- Mantiene el selector inferior para enfocar períodos sin alterar los datos del análisis.
+
 ## [4.2.4] - 2026-10-29 — gráfica temporal inspirada en MapBiomas
 
 - Presenta las capas anuales comparables mediante barras apiladas, con una leyenda y

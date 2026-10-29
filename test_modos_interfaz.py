@@ -1,7 +1,9 @@
 import ast
 import unittest
+from datetime import date
 from pathlib import Path
 
+import altair as alt
 from streamlit.testing.v1 import AppTest
 
 from modos_app import (
@@ -22,6 +24,41 @@ class GeometriaPrueba:
 
 
 class ModosInterfazTests(unittest.TestCase):
+    def test_grafica_anual_inicia_con_todo_el_periodo_visible(self):
+        arbol = ast.parse(Path("app_experiencia.py").read_text(encoding="utf-8"))
+        funcion = next(
+            nodo
+            for nodo in arbol.body
+            if isinstance(nodo, ast.FunctionDef)
+            and nodo.name == "crear_grafica_serie_barras"
+        )
+        espacio = {"alt": alt, "date": date}
+        exec(
+            compile(
+                ast.Module(body=[funcion], type_ignores=[]),
+                "grafica_prueba",
+                "exec",
+            ),
+            espacio,
+        )
+        grafica = espacio["crear_grafica_serie_barras"](
+            {
+                "columnas": {
+                    "Año": list(range(2000, 2026)),
+                    "Deforestación (ha)": [10] * 26,
+                    "Degradación (ha)": [5] * 26,
+                }
+            },
+            series=["Deforestación (ha)", "Degradación (ha)"],
+            colores=["#C73E3A", "#F2A541"],
+        ).to_dict()
+
+        seleccion = grafica["params"][0]
+        self.assertEqual(seleccion["value"]["x"][0]["year"], 2000)
+        self.assertEqual(seleccion["value"]["x"][1]["year"], 2025)
+        self.assertFalse(seleccion["select"]["clear"])
+        self.assertEqual(grafica["vconcat"][0]["encoding"]["y"]["stack"], "zero")
+
     def test_aplicacion_importa_la_regla_de_recorte(self):
         arbol = ast.parse(
             Path("app_experiencia.py").read_text(encoding="utf-8")
@@ -110,6 +147,8 @@ class ModosInterfazTests(unittest.TestCase):
         self.assertIn("Las barras apiladas comparan las capas JRC TMF activadas", codigo)
         self.assertIn('stack="zero"', codigo)
         self.assertIn("alt.selection_interval", codigo)
+        self.assertIn('value={"x": intervalo_inicial}', codigo)
+        self.assertIn("clear=False", codigo)
         self.assertIn("alt.vconcat", codigo)
         self.assertIn("Visualizadas en el mapa", codigo)
         self.assertNotIn('codificacion["xOffset"]', codigo)
@@ -158,7 +197,7 @@ class ModosInterfazTests(unittest.TestCase):
         self.assertIn("WGS 84 · EPSG:4326", portada)
         self.assertIn("#0a4393", portada.lower())
         self.assertIn("#77cc09", portada.lower())
-        self.assertIn('APP_VERSION = "UX-4.2.4-GRAFICA-MAPBIOMAS"', visor)
+        self.assertIn('APP_VERSION = "UX-4.2.5-GRAFICA-RANGO-INICIAL"', visor)
         self.assertIn("st.columns([2.55, 1]", visor)
         self.assertIn('[data-collapsed="true"]', visor)
         self.assertIn("width: 0 !important", visor)

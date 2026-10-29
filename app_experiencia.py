@@ -993,7 +993,7 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-4.2.4-GRAFICA-MAPBIOMAS"
+APP_VERSION = "UX-4.2.5-GRAFICA-RANGO-INICIAL"
 
 COLORES_FUENTES = {
     "JRC TMF": "#1F8A70",
@@ -4329,6 +4329,7 @@ def crear_grafica_serie_barras(
     es_serie_anual = eje_x.strip().lower() in {"año", "ano"}
     filas = []
     periodos = []
+    fechas_disponibles = []
     for indice, valor_x in enumerate(valores_x):
         try:
             valor_numerico_x = float(valor_x)
@@ -4350,7 +4351,9 @@ def crear_grafica_serie_barras(
                 "Valor": valor,
             }
             if es_serie_anual and valor_numerico_x is not None:
-                fila["Fecha"] = f"{int(valor_numerico_x):04d}-01-01"
+                fecha_periodo = date(int(valor_numerico_x), 1, 1)
+                fila["Fecha"] = fecha_periodo.isoformat()
+                fechas_disponibles.append(fecha_periodo)
             filas.append(fila)
 
     colores = list(colores or ["#1F8A70"])
@@ -4372,9 +4375,15 @@ def crear_grafica_serie_barras(
     datos = alt.Data(values=filas)
     navegador_periodo = None
     if es_serie_anual and len(set(periodos)) > 8:
+        intervalo_inicial = (
+            min(fechas_disponibles),
+            max(fechas_disponibles),
+        )
         navegador_periodo = alt.selection_interval(
             encodings=["x"],
             name="periodo_visible",
+            value={"x": intervalo_inicial},
+            clear=False,
             mark=alt.BrushConfig(
                 fill="#D6DEEB",
                 fillOpacity=0.38,
