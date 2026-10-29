@@ -5,6 +5,7 @@ from pathlib import Path
 
 import streamlit as st
 
+from eri_indicativo import PESOS_ERI
 from metodologia_indice import (
     PERIODOS_ANALISIS,
     PESOS_INDICE,
@@ -152,6 +153,7 @@ def mostrar_cabecera_portal():
           </div>
           <div class="portal-util">
             <span class="portal-chip acento">Resultado indicativo</span>
+            <span class="portal-chip">ERI complementario</span>
             <span class="portal-chip">Google Earth Engine</span>
             <span class="portal-chip">WGS 84 · EPSG:4326</span>
           </div>
@@ -308,6 +310,12 @@ def mostrar_metodo():
                 "Papel": "Contexto estructural",
             },
             {
+                "Fuente": "ERI indicativo",
+                "Pregunta que ayuda a responder": "¿Qué componente ecológico presenta la condición relativa más limitada?",
+                "Referencia": "Dynamic World + GEDI + DEM + MERIT Hydro",
+                "Papel": "Lectura complementaria; no cambia la prioridad",
+            },
+            {
                 "Fuente": "Almanaque Azul",
                 "Pregunta que ayuda a responder": "¿El área coincide con corredores naturales publicados?",
                 "Referencia": "Versión publicada 2024.05",
@@ -336,6 +344,17 @@ def mostrar_metodo():
             - NDVI: **{PESOS_INDICE['ndvi']:.1f}** puntos.
             - Máximo configurado: **{PUNTAJE_MAXIMO:.1f}** puntos.
 
+            **ERI indicativo, presentado por separado**
+
+            - Integridad estructural: **{PESOS_ERI['integridad_estructural'] * 100:.0f}%**.
+            - Conectividad local: **{PESOS_ERI['conectividad'] * 100:.0f}%**.
+            - Estabilidad topográfica: **{PESOS_ERI['estabilidad_topografica'] * 100:.0f}%**.
+            - Proximidad riparia: **{PESOS_ERI['proximidad_riparia'] * 100:.0f}%**.
+
+            El ERI se expresa entre 0 y 1 y **no se suma** al índice anterior ni a la
+            prioridad de visita. Es una síntesis exploratoria que requiere calibración
+            y validación de campo.
+
             La señal NDVI exige simultáneamente una disminución de
             **{abs(UMBRALES_INDICE['ndvi_delta_disminucion']):.2f}**, al menos
             **{UMBRALES_INDICE['ndvi_disminucion_ha']:.2f} ha** y
@@ -357,6 +376,7 @@ def mostrar_metodo():
             - NDVI puede responder a humedad, estacionalidad, cultivos, nubes o sombras y no identifica por sí solo bosque natural.
             - GEDI tiene cobertura espacial limitada y se interpreta como contexto, no como pérdida confirmada.
             - La red de fragmentos representa conectividad estructural potencial; no modela especies, conducta ni conectividad funcional.
+            - La conectividad del ERI es un proxy de cobertura local; no reemplaza ECA/A ni un modelo funcional por especie.
             - Los resultados deben contrastarse con conocimiento local, imágenes recientes, documentos y campo.
             """
         )
