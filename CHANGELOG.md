@@ -4,6 +4,18 @@ Este historial documenta la evolución de la aplicación UX. Las versiones sigue
 el formato `MAJOR.MINOR.PATCH`: una versión principal, mejoras compatibles y
 correcciones compatibles, respectivamente.
 
+## [4.2.1] - 2026-10-28 — regeneración forestal JRC TMF
+
+- Incorpora **Regeneración forestal** como capa independiente, correspondiente a la
+  clase oficial *Forest regrowth* de JRC TMF.
+- Amplía la serie anual JRC con barras de deforestación, degradación y regeneración
+  forestal, manteniendo cada lectura separada y con color estable.
+- La vista **Estado forestal** muestra las seis clases JRC en una distribución de
+  barras: bosque no perturbado, bosque degradado, tierra deforestada, regeneración
+  forestal, agua y otra cobertura.
+- Aclara que la regeneración observada por satélite no demuestra por sí sola la
+  ejecución ni el éxito de un proyecto de restauración.
+
 ## [4.2.0] - 2026-10-28 — barras vinculadas con la evidencia
 
 - Sustituye las series de líneas por gráficas de barras con colores estables por fuente.

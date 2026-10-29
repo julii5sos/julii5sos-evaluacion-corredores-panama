@@ -974,7 +974,7 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-4.2.0-BARRAS-CONTEXTUALES"
+APP_VERSION = "UX-4.2.1-TMF-REGENERACION"
 
 COLORES_FUENTES = {
     "JRC TMF": "#1F8A70",
@@ -986,6 +986,7 @@ COLORES_FUENTES = {
 COLORES_CAMBIOS = {
     "Deforestación JRC": "#C73E3A",
     "Degradación JRC": "#F2A541",
+    "Regeneración forestal JRC": "#43AA8B",
     "Pérdida Hansen post-2020": "#E76F51",
     "Salida de árboles ESRI": "#3A7CA5",
     "Disminución NDVI": "#9BBF30",
@@ -1073,7 +1074,7 @@ ESRI_COLORES = [
 VIS_TMF = {
     "min": 1,
     "max": 6,
-    "palette": ["006400", "FFCC00", "FF0000", "00FF00", "0000FF", "BDBDBD"],
+    "palette": ["006400", "FFCC00", "FF0000", "43AA8B", "0000FF", "BDBDBD"],
 }
 VIS_ESRI = {"min": 1, "max": 9, "palette": ESRI_COLORES}
 VIS_HANSEN_POST = {
@@ -1094,6 +1095,7 @@ VIS_HANSEN_TOTAL = {
 VIS_LINEA_BASE = {"min": 1, "max": 1, "palette": ["00C853"]}
 VIS_TMF_DEFOR = {"min": 1, "max": 1, "palette": ["FF0000"]}
 VIS_TMF_DEGRAD = {"min": 1, "max": 1, "palette": ["FFCC00"]}
+VIS_TMF_REGENERACION = {"min": 1, "max": 1, "palette": ["43AA8B"]}
 VIS_ESRI_CAMBIO = {
     "min": 1,
     "max": 3,
@@ -1265,7 +1267,7 @@ LEYENDAS = {
         ("#006400", "Bosque no perturbado"),
         ("#FFCC00", "Degradación"),
         ("#FF0000", "Deforestación"),
-        ("#00FF00", "Regeneración"),
+        ("#43AA8B", "Regeneración forestal (Forest regrowth)"),
         ("#0000FF", "Agua"),
         ("#BDBDBD", "Otra cobertura"),
     ],
@@ -1295,6 +1297,13 @@ LEYENDAS = {
     "Cobertura arbórea persistente": [("#00C853", "Cobertura arbórea persistente hasta 2020")],
     "Deforestación JRC": [("#FF0000", "Deforestación")],
     "Degradación JRC": [("#FFCC00", "Degradación")],
+    "Regeneración forestal JRC": [
+        (
+            "#43AA8B",
+            "Regeneración forestal",
+            "Área antes deforestada que JRC TMF clasifica actualmente como bosque en regeneración",
+        )
+    ],
     "Transiciones ESRI": [
         ("#00FF00", "No árbol → árboles"),
         ("#FF0000", "Árboles → no árbol"),
@@ -2351,6 +2360,7 @@ def calcular_serie_fuente(
                 [
                     tmf.eq(3).unmask(0).multiply(pixel_ha).rename(f"def_{anio}"),
                     tmf.eq(2).unmask(0).multiply(pixel_ha).rename(f"deg_{anio}"),
+                    tmf.eq(4).unmask(0).multiply(pixel_ha).rename(f"regen_{anio}"),
                 ]
             )
         resumen = reducir_superficies(
@@ -2362,14 +2372,18 @@ def calcular_serie_fuente(
         return {
             "titulo": "Cambio forestal anual según JRC TMF",
             "descripcion": (
-                "Superficie clasificada cada año como deforestación o degradación. "
-                "Las dos series pertenecen a la misma fuente y sí pueden compararse."
+                "Superficie clasificada cada año como deforestación, degradación o "
+                "regeneración forestal. Las tres series pertenecen a la misma fuente "
+                "y sí pueden compararse."
             ),
             "tipo": "barras",
             "columnas": {
                 "Año": anios,
                 "Deforestación (ha)": [numero(resumen, f"def_{anio}") for anio in anios],
                 "Degradación (ha)": [numero(resumen, f"deg_{anio}") for anio in anios],
+                "Regeneración forestal (ha)": [
+                    numero(resumen, f"regen_{anio}") for anio in anios
+                ],
             },
         }
 
@@ -2993,7 +3007,7 @@ def generar_mapas_reporte(
         (
             f"JRC TMF - Estado forestal {anio_tmf_diagnostico}",
             visualizar_con_borde(tmf, VIS_TMF, area_fc),
-            "Verde oscuro: bosque estable | Amarillo: degradación | Rojo: deforestación | Verde claro: recuperación",
+            "Verde oscuro: bosque no perturbado | Amarillo: degradación | Rojo: deforestación | Verde claro: regeneración forestal",
         ),
         (
             f"Hansen - Pérdida arbórea 2001-{ANO_HANSEN_MAX}",
@@ -3583,7 +3597,7 @@ def generar_pdf(
     )
     filas_fuentes = [
         ["Fuente", "Resultado específico", "Aporte"],
-        [f"JRC TMF {anio_tmf_diagnostico}", f"Estable {r['tmf_estable']:.1f}; degradación {r['tmf_degradacion']:.1f}; deforestación {r['tmf_deforestacion']:.1f}; recuperación {r['tmf_recuperacion']:.1f}; agua {r['tmf_agua']:.1f}; otra cobertura {r['tmf_otra_cobertura']:.1f} ha", f"{aportes['tmf']:.1f}/{PESOS_INDICE['tmf']:.1f}"],
+        [f"JRC TMF {anio_tmf_diagnostico}", f"Bosque no perturbado {r['tmf_estable']:.1f}; degradación {r['tmf_degradacion']:.1f}; deforestación {r['tmf_deforestacion']:.1f}; regeneración forestal {r['tmf_recuperacion']:.1f}; agua {r['tmf_agua']:.1f}; otra cobertura {r['tmf_otra_cobertura']:.1f} ha", f"{aportes['tmf']:.1f}/{PESOS_INDICE['tmf']:.1f}"],
         ["Hansen GFC", f"Pérdida 2001-2020: {r['hansen_pre']:.2f} ha; posterior al {CUTOFF_LABEL}: {r['hansen_post']:.2f} ha", f"{aportes['hansen']:.1f}/{PESOS_INDICE['hansen']:.1f}"],
         [f"ESRI {anio_esri_inicial}-{anio_esri_final}", f"Árboles finales {r['esri_arboles_final']:.1f} ha; salida {r['esri_salida']:.1f} ha ({r['pct_esri_salida']:.1f}%); ganancia {r['esri_ganancia']:.1f} ha ({pct_ganancia:.1f}%)", f"{aportes['esri']:.1f}/{PESOS_INDICE['esri']:.1f}"],
         ["GEDI", f"Dosel {r['gedi_altura']:.1f} m; datos válidos en {r['gedi_cobertura_pct']:.0f}% del área" if r["gedi_disponible"] else "Datos insuficientes", f"{aportes['gedi']:.1f}/{PESOS_INDICE['gedi']:.1f}"],
@@ -4101,11 +4115,12 @@ def configuracion_grafica_contextual(capa):
 
     configuraciones = {
         "Estado forestal JRC": {
-            "fuente": "JRC Tropical Moist Forest",
-            "series": ["Deforestación (ha)", "Degradación (ha)"],
-            "titulo": "Deforestación y degradación por año",
-            "descripcion": "Superficie anual clasificada por JRC TMF dentro del área analizada.",
-            "colores": ["#C73E3A", "#F2A541"],
+            "tipo": "distribucion_tmf",
+            "titulo": f"Estado forestal JRC {ANO_DIAG_TMF}",
+            "descripcion": (
+                "Distribución de las seis clases de JRC TMF dentro del área analizada; "
+                "incluye la regeneración forestal."
+            ),
         },
         "Deforestación JRC": {
             "fuente": "JRC Tropical Moist Forest",
@@ -4120,6 +4135,16 @@ def configuracion_grafica_contextual(capa):
             "titulo": "Degradación por año",
             "descripcion": "Hectáreas clasificadas anualmente como degradación por JRC TMF.",
             "colores": [COLORES_CAMBIOS["Degradación JRC"]],
+        },
+        "Regeneración forestal JRC": {
+            "fuente": "JRC Tropical Moist Forest",
+            "series": ["Regeneración forestal (ha)"],
+            "titulo": "Regeneración forestal por año",
+            "descripcion": (
+                "Hectáreas previamente deforestadas que JRC TMF clasifica como bosque "
+                "en regeneración (Forest regrowth)."
+            ),
+            "colores": [COLORES_CAMBIOS["Regeneración forestal JRC"]],
         },
         "Pérdida Hansen post-2020": {
             "fuente": "Hansen Global Forest Change",
@@ -4299,6 +4324,47 @@ def crear_grafica_serie_barras(
     )
 
 
+def construir_grafica_estado_tmf(resultados):
+    """Resume las seis clases oficiales de JRC TMF para el año diagnóstico."""
+
+    return {
+        "titulo": f"Estado forestal JRC {ANO_DIAG_TMF}",
+        "descripcion": (
+            "Muestra la distribución completa del área, incluida la regeneración "
+            "forestal; no representa por sí sola un proyecto de restauración."
+        ),
+        "eje_x": "Clase",
+        "eje_y": "Hectáreas",
+        "unidad": "ha",
+        "colores": [
+            "#006400",
+            "#F2A541",
+            "#C73E3A",
+            COLORES_CAMBIOS["Regeneración forestal JRC"],
+            "#4D9DE0",
+            "#A8B3B0",
+        ],
+        "datos": {
+            "Clase": [
+                "Bosque no perturbado",
+                "Bosque degradado",
+                "Tierra deforestada",
+                "Regeneración forestal",
+                "Agua",
+                "Otra cobertura",
+            ],
+            "Hectáreas": [
+                float(resultados.get("tmf_estable", 0) or 0),
+                float(resultados.get("tmf_degradacion", 0) or 0),
+                float(resultados.get("tmf_deforestacion", 0) or 0),
+                float(resultados.get("tmf_recuperacion", 0) or 0),
+                float(resultados.get("tmf_agua", 0) or 0),
+                float(resultados.get("tmf_otra_cobertura", 0) or 0),
+            ],
+        },
+    }
+
+
 def filtrar_tabla_serie(grafica, series=None, anio_min=None, anio_max=None):
     """Devuelve una tabla accesible con exactamente los valores visibles en la gráfica."""
 
@@ -4384,6 +4450,18 @@ def mostrar_grafica_contextual_dashboard(
         f'{html_lib.escape(configuracion["descripcion"])}</div>',
         unsafe_allow_html=True,
     )
+    if configuracion.get("tipo") == "distribucion_tmf":
+        grafica = construir_grafica_estado_tmf(resultados)
+        st.altair_chart(
+            crear_grafica_barras_color(grafica, altura=260),
+            use_container_width=True,
+            theme=None,
+            key="grafica_contextual_estado_tmf",
+        )
+        with st.expander("Ver valores de la gráfica", expanded=False):
+            st.dataframe(grafica["datos"], hide_index=True, use_container_width=True)
+        return
+
     try:
         with st.spinner(f"Preparando barras de {etiqueta_capa.lower()}..."):
             grafica = calcular_serie_fuente(
@@ -4547,7 +4625,11 @@ def mostrar_grafica_por_fuente(
     eje_x = next(iter(columnas))
     series = list(columnas)[1:]
     paletas_fuente = {
-        "JRC Tropical Moist Forest": ["#C73E3A", "#F2A541"],
+        "JRC Tropical Moist Forest": [
+            "#C73E3A",
+            "#F2A541",
+            COLORES_CAMBIOS["Regeneración forestal JRC"],
+        ],
         "Hansen Global Forest Change": [COLORES_FUENTES["Hansen GFC"]],
         "ESRI Land Use / Land Cover": [COLORES_FUENTES["ESRI LULC"]],
         "Sentinel-2 · NDVI": [COLORES_FUENTES["NDVI"]],
@@ -5250,7 +5332,7 @@ def mostrar_resultados(
           <b>Consistencia entre fuentes: {html_lib.escape(consistencia['nivel'])}</b><br/>
           {html_lib.escape(consistencia['detalle'])}<br/>
           <small>Señales de deterioro: {html_lib.escape(fuentes_deterioro)} ·
-          Recuperación o ganancia: {html_lib.escape(fuentes_recuperacion)}</small>
+          Regeneración forestal o ganancia: {html_lib.escape(fuentes_recuperacion)}</small>
         </div>
         """,
         unsafe_allow_html=True,
@@ -5382,10 +5464,10 @@ def mostrar_resultados(
         c3.metric("Pérdida Hansen 2001-2020", f"{resultados['hansen_pre']:.2f} ha")
         c4.metric("Pérdida Hansen post-2020", f"{resultados['hansen_post']:.2f} ha")
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Bosque estable JRC", f"{resultados['tmf_estable']:.1f} ha")
+        c1.metric("Bosque no perturbado JRC", f"{resultados['tmf_estable']:.1f} ha")
         c2.metric("Degradación JRC", f"{resultados['tmf_degradacion']:.1f} ha")
         c3.metric("Deforestación JRC", f"{resultados['tmf_deforestacion']:.1f} ha")
-        c4.metric("Recuperación JRC", f"{resultados['tmf_recuperacion']:.1f} ha")
+        c4.metric("Regeneración forestal JRC", f"{resultados['tmf_recuperacion']:.1f} ha")
         for titulo, texto_detalle, alerta in filas:
             estado = "SEÑAL" if alerta else "SIN SEÑAL OPERATIVA"
             color_texto = "#c62828" if alerta else "#2e7d32"
@@ -5414,10 +5496,10 @@ def mostrar_resultados(
                         ],
                         "datos": {
                             "Clase": [
-                                "Bosque estable",
-                                "Degradación",
-                                "Deforestación",
-                                "Recuperación",
+                                "Bosque no perturbado",
+                                "Bosque degradado",
+                                "Tierra deforestada",
+                                "Regeneración forestal",
                                 "Agua",
                                 "Otra cobertura",
                             ],
@@ -6166,6 +6248,7 @@ try:
         "Estado forestal JRC",
         "Deforestación JRC",
         "Degradación JRC",
+        "Regeneración forestal JRC",
         "Uso y cobertura ESRI",
         "Transiciones ESRI",
         "Altura GEDI",
@@ -6180,6 +6263,7 @@ try:
         "Estado forestal JRC": "Estado forestal de un año (JRC)",
         "Deforestación JRC": "Señales de deforestación (JRC)",
         "Degradación JRC": "Señales de degradación (JRC)",
+        "Regeneración forestal JRC": "Regeneración forestal (JRC)",
         "Uso y cobertura ESRI": "Uso y cobertura del suelo (ESRI)",
         "Transiciones ESRI": "Cambios de la clase árboles (ESRI)",
         "Altura GEDI": "Altura del dosel (GEDI)",
@@ -6299,6 +6383,16 @@ try:
                     key=f"capa_jrc_degradacion_{modo_analisis}",
                 ):
                     capas_activas.append("Degradación JRC")
+                if st.checkbox(
+                    "Regeneración forestal",
+                    value="Regeneración forestal JRC" in perfil["capas"],
+                    key=f"capa_jrc_regeneracion_{modo_analisis}",
+                    help=(
+                        "Clase Forest regrowth de JRC TMF: área antes deforestada que "
+                        "actualmente presenta bosque en regeneración."
+                    ),
+                ):
+                    capas_activas.append("Regeneración forestal JRC")
                 anio_tmf_capa = st.selectbox(
                     "Año JRC",
                     list(range(1990, ANO_TMF_MAX + 1)),
@@ -7125,6 +7219,13 @@ try:
             obtener_tmf(anio_tmf_capa, geometria).eq(2).selfMask(),
             VIS_TMF_DEGRAD,
             f"Degradación JRC {anio_tmf_capa}",
+        )
+    if "Regeneración forestal JRC" in capas_activas:
+        agregar_tematica(
+            "Regeneración forestal JRC",
+            obtener_tmf(anio_tmf_capa, geometria).eq(4).selfMask(),
+            VIS_TMF_REGENERACION,
+            f"Regeneración forestal JRC {anio_tmf_capa}",
         )
     if "Uso y cobertura ESRI" in capas_activas:
         agregar_tematica(

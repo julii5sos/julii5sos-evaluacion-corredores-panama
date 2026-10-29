@@ -38,6 +38,7 @@ Este archivo adapta las recomendaciones de UI/UX al sistema institucional ya est
 | Fuente o lectura | Color |
 |---|---|
 | JRC TMF | `#1F8A70` |
+| JRC TMF · regeneración forestal | `#43AA8B` |
 | Hansen GFC | `#E76F51` |
 | ESRI LULC | `#3A7CA5` |
 | GEDI | `#7A5195` |

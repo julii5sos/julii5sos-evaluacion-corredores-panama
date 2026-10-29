@@ -60,3 +60,14 @@ ESRI, GEDI, NDVI y Almanaque Azul conservan su significado.
   y etiquetas textuales; Hansen, ESRI y NDVI conservan sus unidades propias.
 - GEDI mantiene un histograma de alturas porque no constituye una serie anual.
 - El mapa y la gráfica contextual cambian juntos cuando se activa una evidencia nueva.
+
+## Regeneración forestal TMF 4.2.1
+
+- La clase 4 de JRC TMF se presenta con el nombre **Regeneración forestal** y conserva
+  *Forest regrowth* como referencia terminológica de la fuente.
+- Estado forestal muestra las seis clases mediante barras horizontales; las vistas de
+  deforestación, degradación y regeneración forestal ofrecen series anuales separadas.
+- La regeneración usa `#43AA8B` en mapa, leyenda y gráfica, acompañada siempre por su
+  etiqueta para no depender únicamente del color.
+- La interfaz distingue regeneración observada por satélite de restauración planificada
+  o verificada en campo.
