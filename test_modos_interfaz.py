@@ -228,6 +228,13 @@ class ModosInterfazTests(unittest.TestCase):
     def test_conectividad_evitar_carga_y_texto_tecnico_innecesarios(self):
         visor = Path("app_experiencia.py").read_text(encoding="utf-8")
         corredores = Path("corredores.py").read_text(encoding="utf-8")
+        arbol = ast.parse(visor)
+        funcion_bosque = next(
+            nodo
+            for nodo in arbol.body
+            if isinstance(nodo, ast.FunctionDef)
+            and nodo.name == "analizar_bosque_asset"
+        )
 
         self.assertNotIn('st.sidebar.expander("Fuentes de conectividad"', visor)
         self.assertNotIn("Cobertura lista. La aplicación consultará", visor)
@@ -236,6 +243,9 @@ class ModosInterfazTests(unittest.TestCase):
         self.assertIn("value=False", visor)
         self.assertIn("distancia_corredor_mas_cercano_m", visor)
         self.assertIn("radio_contexto_m", visor)
+        self.assertEqual(funcion_bosque.decorator_list, [])
+        self.assertIn("max_entries=24", visor)
+        self.assertIn("max_entries=4", visor)
         self.assertIn("if mostrar:", corredores)
         self.assertIn("if mostrar_puntos_criticos:", corredores)
 

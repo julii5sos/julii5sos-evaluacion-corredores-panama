@@ -14,6 +14,8 @@ correcciones compatibles, respectivamente.
   sin superar 5 km, y simplifica a 10 m la geometría transferida desde Earth Engine.
 - Reduce el costo de centralidad en redes grandes y muestra el avance por etapa durante
   la preparación de la preevaluación.
+- Evita retener globalmente los GeoJSON de fragmentación y limita la cantidad y duración
+  de los cachés de series, análisis e imágenes de informe para controlar el uso de memoria.
 
 ## [4.2.6] - 2026-10-29 — composición multicapa visible
 

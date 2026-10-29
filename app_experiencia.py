@@ -1791,7 +1791,7 @@ def clave_orden_natural(valor):
     )
 
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=3600, max_entries=4)
 def obtener_ids_fincas():
     if not ASSET_FINCAS or not acceso_fincas_vigente():
         raise PermissionError("La colección privada requiere un acceso autorizado.")
@@ -1807,7 +1807,7 @@ def obtener_ids_fincas():
     )
 
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=3600, max_entries=4)
 def obtener_ids_subcuencas():
     if not ASSET_SUBCUENCAS:
         raise PermissionError("La colección de subcuencas no está configurada.")
@@ -1885,7 +1885,7 @@ def obtener_area(
     )
 
 
-@st.cache_data(ttl=3600, show_spinner=False)
+@st.cache_data(ttl=3600, max_entries=64, show_spinner=False)
 def obtener_superficies_area_cache(
     tipo_area,
     finca_id=None,
@@ -2353,7 +2353,7 @@ def normalizar_histograma_gedi(histograma):
     }
 
 
-@st.cache_data(ttl=3600, show_spinner=False)
+@st.cache_data(ttl=1800, max_entries=48, show_spinner=False)
 def calcular_serie_fuente(
     tipo_area,
     finca_id,
@@ -2523,13 +2523,12 @@ def calcular_serie_fuente(
     raise ValueError(f"Fuente no reconocida: {fuente}")
 
 
-@st.cache_data(ttl=3600, show_spinner=False)
+@st.cache_data(ttl=3600, max_entries=64, show_spinner=False)
 def analizar_corredores_cache(aoi_geojson_serializado):
     return analizar_interseccion_corredores(json.loads(aoi_geojson_serializado))
 
 
-@st.cache_data(ttl=3600, show_spinner=False)
-def analizar_bosque_asset_cache(
+def analizar_bosque_asset(
     asset_id,
     campo_clase,
     valor_bosque,
@@ -2571,7 +2570,7 @@ def analizar_bosque_asset_cache(
     )
 
 
-@st.cache_data(ttl=3600, show_spinner=False)
+@st.cache_data(ttl=1800, max_entries=24, show_spinner=False)
 def ejecutar_analisis(
     tipo_area,
     finca_id,
@@ -2980,7 +2979,7 @@ def descargar_miniaturas(especificaciones, geometria, mapas_existentes=None):
     return resultados, errores
 
 
-@st.cache_data(ttl=3600, show_spinner=False)
+@st.cache_data(ttl=900, max_entries=4, show_spinner=False)
 def generar_mapas_reporte(
     tipo_area,
     finca_id,
@@ -6951,7 +6950,7 @@ try:
                                 "Analizando fragmentos de bosque en el área y solo el "
                                 f"entorno necesario ({radio_contexto_m / 1000:.1f} km)."
                             )
-                            resultados_nuevos["fragmentacion"] = analizar_bosque_asset_cache(
+                            resultados_nuevos["fragmentacion"] = analizar_bosque_asset(
                                 ASSET_BOSQUE_2021,
                                 CAMPO_COBERTURA_BOSQUE_2021,
                                 VALOR_COBERTURA_BOSQUE_2021,
