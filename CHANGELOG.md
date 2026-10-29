@@ -4,6 +4,13 @@ Este historial documenta la evolución de la aplicación UX. Las versiones sigue
 el formato `MAJOR.MINOR.PATCH`: una versión principal, mejoras compatibles y
 correcciones compatibles, respectivamente.
 
+## [4.2.0] - 2026-10-28 — barras vinculadas con la evidencia
+
+- Sustituye las series de líneas por gráficas de barras con colores estables por fuente.
+- Añade en la columna derecha una gráfica contextual vinculada con la evidencia activa
+  del mapa, incluida la deforestación JRC en hectáreas por año.
+- Mantiene GEDI como distribución de alturas y conserva tablas de valores accesibles.
+
 ## [4.1.0] - 2026-10-28 — evidencia cartográfica como foco
 
 - Oculta la cabecera institucional duplicada después de elegir una preevaluación y

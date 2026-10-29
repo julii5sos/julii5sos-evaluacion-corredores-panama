@@ -853,6 +853,35 @@ st.markdown(
         font-size: .86rem;
         line-height: 1.45;
     }
+    .grafica-contextual-cabecera {
+        margin: .55rem 0 .35rem;
+        padding: .55rem .65rem;
+        border: 1px solid var(--institucional-borde);
+        border-left: 5px solid var(--institucional-verde-acento);
+        border-radius: 6px;
+        background: #ffffff;
+    }
+    .grafica-contextual-cabecera small {
+        display: block;
+        margin-bottom: .12rem;
+        color: var(--institucional-suave);
+        font-size: .7rem;
+        font-weight: 750;
+        letter-spacing: .055em;
+        text-transform: uppercase;
+    }
+    .grafica-contextual-cabecera strong {
+        display: block;
+        color: var(--institucional-tinta);
+        font-size: .94rem;
+        line-height: 1.25;
+    }
+    .grafica-contextual-nota {
+        margin: -.1rem 0 .35rem;
+        color: var(--institucional-suave);
+        font-size: .78rem;
+        line-height: 1.35;
+    }
     .dashboard-dato-clave {
         margin: .55rem 0 .25rem;
         padding: .7rem .78rem;
@@ -945,7 +974,7 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-4.1.0-CARTOGRAFIA-CENTRAL"
+APP_VERSION = "UX-4.2.0-BARRAS-CONTEXTUALES"
 
 COLORES_FUENTES = {
     "JRC TMF": "#1F8A70",
@@ -2336,7 +2365,7 @@ def calcular_serie_fuente(
                 "Superficie clasificada cada año como deforestación o degradación. "
                 "Las dos series pertenecen a la misma fuente y sí pueden compararse."
             ),
-            "tipo": "lineas",
+            "tipo": "barras",
             "columnas": {
                 "Año": anios,
                 "Deforestación (ha)": [numero(resumen, f"def_{anio}") for anio in anios],
@@ -2397,7 +2426,7 @@ def calcular_serie_fuente(
                 "Superficie clasificada como árboles en cada edición anual. Cambios "
                 "pequeños pueden reflejar tanto cambios reales como diferencias de clasificación."
             ),
-            "tipo": "lineas",
+            "tipo": "barras",
             "columnas": {
                 "Año": anios,
                 "Cobertura arbórea (ha)": [
@@ -2425,7 +2454,7 @@ def calcular_serie_fuente(
                 "Promedio anual del NDVI calculado con Sentinel-2. Sirve como señal "
                 "corroborativa; nubes, estacionalidad y agua pueden afectar la lectura."
             ),
-            "tipo": "lineas",
+            "tipo": "barras",
             "columnas": {
                 "Año": anios,
                 "NDVI medio": [numero(resumen, f"ndvi_{anio}") for anio in anios],
@@ -2450,7 +2479,7 @@ def calcular_serie_fuente(
             "titulo": "Distribución de altura del dosel según GEDI",
             "descripcion": (
                 "GEDI no es una serie anual comparable. Por eso se muestra la distribución "
-                "de alturas disponibles y no una línea temporal artificial."
+                "de alturas disponibles y no una serie temporal artificial."
             ),
             "tipo": "barras",
             "columnas": normalizar_histograma_gedi(histograma),
@@ -4034,6 +4063,371 @@ def crear_grafica_barras_color(grafica, altura=None):
     )
 
 
+def resolver_capa_contextual(modo_analisis, modo_comparador, capas_activas):
+    """Mantiene la gráfica alineada con la última evidencia activada en el mapa."""
+
+    comparadores = {
+        "JRC TMF": "Estado forestal JRC",
+        "ESRI LULC": "Uso y cobertura ESRI",
+        "NDVI Sentinel-2": "Vegetación NDVI",
+    }
+    if modo_comparador in comparadores:
+        return comparadores[modo_comparador]
+
+    opciones = list(dict.fromkeys(capas_activas))
+    if not opciones and modo_analisis == MODO_CORREDORES:
+        opciones = ["Conectividad y fragmentos"]
+    if not opciones:
+        return "Sectores para revisión"
+
+    clave_activas = f"capas_contextuales_anteriores_{modo_analisis}"
+    clave_elegida = f"capa_contextual_{modo_analisis}"
+    anteriores = set(st.session_state.get(clave_activas, []))
+    nuevas = [capa for capa in opciones if capa not in anteriores]
+    elegida_anterior = st.session_state.get(clave_elegida)
+    if nuevas:
+        elegida = nuevas[-1]
+    elif elegida_anterior in opciones:
+        elegida = elegida_anterior
+    else:
+        elegida = opciones[0]
+    st.session_state[clave_activas] = opciones
+    st.session_state[clave_elegida] = elegida
+    return elegida
+
+
+def configuracion_grafica_contextual(capa):
+    """Relaciona cada evidencia cartográfica con una gráfica interpretable."""
+
+    configuraciones = {
+        "Estado forestal JRC": {
+            "fuente": "JRC Tropical Moist Forest",
+            "series": ["Deforestación (ha)", "Degradación (ha)"],
+            "titulo": "Deforestación y degradación por año",
+            "descripcion": "Superficie anual clasificada por JRC TMF dentro del área analizada.",
+            "colores": ["#C73E3A", "#F2A541"],
+        },
+        "Deforestación JRC": {
+            "fuente": "JRC Tropical Moist Forest",
+            "series": ["Deforestación (ha)"],
+            "titulo": "Deforestación por año",
+            "descripcion": "Hectáreas clasificadas anualmente como deforestación por JRC TMF.",
+            "colores": [COLORES_CAMBIOS["Deforestación JRC"]],
+        },
+        "Degradación JRC": {
+            "fuente": "JRC Tropical Moist Forest",
+            "series": ["Degradación (ha)"],
+            "titulo": "Degradación por año",
+            "descripcion": "Hectáreas clasificadas anualmente como degradación por JRC TMF.",
+            "colores": [COLORES_CAMBIOS["Degradación JRC"]],
+        },
+        "Pérdida Hansen post-2020": {
+            "fuente": "Hansen Global Forest Change",
+            "series": ["Pérdida (ha)"],
+            "titulo": "Pérdida de cobertura arbórea por año",
+            "descripcion": "Hectáreas de pérdida registradas por Hansen desde 2021.",
+            "anio_min": 2021,
+            "colores": [COLORES_FUENTES["Hansen GFC"]],
+        },
+        "Pérdida Hansen 2001-2020": {
+            "fuente": "Hansen Global Forest Change",
+            "series": ["Pérdida (ha)"],
+            "titulo": "Pérdida histórica de cobertura arbórea",
+            "descripcion": "Hectáreas de pérdida anual registradas por Hansen entre 2001 y 2020.",
+            "anio_max": 2020,
+            "colores": [COLORES_FUENTES["Hansen GFC"]],
+        },
+        "Cobertura arbórea persistente": {
+            "fuente": "Hansen Global Forest Change",
+            "series": ["Pérdida (ha)"],
+            "titulo": "Pérdida anual de cobertura arbórea",
+            "descripcion": "Serie de pérdida que ayuda a interpretar la cobertura persistente mostrada en el mapa.",
+            "colores": [COLORES_FUENTES["Hansen GFC"]],
+        },
+        "Uso y cobertura ESRI": {
+            "fuente": "ESRI Land Use / Land Cover",
+            "series": ["Cobertura arbórea (ha)"],
+            "titulo": "Cobertura arbórea por año",
+            "descripcion": "Hectáreas clasificadas como árboles en cada edición anual de ESRI.",
+            "colores": [COLORES_FUENTES["ESRI LULC"]],
+        },
+        "Transiciones ESRI": {
+            "fuente": "ESRI Land Use / Land Cover",
+            "series": ["Cobertura arbórea (ha)"],
+            "titulo": "Cobertura arbórea por año",
+            "descripcion": "La serie anual aporta contexto para interpretar las transiciones de la clase árboles.",
+            "colores": [COLORES_FUENTES["ESRI LULC"]],
+        },
+        "ΔNDVI": {
+            "fuente": "Sentinel-2 · NDVI",
+            "series": ["NDVI medio"],
+            "titulo": "Vigor medio de la vegetación por año",
+            "descripcion": "Promedio anual del NDVI; se interpreta como señal corroborativa, no como cobertura.",
+            "colores": [COLORES_FUENTES["NDVI"]],
+        },
+        "Vegetación NDVI": {
+            "fuente": "Sentinel-2 · NDVI",
+            "series": ["NDVI medio"],
+            "titulo": "Vigor medio de la vegetación por año",
+            "descripcion": "Promedio anual del NDVI para comparar el vigor vegetal entre años.",
+            "colores": [COLORES_FUENTES["NDVI"]],
+        },
+        "Altura GEDI": {
+            "fuente": "GEDI · altura del dosel",
+            "series": ["Observaciones"],
+            "titulo": "Distribución de la altura del dosel",
+            "descripcion": "Número de observaciones disponibles por intervalo de altura; GEDI no es una serie anual.",
+            "colores": [COLORES_FUENTES["GEDI"]],
+        },
+    }
+    return configuraciones.get(capa)
+
+
+def crear_grafica_serie_barras(
+    grafica,
+    series=None,
+    colores=None,
+    anio_min=None,
+    anio_max=None,
+    altura=245,
+):
+    """Construye series temporales o distribuciones únicamente con barras."""
+
+    columnas = grafica["columnas"]
+    eje_x = next(iter(columnas))
+    series_disponibles = list(columnas)[1:]
+    series = [serie for serie in (series or series_disponibles) if serie in columnas]
+    if not series:
+        series = series_disponibles
+    valores_x = list(columnas.get(eje_x, []))
+    filas = []
+    periodos = []
+    for indice, valor_x in enumerate(valores_x):
+        try:
+            valor_numerico_x = float(valor_x)
+        except (TypeError, ValueError):
+            valor_numerico_x = None
+        if anio_min is not None and valor_numerico_x is not None and valor_numerico_x < anio_min:
+            continue
+        if anio_max is not None and valor_numerico_x is not None and valor_numerico_x > anio_max:
+            continue
+        periodo = str(int(valor_x)) if isinstance(valor_x, int) else str(valor_x)
+        periodos.append(periodo)
+        for serie in series:
+            valores_serie = columnas.get(serie, [])
+            valor = float(valores_serie[indice] or 0) if indice < len(valores_serie) else 0.0
+            filas.append({"Periodo": periodo, "Serie": serie, "Valor": valor})
+
+    colores = list(colores or ["#1F8A70"])
+    if len(colores) < len(series):
+        colores.extend([colores[-1]] * (len(series) - len(colores)))
+    if all("(ha)" in serie for serie in series):
+        titulo_eje = "Superficie (ha)"
+        formato_tooltip = ",.2f"
+    elif series == ["NDVI medio"]:
+        titulo_eje = "NDVI medio"
+        formato_tooltip = ".3f"
+    elif series == ["Observaciones"]:
+        titulo_eje = "Observaciones"
+        formato_tooltip = ",.0f"
+    else:
+        titulo_eje = "Valor"
+        formato_tooltip = ",.2f"
+
+    base = alt.Chart(alt.Data(values=filas)).mark_bar(
+        cornerRadiusTopLeft=3,
+        cornerRadiusTopRight=3,
+    )
+    codificacion = {
+        "x": alt.X(
+            "Periodo:N",
+            sort=list(dict.fromkeys(periodos)),
+            title=eje_x,
+            axis=alt.Axis(
+                labelAngle=-45 if len(set(periodos)) > 10 else 0,
+                labelOverlap="greedy",
+                labelColor="#566176",
+                labelFontSize=10,
+                titleColor="#566176",
+                titleFontSize=11,
+                tickColor="#D6DEEB",
+                domainColor="#D6DEEB",
+            ),
+        ),
+        "y": alt.Y(
+            "Valor:Q",
+            title=titulo_eje,
+            scale=alt.Scale(zero=True),
+            axis=alt.Axis(
+                gridColor="#E1E6EE",
+                domain=False,
+                labelColor="#566176",
+                labelFontSize=10,
+                titleColor="#566176",
+                titleFontSize=11,
+                tickCount=4,
+            ),
+        ),
+        "color": alt.Color(
+            "Serie:N",
+            scale=alt.Scale(domain=series, range=colores[: len(series)]),
+            legend=(
+                alt.Legend(
+                    orient="top",
+                    direction="horizontal",
+                    title=None,
+                    labelColor="#062A5E",
+                    labelFontSize=10,
+                )
+                if len(series) > 1
+                else None
+            ),
+        ),
+        "tooltip": [
+            alt.Tooltip("Periodo:N", title=eje_x),
+            alt.Tooltip("Serie:N", title="Indicador"),
+            alt.Tooltip("Valor:Q", title=titulo_eje, format=formato_tooltip),
+        ],
+    }
+    if len(series) > 1:
+        codificacion["xOffset"] = alt.XOffset("Serie:N", sort=series)
+    return (
+        base.encode(**codificacion)
+        .properties(height=altura)
+        .configure_view(stroke=None)
+        .configure(background="#FFFFFF")
+    )
+
+
+def filtrar_tabla_serie(grafica, series=None, anio_min=None, anio_max=None):
+    """Devuelve una tabla accesible con exactamente los valores visibles en la gráfica."""
+
+    columnas = grafica["columnas"]
+    eje_x = next(iter(columnas))
+    series = [
+        serie
+        for serie in (series or list(columnas)[1:])
+        if serie in columnas
+    ]
+    indices = []
+    for indice, valor_x in enumerate(columnas.get(eje_x, [])):
+        try:
+            valor_numerico_x = float(valor_x)
+        except (TypeError, ValueError):
+            valor_numerico_x = None
+        if anio_min is not None and valor_numerico_x is not None and valor_numerico_x < anio_min:
+            continue
+        if anio_max is not None and valor_numerico_x is not None and valor_numerico_x > anio_max:
+            continue
+        indices.append(indice)
+    return {
+        nombre: [valores[indice] for indice in indices if indice < len(valores)]
+        for nombre, valores in columnas.items()
+        if nombre == eje_x or nombre in series
+    }
+
+
+def mostrar_grafica_contextual_dashboard(
+    resultados,
+    modo_analisis,
+    capa_contextual,
+    tipo_area,
+    finca_id,
+    subcuenca_nombre,
+    geometria_geojson,
+):
+    """Muestra debajo del resultado la gráfica vinculada con la evidencia activa."""
+
+    etiqueta_capa = capa_contextual or "Resumen del resultado"
+    st.markdown(
+        '<div class="grafica-contextual-cabecera"><small>Gráfica vinculada al mapa</small>'
+        f'<strong>{html_lib.escape(etiqueta_capa)}</strong></div>',
+        unsafe_allow_html=True,
+    )
+
+    if capa_contextual in (None, "Sectores para revisión"):
+        grafica = construir_graficas_dashboard(resultados, modo_analisis)["secundaria"]
+        st.markdown(
+            '<div class="grafica-contextual-nota">Resumen de las superficies detectadas '
+            'por los indicadores visibles en la preevaluación.</div>',
+            unsafe_allow_html=True,
+        )
+        st.altair_chart(
+            crear_grafica_barras_color(grafica, altura=220),
+            use_container_width=True,
+            theme=None,
+            key="grafica_contextual_resumen",
+        )
+        return
+
+    if capa_contextual == "Conectividad y fragmentos":
+        grafica = construir_graficas_dashboard(resultados, modo_analisis)["primaria"]
+        st.markdown(
+            f'<div class="grafica-contextual-nota">{html_lib.escape(grafica["descripcion"])}</div>',
+            unsafe_allow_html=True,
+        )
+        st.altair_chart(
+            crear_grafica_barras_color(grafica, altura=190),
+            use_container_width=True,
+            theme=None,
+            key="grafica_contextual_conectividad",
+        )
+        return
+
+    configuracion = configuracion_grafica_contextual(capa_contextual)
+    if not configuracion:
+        st.info("Esta evidencia se interpreta directamente en el mapa y en la lectura del resultado.")
+        return
+
+    st.markdown(
+        f'<div class="grafica-contextual-nota"><b>{html_lib.escape(configuracion["titulo"])}</b><br>'
+        f'{html_lib.escape(configuracion["descripcion"])}</div>',
+        unsafe_allow_html=True,
+    )
+    try:
+        with st.spinner(f"Preparando barras de {etiqueta_capa.lower()}..."):
+            grafica = calcular_serie_fuente(
+                tipo_area,
+                finca_id,
+                subcuenca_nombre,
+                geometria_geojson,
+                configuracion["fuente"],
+            )
+    except Exception as error:
+        st.warning(
+            "El mapa y el resultado permanecen disponibles, pero la gráfica de esta "
+            "evidencia no pudo prepararse en este momento."
+        )
+        with st.expander("Detalle técnico de la gráfica", expanded=False):
+            st.code(f"{type(error).__name__}: {error}")
+        return
+
+    st.altair_chart(
+        crear_grafica_serie_barras(
+            grafica,
+            series=configuracion.get("series"),
+            colores=configuracion.get("colores"),
+            anio_min=configuracion.get("anio_min"),
+            anio_max=configuracion.get("anio_max"),
+            altura=245,
+        ),
+        use_container_width=True,
+        theme=None,
+        key=f"grafica_contextual_{re.sub(r'[^a-z0-9]+', '_', capa_contextual.lower()).strip('_')}",
+    )
+    with st.expander("Ver valores de la gráfica", expanded=False):
+        st.dataframe(
+            filtrar_tabla_serie(
+                grafica,
+                series=configuracion.get("series"),
+                anio_min=configuracion.get("anio_min"),
+                anio_max=configuracion.get("anio_max"),
+            ),
+            hide_index=True,
+            use_container_width=True,
+        )
+
+
 def mostrar_graficas_dashboard(resultados, modo_analisis):
     """Muestra gráficas inmediatas sin abandonar el mapa principal."""
 
@@ -4098,7 +4492,7 @@ def mostrar_grafica_por_fuente(
         key="fuente_grafica_analisis",
         help=(
             "Cada gráfica conserva la unidad y el significado propios de su fuente. "
-            "No se mezclan indicadores incompatibles en una sola línea."
+            "No se mezclan indicadores incompatibles en una misma escala."
         ),
     )
     preparar = columna_accion.button(
@@ -4160,22 +4554,17 @@ def mostrar_grafica_por_fuente(
         "GEDI · altura del dosel": [COLORES_FUENTES["GEDI"]],
     }
     colores_series = paletas_fuente.get(fuente, ["#1F8A70"])
-    if grafica["tipo"] == "barras":
-        st.bar_chart(
-            columnas,
-            x=eje_x,
-            y=series,
-            color=colores_series[0],
-            height=380,
-        )
-    else:
-        st.line_chart(
-            columnas,
-            x=eje_x,
-            y=series,
-            color=(colores_series * len(series))[: len(series)],
-            height=380,
-        )
+    st.altair_chart(
+        crear_grafica_serie_barras(
+            grafica,
+            series=series,
+            colores=(colores_series * len(series))[: len(series)],
+            altura=360,
+        ),
+        use_container_width=True,
+        theme=None,
+        key=f"grafica_detalle_{re.sub(r'[^a-z0-9]+', '_', fuente.lower()).strip('_')}",
+    )
     st.download_button(
         "Descargar datos de la gráfica",
         data=json.dumps(
@@ -6041,9 +6430,18 @@ try:
                 )
 
         orden_capas_mapa = list(capas_activas)
-        capa_visible_inicial = capas_activas[0] if capas_activas else None
         if not capas_activas and not analiza_conectividad:
             st.sidebar.warning("Active al menos una capa territorial para mostrarla en el mapa.")
+
+    capa_contextual = resolver_capa_contextual(
+        modo_analisis,
+        modo_comparador,
+        capas_activas,
+    )
+    if modo_mapa == "Explorar capas":
+        capa_visible_inicial = (
+            capa_contextual if capa_contextual in capas_activas else None
+        )
 
     firma_analisis_actual = (
         METHODOLOGY_VERSION,
@@ -6184,11 +6582,16 @@ try:
                     )
         else:
             resultados = st.session_state["resultados_analisis"]
-            pestana_lectura, pestana_graficas = st.tabs(["Lectura", "Gráficas"])
-            with pestana_lectura:
-                mostrar_panel_dashboard(resultados, modo_analisis)
-            with pestana_graficas:
-                mostrar_graficas_dashboard(resultados, modo_analisis)
+            mostrar_panel_dashboard(resultados, modo_analisis)
+            mostrar_grafica_contextual_dashboard(
+                resultados=resultados,
+                modo_analisis=modo_analisis,
+                capa_contextual=capa_contextual,
+                tipo_area=tipo_area,
+                finca_id=finca_seleccionada,
+                subcuenca_nombre=subcuenca_seleccionada,
+                geometria_geojson=geometria_dibujada_json,
+            )
             st.button(
                 "Abrir detalle completo y descargas",
                 use_container_width=True,

@@ -50,3 +50,13 @@ ESRI, GEDI, NDVI y Almanaque Azul conservan su significado.
   breve cuando aporta contexto.
 - El panel lateral utiliza 315 px y una separación vertical densa, manteniendo controles
   de al menos 44 px y foco visible.
+
+## Gráficas contextuales 4.2
+
+- Todas las series temporales se representan mediante barras; no se emplean líneas.
+- La gráfica principal aparece debajo de la lectura rápida en la columna derecha y se
+  vincula con la última evidencia activada en el panel de capas.
+- Deforestación y degradación JRC se expresan en hectáreas por año con colores distintos
+  y etiquetas textuales; Hansen, ESRI y NDVI conservan sus unidades propias.
+- GEDI mantiene un histograma de alturas porque no constituye una serie anual.
+- El mapa y la gráfica contextual cambian juntos cuando se activa una evidencia nueva.
