@@ -4,6 +4,19 @@ Este historial documenta la evolución de la aplicación UX. Las versiones sigue
 el formato `MAJOR.MINOR.PATCH`: una versión principal, mejoras compatibles y
 correcciones compatibles, respectivamente.
 
+## [5.1.0] - 2026-10-29 — visor centrado en el mapa
+
+- El mapa pasa a ocupar todo el ancho disponible y 780 px de alto en escritorio; la
+  lectura rápida, el ERI y la gráfica se presentan debajo cuando existe un resultado.
+- Sustituye las cuatro opciones de radio del área por un selector compacto que conserva
+  exactamente las mismas unidades territoriales y reglas de recorte.
+- Reduce las acciones principales a «Crear/Actualizar análisis» y «Resultados y
+  descargas», con «Cambiar enfoque» como acción secundaria.
+- Elimina la columna derecha permanente, los accesos duplicados al detalle y la
+  explicación redundante de la vista cartográfica.
+- Convierte la navegación superior en pestañas visuales ligeras, sin apariencia de
+  botones grandes, y conserva foco visible y controles de al menos 44 px.
+
 ## [5.0.0] - 2026-10-29 — portal cartográfico con ERI indicativo
 
 - Incorpora el Índice de Resiliencia Ecológica (ERI) como lectura complementaria entre

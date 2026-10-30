@@ -119,7 +119,7 @@ st.markdown(
     .stApp {background: var(--institucional-fondo); color: var(--institucional-tinta);}
     html {color-scheme: light;}
     .block-container {
-        padding: 3.5rem .55rem .85rem;
+        padding: 3.35rem .45rem .7rem;
         max-width: none;
     }
     .block-container [data-testid="stVerticalBlock"] {gap: .55rem;}
@@ -796,9 +796,9 @@ st.markdown(
         justify-content: space-between;
         align-items: center;
         gap: .65rem;
-        min-height: 54px;
-        margin: 0 0 .3rem;
-        padding: .5rem .75rem;
+        min-height: 46px;
+        margin: 0 0 .2rem;
+        padding: .4rem .65rem;
         border: 0;
         border-bottom: 5px solid var(--institucional-verde-acento);
         border-radius: 0;
@@ -866,7 +866,7 @@ st.markdown(
     .mapa-nota {margin:0 0 .35rem;padding:.35rem .5rem;border-left:4px solid var(--institucional-verde-acento);background:#f3f8e9;color:var(--institucional-suave);font-size:.8rem;line-height:1.35;}
     .dashboard-area {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 1px;
         margin: .15rem 0 .45rem;
         border: 1px solid var(--institucional-borde);
@@ -896,7 +896,7 @@ st.markdown(
         overflow-wrap: anywhere;
     }
     .dashboard-estado {
-        margin: .65rem 0 .85rem;
+        margin: .35rem 0 .5rem;
         padding: .75rem .85rem;
         border-left: 4px solid var(--institucional-verde-acento);
         background: #f3f8e9;
@@ -991,6 +991,10 @@ st.markdown(
         background: #ffffff;
         border-radius: 6px !important;
     }
+    .resultado-bajo-mapa {
+        margin-top: .2rem;
+        padding: .2rem .1rem 0;
+    }
     iframe[title="streamlit_folium.st_folium"] {
         border: 1px solid var(--institucional-borde);
         border-radius: 6px;
@@ -1010,6 +1014,7 @@ st.markdown(
         .cabecera-app h1 {font-size: 2rem; line-height: 1.15;}
         .visor-barra {align-items: flex-start; flex-direction: column;}
         .visor-contexto {justify-content: flex-start;}
+        .dashboard-area {grid-template-columns: 1fr 1fr;}
     }
     @media (max-width: 480px) {
         .flujo-pasos, .contexto-analisis, .entregables, .resumen-principiante,
@@ -1046,7 +1051,7 @@ def secreto_opcional(nombre, predeterminado=None):
         return predeterminado
 
 
-APP_VERSION = "UX-5.0-PORTAL-ERI"
+APP_VERSION = "UX-5.1-MAPA-PRIMERO"
 
 COLORES_FUENTES = {
     "JRC TMF": "#1F8A70",
@@ -4105,7 +4110,6 @@ def mostrar_barra_visor(contenido_modo):
           <div class="visor-contexto">
             <span class="visor-etiqueta">{html_lib.escape(contenido_modo['titulo'])}</span>
             <span class="visor-etiqueta">ERI complementario</span>
-            <span class="visor-etiqueta">Resultado indicativo</span>
           </div>
         </header>
         """,
@@ -6721,29 +6725,25 @@ analiza_cambios = modo_analisis in (MODO_TERRITORIAL, MODO_INTEGRAL)
 analiza_conectividad = modo_analisis in (MODO_CORREDORES, MODO_INTEGRAL)
 mostrar_barra_visor(contenido_modo)
 if seccion_tablero == "Análisis":
-    columna_contexto, columna_volver, columna_cambiar = st.columns([4, 1, 1])
-    columna_volver.button(
-        "Volver al mapa",
-        use_container_width=True,
-        on_click=volver_al_mapa,
-        key="volver_mapa_resultados",
-    )
+    st.caption("Resultados, metodología y descargas del área analizada.")
 else:
-    columna_contexto, columna_cambiar = st.columns([5, 1])
-columna_contexto.caption(
-    f"{contenido_modo['pregunta']} · {contenido_modo['resultado']}"
-)
-if columna_cambiar.button("Cambiar análisis", use_container_width=True):
-    limpiar_estado_resultados()
-    st.session_state.pop("modo_analisis", None)
-    st.session_state["mostrar_resultados"] = False
-    st.rerun()
+    st.caption(f"{contenido_modo['pregunta']} · {contenido_modo['resultado']}")
 
 try:
     iniciar_earth_engine()
 
     st.sidebar.markdown("## Área de análisis")
-    st.sidebar.caption(f"{contenido_modo['titulo']} · seleccione la unidad territorial")
+    st.sidebar.caption(contenido_modo["titulo"])
+    if st.sidebar.button(
+        "Cambiar enfoque",
+        use_container_width=True,
+        key="cambiar_enfoque_sidebar",
+        help="Volver a la selección de preevaluación territorial, conectividad o análisis integral.",
+    ):
+        limpiar_estado_resultados()
+        st.session_state.pop("modo_analisis", None)
+        st.session_state["mostrar_resultados"] = False
+        st.rerun()
     etiquetas_area = {
         "Finca de monitoreo": "Finca registrada (recomendado)",
         "Subcuenca": "Subcuenca de la CHCP",
@@ -6751,23 +6751,13 @@ try:
         "Toda la cuenca": "Toda la cuenca (análisis regional)",
     }
     descripciones_area = {
-        "Finca de monitoreo": (
-            "Opción más rápida. Seleccione una finca disponible después de autorizar el acceso."
-        ),
-        "Subcuenca": (
-            "La subcuenca se recorta automáticamente al límite de la cuenca principal. "
-            "Las partes exteriores no participan en el análisis."
-        ),
-        "Dibujar polígono en el mapa": (
-            "Úsela cuando el área no aparece en la lista. Cualquier parte dibujada fuera "
-            "de la cuenca principal se excluye automáticamente."
-        ),
-        "Toda la cuenca": (
-            "Evalúa la región completa. Requiere más tiempo y es menos detallada para decisiones prediales."
-        ),
+        "Finca de monitoreo": "Seleccione una finca registrada.",
+        "Subcuenca": "Se recorta automáticamente al límite de la CHCP.",
+        "Dibujar polígono en el mapa": "La parte exterior de la CHCP se excluye.",
+        "Toda la cuenca": "Análisis regional; puede requerir más tiempo.",
     }
-    tipo_area = st.sidebar.radio(
-        "¿Qué área desea analizar?",
+    tipo_area = st.sidebar.selectbox(
+        "Unidad territorial",
         ["Finca de monitoreo", "Subcuenca", "Dibujar polígono en el mapa", "Toda la cuenca"],
         format_func=lambda valor: etiquetas_area[valor],
         help="Se recomienda iniciar con una finca. El análisis de toda la cuenca puede tardar varios minutos.",
@@ -6981,19 +6971,12 @@ try:
             )
 
     st.sidebar.markdown("---")
-    titulo_vista_mapa = (
-        "### Mapa recomendado"
-        if modo_analisis == MODO_INTEGRAL
-        else "### Vista inicial del mapa"
-    )
-    st.sidebar.markdown(titulo_vista_mapa)
+    st.sidebar.markdown("### Capas del mapa")
     opciones_objetivo = PERFILES_POR_MODO[modo_analisis]
     if len(opciones_objetivo) == 1:
         objetivo = opciones_objetivo[0]
         if modo_analisis == MODO_INTEGRAL:
-            st.sidebar.success(
-                "La aplicación preparará automáticamente una vista resumida para decidir."
-            )
+            st.sidebar.caption("Vista combinada preparada automáticamente.")
         else:
             st.sidebar.markdown(f"**{objetivo}**")
     else:
@@ -7007,18 +6990,6 @@ try:
         )
     perfil = PERFILES_VISUALIZACION[objetivo]
     st.sidebar.caption(perfil["descripcion"])
-    with st.sidebar.expander("Acerca de esta vista", expanded=False):
-        if modo_analisis == MODO_INTEGRAL:
-            st.caption(
-                "El mapa reúne los sectores prioritarios, corredores, fragmentos clave "
-                "y la conexión potencial cuando existe. No necesita escoger capas para "
-                "obtener la conclusión integrada."
-            )
-        else:
-            st.caption(
-                "Esta selección solo organiza el mapa. Las fuentes y reglas del análisis "
-                "se mantienen fijas para que los resultados sean comparables."
-            )
 
     opciones_capas = [
         "Sectores para revisión",
@@ -7392,23 +7363,17 @@ try:
         st.session_state.get("firma_analisis") == firma_analisis_actual
     )
     if seccion_tablero == "Análisis":
-        st.sidebar.markdown("## Resultados")
-        st.sidebar.caption(
-            "Está consultando el resultado preparado para el área seleccionada."
-        )
+        st.sidebar.markdown("## Acciones")
         st.sidebar.button(
             "Volver al mapa",
+            type="primary",
             use_container_width=True,
             key="volver_mapa_sidebar",
             on_click=volver_al_mapa,
         )
         solicitar_analisis = False
     else:
-        st.sidebar.markdown("## Crear análisis")
-        st.sidebar.caption(
-            "Los controles anteriores cambian la vista. Este botón ejecuta los cálculos "
-            "para el área seleccionada."
-        )
+        st.sidebar.markdown("## Acciones")
         solicitar_analisis = st.sidebar.button(
             "Actualizar análisis" if analisis_actual else "Crear análisis",
             type="primary",
@@ -7418,7 +7383,7 @@ try:
         )
         if analisis_actual:
             st.sidebar.button(
-                "Detalle y descargas",
+                "Resultados y descargas",
                 use_container_width=True,
                 key="abrir_resultados_sidebar",
                 on_click=abrir_resultados_contextuales,
@@ -7429,21 +7394,20 @@ try:
             )
 
     if seccion_tablero == "Análisis":
-        st.markdown("### Análisis del área seleccionada")
+        st.markdown("### Resultados y descargas")
         st.caption(
-            "Consulte la lectura rápida, el detalle por tema, las descargas y una "
-            "gráfica por fuente sin volver a cargar el mapa."
+            "Consulte el detalle por tema y descargue los archivos de respaldo."
         )
         columna_panel = st.container(border=True)
         mapa_resultados_contenedor = None
     else:
-        columna_mapa, columna_panel = st.columns([2.55, 1], gap="small")
-        columna_mapa.markdown(
+        st.markdown(
             '<div class="mapa-cabecera"><small>Centro del análisis</small>'
             '<strong>Evidencia cartográfica</strong></div>',
             unsafe_allow_html=True,
         )
-        mapa_resultados_contenedor = columna_mapa.container(border=True)
+        mapa_resultados_contenedor = st.container(border=True)
+        columna_panel = st.container(border=True)
 
     with columna_panel:
         st.markdown(
@@ -7507,17 +7471,6 @@ try:
                     geometria_geojson=geometria_dibujada_json,
                     capas_activas=capas_activas,
                 )
-            st.button(
-                "Abrir detalle completo y descargas",
-                use_container_width=True,
-                key="abrir_resultados_panel",
-                on_click=abrir_resultados_contextuales,
-                help=(
-                    "Mantiene este tablero compacto. El detalle incluye todas las tablas, "
-                    "series por fuente, archivos geográficos e informe."
-                ),
-            )
-
         if solicitar_analisis:
             firma_anterior = st.session_state.get("firma_analisis")
             with st.status(
@@ -7605,8 +7558,8 @@ try:
                 resultados_nuevos["modo_analisis"] = modo_analisis
                 st.session_state["resultados_analisis"] = resultados_nuevos
                 st.session_state["firma_analisis"] = firma_analisis_actual
-                # El resultado aparece en la columna derecha sin ocultar el mapa.
-                # La vista extensa se abre únicamente si el usuario solicita el detalle.
+                # El resultado aparece debajo del mapa, que conserva el ancho completo.
+                # La vista extensa se abre únicamente si el usuario solicita las descargas.
                 st.session_state["mostrar_resultados"] = False
                 if firma_anterior != firma_analisis_actual:
                     st.session_state.pop("pdf_analisis", None)
@@ -8297,7 +8250,7 @@ try:
     with mapa_resultados_contenedor:
         st_folium(
             mapa,
-            height=650,
+            height=780,
             use_container_width=True,
             returned_objects=[],
             key=(

@@ -187,12 +187,13 @@ class ModosInterfazTests(unittest.TestCase):
         self.assertIn("Relación entre fragmentos", codigo)
         self.assertIn("Resultados completos", codigo)
         self.assertIn("Crear análisis", codigo)
-        self.assertIn("Detalle y descargas", codigo)
-        self.assertIn("Abrir detalle completo y descargas", codigo)
+        self.assertIn("Resultados y descargas", codigo)
+        self.assertNotIn('"Detalle y descargas"', codigo)
+        self.assertNotIn("Abrir detalle completo y descargas", codigo)
         self.assertIn("Volver al mapa", codigo)
         self.assertIn('st.session_state["mostrar_resultados"] = False', codigo)
         self.assertIn(
-            "El resultado aparece en la columna derecha sin ocultar el mapa",
+            "El resultado aparece debajo del mapa, que conserva el ancho completo",
             codigo,
         )
         self.assertIn("Evolución por fuente", codigo)
@@ -216,8 +217,11 @@ class ModosInterfazTests(unittest.TestCase):
         self.assertIn("WGS 84 · EPSG:4326", portada)
         self.assertIn("#0a4393", portada.lower())
         self.assertIn("#77cc09", portada.lower())
-        self.assertIn('APP_VERSION = "UX-5.0-PORTAL-ERI"', visor)
-        self.assertIn("st.columns([2.55, 1]", visor)
+        self.assertIn('APP_VERSION = "UX-5.1-MAPA-PRIMERO"', visor)
+        self.assertNotIn("st.columns([2.55, 1]", visor)
+        self.assertIn("height=780", visor)
+        self.assertIn("tipo_area = st.sidebar.selectbox", visor)
+        self.assertIn("mapa_resultados_contenedor = st.container", visor)
         self.assertIn('[data-collapsed="true"]', visor)
         self.assertIn("width: 0 !important", visor)
         self.assertIn("flex-basis: 0 !important", visor)

@@ -66,13 +66,15 @@ st.markdown(
     .portal-chip{padding:.28rem .62rem;border:1px solid rgba(255,255,255,.5);border-radius:999px;font-size:.73rem;font-weight:700;color:#fff;white-space:nowrap;}
     .portal-chip.acento{border-color:var(--acento);background:var(--acento);color:#183400;}
     [data-testid="stSegmentedControl"] {
-        margin-bottom:.35rem;padding:0 .35rem;background:#fff;
-        border:1px solid var(--borde);border-radius:6px;
+        margin-bottom:.35rem;padding:0;background:transparent;
+        border:0;border-bottom:1px solid var(--borde);border-radius:0;
     }
     [data-testid="stSegmentedControl"] button[aria-checked="true"] {
         color:var(--azul)!important;box-shadow:inset 0 -4px 0 var(--acento);
     }
-    [data-testid="stSegmentedControl"] button {cursor:pointer;}
+    [data-testid="stSegmentedControl"] button {
+        cursor:pointer;border-radius:0!important;background:transparent!important;
+    }
     .stButton button[data-testid="stBaseButton-primary"] {
         border-color:var(--azul)!important;background:var(--azul)!important;color:#fff!important;font-weight:700;
     }

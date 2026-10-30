@@ -8,7 +8,7 @@ Este archivo adapta las recomendaciones de UI/UX al sistema institucional ya est
 - Navegación principal persistente: Mapa, Metodología y ayuda, y Acerca del visor.
   Los resultados no ocupan una pestaña global: se abren únicamente después de ejecutar.
 - Una vez elegido el análisis, la pantalla se organiza como visor: controles del área y
-  capas a la izquierda, mapa como elemento dominante y lectura rápida a la derecha.
+  capas a la izquierda, mapa a ancho completo como elemento dominante y resultados debajo.
 - La explicación inicial desaparece durante el trabajo para no competir con el mapa.
 - La ruta principal prioriza acción y decisión: configurar el área, ejecutar, leer la
   conclusión y revisar el mapa. La explicación técnica aparece únicamente cuando se solicita.
@@ -67,14 +67,14 @@ Los colores originales de Almanaque Azul (`#345a01`, `#a1d303`, `#e0c504`) solo 
   permanecen en bloques separados.
 - Acción Crear análisis: botón primario al final del panel lateral; distingue los
   controles que solo cambian la visualización de la acción que ejecuta los cálculos.
-- Tablero principal: mapa ancho acompañado por una columna de resultado con la unidad,
-  superficie, conclusión y cuatro indicadores clave.
-- Resultados inmediatos: el mapa permanece visible y la columna derecha alterna entre
+- Tablero principal: mapa a ancho completo; la unidad, superficie, conclusión y los
+  indicadores aparecen en una franja de resultados situada debajo.
+- Resultados inmediatos: el mapa permanece visible y el bloque inferior alterna entre
   lectura rápida y gráficas compactas. Las gráficas principales se forman con el
   resultado ya calculado, usan barras a color con valores directos y ofrecen una tabla
   de valores como alternativa accesible.
 - Resultados contextuales extensos: pestañas temáticas, descargas y una gráfica por
-  fuente solicitada bajo demanda. Se abren con «Detalle y descargas», ofrecen «Volver
+  fuente solicitada bajo demanda. Se abren con «Resultados y descargas», ofrecen «Volver
   al mapa» y no vuelven a construir el mapa.
 - Resultados completos: pestañas visibles por tema —resumen, cambios territoriales,
   corredores y bosque/conectividad—; no se eliminan datos ni se esconden tras casillas.
@@ -96,7 +96,7 @@ Los colores originales de Almanaque Azul (`#345a01`, `#a1d303`, `#e0c504`) solo 
 ## Reglas de interacción
 
 - La cobertura institucional se configura una sola vez mediante un asset privado; la interfaz pública no solicita shapefiles.
-- Antes de ejecutar solo se muestran área, superficie y vista; períodos, fuentes y entregables permanecen en un desplegable cerrado.
+- Antes de ejecutar se muestran el área, las capas y el mapa; períodos, fuentes y entregables permanecen en desplegables cerrados.
 - Después de ejecutar, los bloques completos de cambios, corredores y conectividad se activan por separado y comienzan cerrados.
 - Ninguna métrica, gráfico, tabla o descarga se elimina para reducir la densidad visual; solo cambia el momento en que se presenta.
 - Los controles del mapa permanecen en el panel lateral y los resultados se consultan por
@@ -113,8 +113,8 @@ Los colores originales de Almanaque Azul (`#345a01`, `#a1d303`, `#e0c504`) solo 
   funciona únicamente como control de rango y no sustituye la lectura principal de barras.
 - Las series se calculan una por vez, se almacenan temporalmente en caché y nunca bloquean
   la carga inicial del mapa o del resultado principal.
-- Nunca se muestra una sección de resultados vacía antes de ejecutar. Al finalizar el
-  cálculo, la aplicación abre el resultado automáticamente.
+- Antes de ejecutar solo aparece una indicación compacta bajo el mapa; no se reserva una
+  columna permanente para resultados vacíos. Al finalizar, la lectura rápida aparece debajo.
 - La conectividad se presenta con parches, estructura esencial, ruta potencial al corredor y separaciones en capas independientes.
 - La lectura principal usa «fragmentos cercanos o separados»; nodo, arista, componente y densidad quedan reservados para el detalle técnico opcional.
 - Los fragmentos se muestran por defecto. La red completa nunca se dibuja: la capa técnica usa el árbol mínimo de cada grupo, con trazo verde oscuro y halo blanco.
