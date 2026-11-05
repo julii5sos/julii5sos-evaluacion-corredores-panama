@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: conectividad-panama
+    runtime: docker
+    plan: starter
+    envVars:
+      - key: EE_PROJECT
+        value: ee-julissaguevaravega
+      - key: EE_ASSET_BOSQUE_2021
+        value: projects/ee-julissaguevaravega/assets/CBOTB_2021_BOSQUE
+      - key: EE_ASSET_SubCuencas
+        value: projects/ee-julissaguevaravega/assets/SubCuenca_CHCP
+      - key: EE_SERVICE_ACCOUNT_JSON   # pega aquí el contenido del JSON de la cuenta de servicio
+        sync: false

@@ -1,0 +1,8 @@
+FROM python:3.12-slim
+RUN apt-get update && apt-get install -y --no-install-recommends libgdal-dev gdal-bin && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY . .
+RUN pip install --no-cache-dir -r requirements.txt
+WORKDIR /app/portal
+ENV PORT=8000
+CMD ["sh", "-c", "gunicorn app:app --bind 0.0.0.0:${PORT} --workers 2 --threads 4 --timeout 300"]
