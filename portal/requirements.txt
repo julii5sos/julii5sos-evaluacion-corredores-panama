@@ -1,0 +1,15 @@
+flask>=3.0
+numpy>=1.26
+scipy>=1.11
+geopandas>=0.14
+shapely>=2.0
+pyproj>=3.6
+rasterio>=1.3
+scikit-image>=0.22
+pillow>=10.0
+requests>=2.31
+networkx>=3.2          # red de parches (bosque_conectividad.py)
+pyshp>=2.3             # lectura de shapefiles (bosque_conectividad.py)
+earthengine-api>=1.0     # motor con datos reales y verificación en vivo
+reportlab>=4.0         # ficha PDF
+gunicorn>=22.0         # servidor de producción (gunicorn app:app)

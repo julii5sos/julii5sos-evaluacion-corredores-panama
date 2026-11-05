@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% from "_macros.html" import hero %}
+{% block title %}Uso de datos · {{ sitio.nombre }}{% endblock %}
+{% block body %}
+<main>
+  {% call hero('Catálogo de datos', 'Uso de datos', 'Las fuentes que usa el motor de la Cuenca del Canal, su resolución y periodo, y cómo se conecta con Google Earth Engine.') %}
+    <a class="btn btn-o" href="#cita">Cómo citar</a>
+  {% endcall %}
+
+  <section class="sec">
+    <div class="wrap reg" style="display:flex;flex-direction:column;gap:44px">
+      <div>
+        <h2>Capas vectoriales y ráster</h2>
+        <div class="tbl"><table>
+          <thead><tr><th>Capa</th><th class="c">Estado</th><th>Tipo</th><th>Resolución / escala</th><th>Periodo</th><th>Fuente</th></tr></thead>
+          <tbody>
+          {% for n, tipo, res, per, estado, fuente in catalogo %}
+            <tr><td><b>{{ n }}</b></td>
+              <td class="c"><span class="tag {{ {'real': 'real', 'gee': 'res', 'motor': 'demo'}[estado] }}">{{ {'real': 'Archivo', 'gee': 'Earth Engine', 'motor': 'Motor'}[estado] }}</span></td>
+              <td>{{ tipo }}</td><td class="num">{{ res }}</td><td class="num">{{ per }}</td><td>{{ fuente }}</td></tr>
+          {% endfor %}
+          </tbody>
+        </table></div>
+        <p class="note-p" style="justify-content:flex-start;margin-top:12px">Archivo: capa del proyecto o servicio externo · Earth Engine: se consulta en vivo · Motor: calculado por ejecutar_motor.py.</p>
+      </div>
+
+      <div class="two">
+        <div class="prose">
+          <h2>Cómo funciona el motor</h2>
+          <p><b>ejecutar_motor.py</b> descarga de Earth Engine los insumos de la Cuenca del Canal + 10 km en una rejilla UTM de 30 m, calcula en Python las métricas FRAGSTATS, el ERI, la pérdida de conectividad, el riesgo y las prioridades, y deja GeoTIFF y capas para el visor en <b>static/data/motor/</b>.</p>
+          <p>La verificación de polígonos (<b>/api/verificar</b>) consulta Earth Engine en vivo para el polígono y el periodo elegidos. Sin Earth Engine usa los rásters que dejó el motor.</p>
+        </div>
+        <pre class="code"><span class="c"># Una vez</span>
+pip install -r requirements.txt earthengine-api
+earthengine authenticate
+<span class="k">set</span> EE_PROJECT=<span class="s">tu-proyecto-no-comercial</span>   <span class="c"># Mac/Linux: export</span>
+
+<span class="c"># Cada semana (alertas) o cada año (ERI)</span>
+python ejecutar_motor.py
+<span class="c"># Portal con verificación en vivo</span>
+python app.py</pre>
+      </div>
+
+      <div class="two" id="cita">
+        <div class="prose"><h2>Cómo citar</h2><p class="cita">Proyecto Copernicus – Conectividad Panamá ({{ anio }}). Portal SIG de conectividad ecológica por cuenca hidrográfica, versión prototipo. {{ sitio.atribucion }}</p></div>
+        <div class="prose"><h2>Licencia y condiciones</h2><p>Los datos Copernicus Sentinel son de acceso libre bajo la política de datos de Copernicus, que pide incluir la atribución anterior en cualquier producto derivado. La licencia de los productos del proyecto se definirá antes del lanzamiento; las capas de demostración no deben usarse para decisiones.</p></div>
+      </div>
+    </div>
+  </section>
+</main>
+{% endblock %}

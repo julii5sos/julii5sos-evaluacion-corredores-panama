@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% from "_macros.html" import hero, carta %}
+{% block title %}{{ sitio.nombre }} · Portal SIG{% endblock %}
+{% block body %}
+<main>
+  {% call hero('Conectividad ecológica de la Cuenca del Canal de Panamá', texto='Portal SIG para detectar dónde hay conectividad, dónde hay fragmentación, dónde se está perdiendo y dónde intervenir, en la Cuenca del Canal y su franja de 10 km. Integra JRC, Hansen, ESRI, GEDI y Sentinel en Google Earth Engine, los corredores de Almanaque Azul, el bosque 2021 de MiAMBIENTE, el Índice de Resiliencia Ecológica (ERI) y las Áreas Clave para la Biodiversidad.') %}
+    <a class="btn btn-w" href="plataforma.html">Abrir la plataforma</a>
+    <a class="btn btn-o" href="panel.html">Ver el panel por cuenca</a>
+  {% endcall %}
+
+  <section class="sec" style="padding-top:20px">
+    <div class="wrap" style="display:flex;flex-direction:column;gap:40px">
+      <div class="meta" aria-label="Especificaciones">
+        <div><span>Sistema de referencia</span><b>WGS 84 · EPSG:4326</b></div>
+        <div><span>Resolución</span><b>10 m · 30 m</b></div>
+        <div><span>Serie temporal</span><b>{{ periodo }}</b></div>
+        <div><span>Área de estudio</span><b>Cuenca del Canal + 10 km</b></div>
+        <div><span>Procesamiento</span><b>Google Earth Engine</b></div>
+      </div>
+      <div class="sec-c" style="margin:0">
+        <h2>Conectividad estructural de la Cuenca del Canal</h2>
+        <p>El motor calcula métricas FRAGSTATS (LPI, CONNECT, ED, ENN), el Índice de Resiliencia Ecológica, la pérdida y ganancia de bosque, las alertas recientes de radar y el riesgo de pérdida, y los resume por cuenca y subcuenca. Además puedes dibujar o subir el polígono de un área de interés y verificarlo en el momento.</p>
+      </div>
+      <form class="srch" id="hsearch" role="search" autocomplete="off">
+        <label for="hq" style="position:absolute;left:-9999px">Buscar cuenca</label>
+        <input id="hq" placeholder="Buscar subcuenca, p. ej. Río Chagres">
+        <button class="btn btn-p" type="submit">Buscar</button>
+        <div class="sugg" id="hsugg" hidden></div>
+      </form>
+      <div class="figs" id="hstats"></div>
+    </div>
+  </section>
+
+  <section class="sec gris">
+    <div class="wrap">
+      <div class="sec-c"><h2>Módulos del portal</h2></div>
+      <div class="cards">
+        {{ carta('Módulo 1', 'Panel de la cuenca', 'ERI, métricas de fragmentación, pérdida y ganancia de bosque y prioridades para la cuenca y cada subcuenca.', ('Subcuencas', 'Indicadores'), 'panel.html', 'Abrir el panel') }}
+        {{ carta('Módulo 2', 'Plataforma SIG', 'Preevaluación territorial, de corredores e integral para orientar visitas, capas del motor y verificación de polígonos dibujados o subidos.', ('Preevaluación', 'Polígonos'), 'plataforma.html', 'Abrir la plataforma') }}
+        {{ carta('Módulo 3', 'Uso de datos', 'Catálogo de capas con fuente, escala, resolución, periodo y estado, y cómo se sirven desde Earth Engine.', ('Catálogo', 'Earth Engine'), 'datos.html', 'Ver el catálogo') }}
+      </div>
+      {% if motor_modo == 'demo' %}<p class="note-p" style="margin-top:28px"><span class="tag demo">Demostración</span>El motor corrió sin Earth Engine: la cuenca y las subcuencas son reales; cobertura, ERI, alertas y prioridades son sintéticos hasta ejecutar python ejecutar_motor.py con EE_PROJECT.</p>{% endif %}
+    </div>
+  </section>
+</main>
+{% endblock %}
+{% block scripts %}<script src="static/data/motor/motor.js"></script>
+<script src="static/js/home.js"></script>{% endblock %}

@@ -1,0 +1,75 @@
+{#- Plantilla base: encabezado, pie y variables de color que vienen de config.py -#}
+{%- from "_macros.html" import logo, chev -%}
+<!doctype html>
+<html lang="es"{% if app_page %} class="app"{% endif %}>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{% block title %}{{ sitio.nombre }}{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap">
+{% if usa_mapa %}<link rel="stylesheet" href="static/css/leaflet.css">{% endif %}
+<link rel="stylesheet" href="static/css/portal.css">
+<style>
+  /* Simbología generada desde config.py */
+  :root{
+    --cor-alta:{{ cfg.CORREDORES['Alta'] }}; --cor-media:{{ cfg.CORREDORES['Media'] }}; --cor-baja:{{ cfg.CORREDORES['Baja'] }};
+    --nucleos:{{ cfg.COLOR_NUCLEOS }}; --perdida-a:{{ cfg.PERDIDA_RAMPA[0] }}; --perdida-b:{{ cfg.PERDIDA_RAMPA[1] }};
+  }
+</style>
+<script>window.PORTAL = { api: {{ (none if estatico else 'api/')|tojson }}, pagina: {{ activo|tojson }} };</script>
+</head>
+<body>
+<header class="nav">
+  <div class="nav-in">
+    <div class="util">
+      <a href="index.html">Inicio</a>
+      <a href="datos.html#cita">Atribución de datos</a>
+      <span>WGS 84 · EPSG:4326</span>
+    </div>
+    <div class="main-row">
+      <a class="wm" href="index.html" aria-label="Inicio · {{ sitio.nombre }}">{{ logo() }}<span><b>{{ sitio.nombre }}</b><small>{{ sitio.subtitulo }}</small></span></a>
+      <nav class="links" id="links" aria-label="Secciones">
+        {%- for ep, texto, archivo in menu %}
+        <a href="{{ archivo }}"{% if ep == activo %} aria-current="page"{% endif %}>{{ texto }}{{ chev('dn') }}</a>
+        {%- endfor %}
+      </nav>
+      <div class="nav-btns">
+        <a class="btn btn-w" href="plataforma.html">Explorar datos
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></a>
+        <details class="lang"><summary class="btn btn-o">ES {{ chev('dn') }}</summary>
+          <div class="lang-m"><button type="button" aria-checked="true">Español <span>✓</span></button><button type="button" disabled>English <span>pronto</span></button></div>
+        </details>
+        <button class="burger" id="burger" aria-expanded="false" aria-controls="links">Menú</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+{% block body %}{% endblock %}
+
+{% if not app_page %}
+<footer class="foot">
+  <div class="wrap">
+    <a class="wm" href="index.html">{{ logo() }}<span><b>{{ sitio.nombre }}</b><small>{{ sitio.subtitulo }}</small></span></a>
+    <p>{{ sitio.atribucion }} Cuencas hidrográficas y subcuencas: capas del proyecto. Límites internacionales: Natural Earth. Prototipo: las capas marcadas como demostración son sintéticas.</p>
+  </div>
+</footer>
+{% endif %}
+
+{% if usa_mapa or usa_datos %}
+{% if usa_mapa %}<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>{% endif %}
+<script src="static/data/datos.js"></script>
+<script src="static/js/common.js"></script>
+{% else %}
+<script>
+  (function () {
+    var b = document.getElementById('burger'), l = document.getElementById('links');
+    b && b.addEventListener('click', function () { var o = l.classList.toggle('open'); b.setAttribute('aria-expanded', o); });
+    document.addEventListener('click', function (e) { var d = document.querySelector('.lang'); if (d && d.open && !d.contains(e.target)) d.open = false; });
+  })();
+</script>
+{% endif %}
+{% block scripts %}{% endblock %}
+</body>
+</html>

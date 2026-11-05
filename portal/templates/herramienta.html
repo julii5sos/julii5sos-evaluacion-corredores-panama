@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% from "_macros.html" import hero, icono %}
+{% block title %}Conoce la herramienta · {{ sitio.nombre }}{% endblock %}
+{% block body %}
+<main>
+  {{ hero('Conoce la herramienta', 'Conoce la herramienta', 'Un ejercicio de conectividad estructural para la Cuenca del Canal de Panamá y su franja de 10 km. Detecta dónde hay conectividad, dónde hay fragmentación, dónde se está perdiendo y dónde hay riesgo de perderla, combina todo en el Índice de Resiliencia Ecológica (ERI) y señala dónde intervenir.') }}
+
+  <section class="sec">
+    <div class="wrap">
+      <div class="sec-c">
+        <span class="eyebrow">Motor de la cuenca · flujo de procesamiento</span>
+        <h2>De la imagen al corredor, en cuatro pasos</h2>
+        <p style="text-align:center">Earth Engine prepara los insumos; Python calcula las métricas, el ERI y las prioridades.</p>
+      </div>
+      <ol class="flowc">
+        {% for ic, etiqueta, titulo, texto in flujo %}
+        <li class="st"><div class="circ">{{ icono(ic) }}</div><p class="eyebrow">{{ loop.index }} · {{ etiqueta }}</p><h3>{{ titulo }}</h3><p>{{ texto }}</p></li>
+        {% endfor %}
+      </ol>
+    </div>
+  </section>
+
+
+  <section class="sec">
+    <div class="wrap">
+      <div class="sec-c">
+        <span class="eyebrow">Preevaluación para orientar visitas · método MT-2026.15</span>
+        <h2>Tres rutas de trabajo</h2>
+        <p style="text-align:center">Cada persona empieza por su pregunta. El resultado es indicativo: justifica por qué un área merece una revisión más detallada y dónde mirar primero.</p>
+      </div>
+      <div class="cards">
+        {% for k, m in modos_pre.items() %}
+        <article class="card"><span class="date">{{ loop.index }} · {{ m.titulo }}</span><h3>{{ m.pregunta }}</h3><p>{{ m.descripcion }}</p><p><b>Resultado:</b> {{ m.resultado }}</p></article>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <section class="sec gris">
+    <div class="wrap two">
+      <div class="reg">
+        <h2>Índice satelital de cambios</h2>
+        <p style="margin-bottom:12px">Puntaje = 2·JRC + 2·Hansen + 1,5·ESRI + 0,5·GEDI + 0,5·NDVI. Cada fuente suma una sola vez; máximo {{ '%.1f'|format(mi.PUNTAJE_MAXIMO) }} puntos.</p>
+        <div class="tbl"><table>
+          <thead><tr><th>Fuente</th><th class="c">Peso</th><th>Por qué</th></tr></thead>
+          <tbody>{% for k, n in [('tmf','JRC TMF'),('hansen','Hansen GFC'),('esri','ESRI LULC'),('gedi','GEDI'),('ndvi','NDVI Sentinel-2')] %}
+            <tr><td><b>{{ n }}</b></td><td class="c num">{{ '%.1f'|format(mi.PESOS_INDICE[k]) }}</td><td>{{ mi.JUSTIFICACION_PESOS[k] }}</td></tr>{% endfor %}</tbody>
+        </table></div>
+      </div>
+      <div class="reg">
+        <h2>Atención sugerida</h2>
+        <div class="tbl"><table>
+          <thead><tr><th>Prioridad</th><th>Regla</th></tr></thead>
+          <tbody>{% for k, v in mi.REGLAS_PRIORIDAD.items() %}<tr><td><b>{{ k|capitalize }}</b></td><td class="num">{{ v }}</td></tr>{% endfor %}</tbody>
+        </table></div>
+        <h2 style="margin-top:28px">Prioridad integrada de visita</h2>
+        <p style="margin-bottom:12px">Urgencia por cambios (hasta {{ '%.1f'|format(mi.PUNTAJE_MAXIMO) }}) + valor estratégico del corredor (hasta {{ '%.1f'|format(mi.REGLAS_PRIORIDAD_VISITA.aporte_maximo_corredor) }}). La estructura del bosque orienta dónde visitar, sin sumar puntos.</p>
+        <div class="tbl"><table><tbody>{% for k, v in mi.REGLAS_PRIORIDAD_VISITA.clases.items() %}<tr><td><b>{{ k }}</b></td><td>{{ v }}</td></tr>{% endfor %}</tbody></table></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="wrap reg">
+      <h2>Cuándo se activa cada señal</h2>
+      <div class="tbl"><table>
+        <thead><tr><th>Criterio</th><th>Justificación</th></tr></thead>
+        <tbody>{% for k, v in mi.JUSTIFICACION_UMBRALES.items() %}<tr><td><b>{{ k.replace('_', ' ')|capitalize }}</b></td><td>{{ v }}</td></tr>{% endfor %}</tbody>
+      </table></div>
+      <p class="note-p" style="justify-content:flex-start;margin-top:12px">Periodos fijos: JRC {{ mi.PERIODOS_ANALISIS.jrc_diagnostico }} · Hansen 2021–{{ mi.PERIODOS_ANALISIS.hansen_diagnostico }} · ESRI {{ mi.PERIODOS_ANALISIS.esri_inicial }}–{{ mi.PERIODOS_ANALISIS.esri_final }} · NDVI {{ mi.PERIODOS_ANALISIS.ndvi_inicial }}–{{ mi.PERIODOS_ANALISIS.ndvi_final }}. Fuente del método: evaluacion/METODOLOGIA.md.</p>
+    </div>
+  </section>
+  <section class="sec gris">
+    <div class="wrap two">
+      <div class="prose">
+        <h2>Por qué por cuenca</h2>
+        <p>Las cuencas son la unidad con la que ya se planifica el agua en Panamá. Medir la conectividad del bosque dentro de esos mismos límites permite cruzar los resultados con planes de manejo, concesiones y programas de restauración sin traducir entre mapas distintos.</p>
+        <p>En la Cuenca del Canal de Panamá el análisis baja un nivel más, a sus subcuencas, porque allí la relación entre cobertura forestal, sedimentos y disponibilidad de agua tiene consecuencias directas para la operación del Canal.</p>
+        <p>Los resultados se recalculan cada año con el mosaico Sentinel más reciente; los años anteriores a 2015 se completan con Landsat.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <h2 style="font-size:26px">Preguntas que responde</h2>
+        <ul class="qlist">
+          <li><b>¿Cuánto hábitat queda conectado en esta cuenca?</b><span>Índice de conectividad medio y área en núcleos de hábitat.</span></li>
+          <li><b>¿Dónde se rompen los corredores?</b><span>Tramos de corredor que cruzan pastos, cultivos o zonas urbanas.</span></li>
+          <li><b>¿Cómo cambió desde 2000?</b><span>Pérdida anual de bosque y variación del índice entre años.</span></li>
+          <li><b>¿Dónde restaurar primero?</b><span>Áreas sin bosque que más conectividad recuperarían si se restauran.</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="wrap reg">
+      <h2>Indicadores del motor</h2>
+      <div class="tbl"><table>
+        <thead><tr><th>Indicador</th><th>Unidad</th><th>Qué significa</th></tr></thead>
+        <tbody>{% for n, u, d in indicadores %}<tr><td><b>{{ n }}</b></td><td class="num">{{ u }}</td><td>{{ d }}</td></tr>{% endfor %}</tbody>
+      </table></div>
+    </div>
+  </section>
+</main>
+{% endblock %}

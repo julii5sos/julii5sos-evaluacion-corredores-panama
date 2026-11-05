@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% from "_macros.html" import hero, chev %}
+{% block title %}FAQ · {{ sitio.nombre }}{% endblock %}
+{% block body %}
+<main>
+  {{ hero('Preguntas frecuentes', 'FAQ', 'Respuestas sobre los datos, la frecuencia de actualización, las descargas y cómo leer los resultados del portal.') }}
+  <section class="sec">
+    <div class="wrap faq">
+      {% for q, a in faq %}<details{% if loop.first %} open{% endif %}><summary>{{ q }}{{ chev() }}</summary><p>{{ a }}</p></details>{% endfor %}
+    </div>
+  </section>
+</main>
+{% endblock %}

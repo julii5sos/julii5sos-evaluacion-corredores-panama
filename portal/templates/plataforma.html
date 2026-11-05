@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Plataforma SIG · {{ sitio.nombre }}{% endblock %}
+{% block body %}
+<main id="v-plataforma">
+  <aside class="side">
+    <div class="side-tabs" role="tablist" id="s-tabs">
+      <button role="tab" data-s="capas" aria-selected="true">Capas</button>
+      <button role="tab" data-s="poligono" aria-selected="false">Polígono</button>
+      <button role="tab" data-s="comparar" aria-selected="false">Comparar</button>
+      <button role="tab" data-s="base" aria-selected="false">Mapa base</button>
+    </div>
+    <div class="side-body" id="s-capas"></div>
+    <div class="side-body" id="s-poligono" hidden>
+      <p class="hint-p">Dibuja o sube el polígono de tu área de interés y verifícalo en el momento: señales satelitales de cambio, corredores, fragmentación del bosque y prioridad de visita, o el monitoreo de cobertura y ERI del motor.</p>
+      <div class="pbtns">
+        <button class="btn btn-s" id="p-draw" type="button">Dibujar en el mapa</button>
+        <label class="btn btn-s" for="p-file">Subir archivo</label>
+        <input id="p-file" type="file" accept=".geojson,.json,.kml,.kmz,.zip" hidden>
+      </div>
+      <p class="hint-p small" id="p-help">Formatos: GeoJSON, KML, KMZ o Shapefile comprimido en .zip. Para dibujar, haz clic en cada vértice y doble clic para cerrar.</p>
+      <div class="pinfo" id="p-info" hidden></div>
+      <div class="fld"><label for="p-tipo">Tipo de verificación</label><select id="p-tipo">
+        <option value="integral">Preevaluación integral (cambios + corredores)</option>
+        <option value="territorial">Preevaluación territorial (señales satelitales)</option>
+        <option value="corredores">Corredores y conectividad</option>
+        <option value="motor">Monitoreo de cobertura y ERI (motor del portal)</option></select></div>
+      <div class="fld" id="p-umbral-fld"><label for="p-umbral">Distancia máxima entre fragmentos</label><select id="p-umbral">
+        <option>100</option><option>200</option><option>300</option><option selected>500</option><option>750</option><option>1000</option><option>1500</option><option>2000</option></select><span class="hint">metros entre bordes</span></div>
+      <div class="sel-grid" id="p-anios" hidden>
+        <div class="fld"><label for="p-y0">Desde</label><select id="p-y0"></select></div>
+        <div class="fld"><label for="p-y1">Hasta</label><select id="p-y1"></select></div>
+      </div>
+      <div class="pbtns">
+        <button class="btn btn-p" id="p-run" type="button" disabled>Verificar polígono</button>
+        <button class="btn btn-s" id="p-clear" type="button" disabled>Borrar</button>
+      </div>
+      <p class="hint-p small" id="p-modo"></p>
+    </div>
+    <div class="side-body" id="s-comparar" hidden></div>
+    <div class="side-body" id="s-base" hidden>
+      <div class="bm" id="bm"></div>
+      <label class="op tgl"><span class="tg"><input type="checkbox" id="bm-lbl" checked><span></span></span>Nombres de lugares</label>
+      <label class="op tgl"><span class="tg"><input type="checkbox" id="bm-grat"><span></span></span>Cuadrícula de coordenadas</label>
+    </div>
+    <div class="side-foot">
+      <button class="btn btn-p" id="run-open"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 19h16M7 15V9m5 6V5m5 10v-4"/></svg>Realizar análisis</button>
+    </div>
+  </aside>
+  <div class="pmap2">
+    <div id="smap"></div>
+    <div class="drawbar" id="drawbar" hidden><b>Dibujando polígono</b><span id="draw-n">0 vértices</span><button class="btn btn-s" id="draw-undo" type="button">Deshacer</button><button class="btn btn-p" id="draw-end" type="button">Terminar</button><button class="btn btn-s" id="draw-cancel" type="button">Cancelar</button></div>
+    <button class="btn btn-s res-tab" id="res-reopen" hidden>Resultados ‹</button>
+    <div class="maplegend" id="m-legend"></div>
+    <div class="coords" id="coords">lat — · lon —</div>
+    <div class="busy" id="busy" hidden><div class="busy-c"><b id="busy-t">Procesando</b><div class="bar"><i id="busy-bar"></i></div><ul class="steps-l" id="busy-steps"></ul></div></div>
+  </div>
+  <aside class="res closed" id="res" aria-label="Resultados">
+    <div class="res-h"><div><span class="eyebrow" id="res-eyebrow">Resultados</span><h2 id="res-title">Resultados</h2><p id="res-sub"></p></div><button class="xbtn" id="res-close" aria-label="Cerrar resultados">›</button></div>
+    <div class="res-b" id="res-b"></div>
+  </aside>
+</main>
+<div class="modal" id="modal" hidden role="dialog" aria-modal="true" aria-labelledby="m-title">
+  <div class="dlg">
+    <div class="dlg-h"><h2 id="m-title">Realizar análisis</h2><button class="xbtn" id="m-close" aria-label="Cerrar">✕</button></div>
+    <div class="dlg-b">
+      <ol class="stp" id="m-steps"></ol>
+      <div class="dlg-c" id="m-body"></div>
+    </div>
+    <div class="dlg-f"><span class="err" id="m-err"></span><button class="btn btn-s" id="m-back">Atrás</button><button class="btn btn-p" id="m-next">Siguiente</button></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="static/data/motor/motor.js"></script>
+<script src="static/data/motor/motor_rejilla.js"></script>
+<script src="static/data/evaluacion.js"></script>
+<script src="static/js/canal.js"></script>
+<script src="static/js/preeval.js"></script>
+<script src="static/js/comparador.js"></script>
+<script src="static/js/plataforma_canal.js"></script>
+{% endblock %}

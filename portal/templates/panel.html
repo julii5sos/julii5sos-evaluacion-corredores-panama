@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Panel · Cuenca del Canal · {{ sitio.nombre }}{% endblock %}
+{% block body %}
+<main id="v-panel">
+  <div class="pnl">
+    <div class="pnl-top">
+      <div class="crumbs" id="crumbs"></div>
+      <h1 id="p-title">Cuenca del Canal</h1>
+      <div class="sel-grid">
+        <div class="fld"><label for="p-cuenca">Seleccionar cuenca</label><select id="p-cuenca">
+          <option value="cuenca">Cuenca del Canal de Panamá</option>
+          <option value="area">Cuenca del Canal + 10 km</option></select></div>
+        <div class="fld"><label for="p-sub">Seleccionar subcuenca</label><select id="p-sub"></select><span class="hint" id="p-subhint"></span></div>
+      </div>
+      <div class="pbtns">
+        <button class="btn btn-o" id="p-draw" type="button">Dibujar un área en el mapa</button>
+        <button class="btn btn-o" id="p-clear" type="button" hidden>Quitar el área dibujada</button>
+      </div>
+      <p class="lead-s" id="p-lead"></p>
+      <div class="tabs" role="tablist" id="p-tabs">
+        <button role="tab" data-t="resumen" aria-selected="true">Resumen</button>
+        <button role="tab" data-t="conectividad" aria-selected="false">Conectividad</button>
+        <button role="tab" data-t="cambio" aria-selected="false">Cobertura</button>
+        <button role="tab" data-t="prioridades" aria-selected="false">Prioridades</button>
+        <button role="tab" data-t="corredores" aria-selected="false">Corredores</button>
+        <button role="tab" data-t="comparar" aria-selected="false">Comparar</button>
+      </div>
+    </div>
+    <div class="wgs" id="p-wgs"></div>
+  </div>
+  <div class="pmap">
+    <div id="pmap"></div>
+    <div class="maplegend" id="p-legend"></div>
+    <div class="drawbar" id="drawbar" hidden><b>Dibujando área</b><span id="draw-n">0 vértices</span><button class="btn btn-s" id="draw-undo" type="button">Deshacer</button><button class="btn btn-p" id="draw-end" type="button">Terminar</button><button class="btn btn-s" id="draw-cancel" type="button">Cancelar</button></div>
+  </div>
+</main>
+{% endblock %}
+{% block scripts %}
+<script src="static/data/motor/motor.js"></script>
+<script src="static/data/motor/motor_rejilla.js"></script>
+<script src="static/data/evaluacion.js"></script>
+<script src="static/js/canal.js"></script>
+<script src="static/js/preeval.js"></script>
+<script src="static/js/panel_canal.js"></script>
+{% endblock %}

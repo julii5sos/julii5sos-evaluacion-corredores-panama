@@ -1,0 +1,47 @@
+{#- Piezas reutilizables del portal -#}
+
+{% macro logo() -%}
+<svg viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="20" fill="none" stroke="#ffffff" stroke-opacity=".35" stroke-width="1.5"/><path d="M8 30 C15 28 16 15 22 15 S30 26 36 12" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round"/><circle cx="8" cy="30" r="4.6" fill="#77cc09"/><circle cx="22" cy="15" r="3.8" fill="#ffffff"/><circle cx="36" cy="12" r="4.6" fill="#fabc20"/></svg>
+{%- endmacro %}
+
+{% macro chev(cls='') -%}<i class="chev {{ cls }}" aria-hidden="true"></i>{%- endmacro %}
+
+{#- Cabecera azul con corte diagonal y franjas verde y amarilla -#}
+{% macro hero(titulo, migas=None, texto=None, siguiente='#ffffff', pequeno=False, arcos=True) -%}
+<section class="hero{% if pequeno %} sm{% endif %}" style="--next:{{ siguiente }}">
+  <div class="wrap hero-in">
+    {% if migas %}<nav class="bc" aria-label="Ruta"><a href="index.html">Inicio</a><span>/</span>{{ migas }}</nav>{% endif %}
+    <h1>{{ titulo }}</h1>
+    {% if texto %}<p class="lead">{{ texto }}</p>{% endif %}
+    {% if caller %}<div class="acts">{{ caller() }}</div>{% endif %}
+  </div>
+  <svg class="hero-cut" viewBox="0 0 1440 150" preserveAspectRatio="none" aria-hidden="true">
+    <polygon class="fondo" points="0,150 1440,40 1440,150"/>
+    {% if arcos %}<g fill="none" stroke="#fabc20" stroke-opacity=".7" stroke-width="1.3" vector-effect="non-scaling-stroke">
+      <path d="M1150 150 C1210 112 1320 96 1440 92"/><path d="M1200 150 C1255 120 1340 108 1440 106"/><path d="M1250 150 C1300 128 1365 120 1440 119"/></g>{% endif %}
+    <polygon points="960,62.7 1440,26 1440,34 960,70.7" fill="#ffffff"/>
+    <polygon points="880,78.8 1440,36 1440,46 880,88.8" fill="#77cc09"/>
+    <polygon points="990,84.4 1440,50 1440,59 990,93.4" fill="#fabc20"/>
+  </svg>
+</section>
+{%- endmacro %}
+
+{% macro carta(fecha, titulo, texto=None, tags=(), href=None, accion='Abrir') -%}
+<{{ 'a' if href else 'article' }} class="card"{% if href %} href="{{ href }}"{% endif %}>
+  <span class="date">{{ fecha }}</span>
+  <h3>{{ titulo }}</h3>
+  {% if texto %}<p>{{ texto }}</p>{% endif %}
+  {% if caller %}{{ caller() }}{% endif %}
+  {% if tags %}<div class="tags">{% for t in tags %}<span class="tag">{{ t }}</span>{% endfor %}</div>{% endif %}
+  {% if href %}<span class="more">{{ accion }} {{ chev() }}</span>{% endif %}
+</{{ 'a' if href else 'article' }}>
+{%- endmacro %}
+
+{% macro icono(nombre) -%}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+{%- if nombre == 'sat' %}<path d="M13 7 9 3 5 7l4 4"/><path d="m17 11 4 4-4 4-4-4"/><path d="m8 12 4 4 6-6-4-4Z"/><path d="m16 8 3-3"/><path d="M9 21a6 6 0 0 0-6-6"/>
+{%- elif nombre == 'lay' %}<path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="m3 12.5 9 5 9-5"/><path d="m3 17 9 5 9-5"/>
+{%- elif nombre == 'mtn' %}<path d="m3 20 6-10 4 6 2-3 6 7Z"/><path d="M9 10 7.5 7.5"/><circle cx="17" cy="6" r="2"/>
+{%- elif nombre == 'net' %}<circle cx="5" cy="6" r="2.4"/><circle cx="19" cy="7" r="2.4"/><circle cx="8" cy="18" r="2.4"/><circle cx="18" cy="17" r="2.4"/><path d="M7.4 6.3 16.6 6.8M6 8.3l1.4 7.4M10.4 18l5.2-.8M18.6 9.4l-.4 5.2"/>
+{%- endif %}</svg>
+{%- endmacro %}

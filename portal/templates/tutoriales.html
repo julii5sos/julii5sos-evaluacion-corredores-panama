@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% from "_macros.html" import hero, carta %}
+{% block title %}Tutoriales · {{ sitio.nombre }}{% endblock %}
+{% block body %}
+<main>
+  {{ hero('Tutoriales', 'Tutoriales', 'Guías cortas para las tareas más comunes del portal. Cada una toma pocos minutos y enlaza a la página donde se hace.', siguiente='#f6f8fb') }}
+  <section class="sec gris" style="padding-top:20px">
+    <div class="wrap cards">
+      {% for modulo, dur, titulo, destino, pasos in tutoriales %}
+        {% call carta(modulo ~ ' · ' ~ dur, titulo, None, (modulo,), destino ~ '.html', {'Panel': 'Ir al panel', 'Plataforma': 'Ir a la plataforma', 'Inicio': 'Ir a la portada'}.get(modulo, 'Abrir la página')) %}
+          <ol>{% for p in pasos %}<li>{{ p }}</li>{% endfor %}</ol>
+        {% endcall %}
+      {% endfor %}
+    </div>
+  </section>
+</main>
+{% endblock %}
