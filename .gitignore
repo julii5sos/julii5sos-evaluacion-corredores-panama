@@ -6,3 +6,6 @@ uploads/
 *.zip
 output/
 tmp/
+
+# Sitio estático generado por portal/exportar.py
+portal/dist/
