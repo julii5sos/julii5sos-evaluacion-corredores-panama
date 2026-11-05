@@ -1,3 +1,35 @@
+# Conectividad Panamá · Preevaluación territorial y corredores ecológicos
+
+Portal web (Flask + Leaflet + Google Earth Engine) para la Cuenca del Canal de Panamá y su franja de 10 km.
+Se elige una cuenca, una subcuenca o se dibuja un área de interés, y se obtiene:
+
+- **Preevaluación territorial, de corredores e integral** (método MT-2026.15, con ERI indicativo).
+- **Resumen ejecutivo** con prioridad de visita y recomendación.
+- **Panel por cuenca/subcuenca** con series de cobertura, corredores y puntos críticos.
+- **Comparador de años con divisor** (JRC TMF, ESRI LULC, NDVI Sentinel-2).
+- **Descargas:** ficha PDF con siete mapas, registro metodológico (JSON) y GeoJSON de fragmentos y red.
+
+## Ejecutar
+
+```bash
+pip install -r requirements.txt
+earthengine authenticate          # o define EE_SERVICE_ACCOUNT_JSON
+cd portal && python app.py        # http://127.0.0.1:5000
+```
+
+Variables opcionales (ya tienen estos valores por defecto): `EE_PROJECT=ee-julissaguevaravega`,
+`EE_ASSET_BOSQUE_2021=projects/ee-julissaguevaravega/assets/CBOTB_2021_BOSQUE`,
+`EE_ASSET_SubCuencas=projects/ee-julissaguevaravega/assets/SubCuenca_CHCP`.
+En producción: `gunicorn app:app` (ver `Procfile`). Pruebas: `pytest` y `pytest portal/test_portal.py`.
+
+Si cambias la lógica de Earth Engine en `app_experiencia.py`, regenera el motor del portal:
+`cd portal && python build/armar_motor_ee.py .. evaluacion`.
+
+> **Versión Streamlit (heredada):** `app.py` y `app_experiencia.py` siguen en el repositorio como fuente
+> del motor y referencia; sus dependencias están en `requirements-streamlit.txt`. El portal Flask no las necesita.
+
+---
+
 # Preevaluación territorial y corredores ecológicos de Panamá
 
 Aplicación Streamlit con tres rutas de trabajo independientes para que cada
